@@ -20,8 +20,10 @@ import com.grim3212.assorted.lib.platform.ForgePlatformHelper;
 import com.grim3212.assorted.lib.platform.ForgeRecipeSyncHelper;
 import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.worldgen.LibForgeWorldGen;
+import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -36,6 +38,7 @@ import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -64,6 +67,12 @@ public class AssortedLibForge {
         // Recipes are not sent to clients by default; anything that opted a type into
         // SyncedRecipes is asked for here, while the datapack is being synced.
         NeoForge.EVENT_BUS.addListener((final OnDatapackSyncEvent event) -> event.sendRecipes(ForgeRecipeSyncHelper.requestedTypes()));
+        // Fabric appends the same additions from NaturalSpawnerMixin.
+        NeoForge.EVENT_BUS.addListener((final LevelEvent.PotentialSpawns event) -> {
+            if (event.getLevel() instanceof ServerLevel level) {
+                StructureSpawns.at(level.structureManager(), event.getMobCategory(), event.getPos()).forEach(event::addSpawnerData);
+            }
+        });
 
         Services.EVENTS.registerEventType(UseBlockEvent.class, () -> {
             NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, (final PlayerInteractEvent.RightClickBlock event) -> {

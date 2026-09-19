@@ -6,6 +6,9 @@
   `#registerSpawnPlacement` register a mob's attributes and where it may spawn, and
   `IWorldGenHelper#addSpawnToBiomes` adds it to the natural spawns of the biomes. 
   Spawns are added in the same order on both loaders.
+- `IWorldGenHelper#addSpawnToStructures` adds a creature to the natural spawns inside the structures
+  in a tag, wherever one of their pieces is, underground included. It is added to what already
+  spawns there, and nothing is taken away.
 
 ## 4.1.0
 

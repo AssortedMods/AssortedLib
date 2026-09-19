@@ -20,6 +20,7 @@
     "world.level.BlockBehaviourWorldlyBlockMixin",
     "world.level.BlockGetterWorldlyBlockMixin",
     "world.level.ExplosionDamageCalculatorWorldlyBlockMixin",
+    "world.level.NaturalSpawnerMixin",
     "world.level.ServerPlayerGameModeMixin",
     "world.level.SignalGetterMixin",
     "world.level.chunk.LevelChunkMixin",

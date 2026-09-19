@@ -1,10 +1,13 @@
 package com.grim3212.assorted.lib.platform.services;
 
+import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.structure.Structure;
 
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -27,6 +30,17 @@ public interface IWorldGenHelper {
      * those biomes the creature may appear. One call per type: Fabric names the addition after it.
      */
     void addSpawnToBiomes(BiomePredicate biomePredicate, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount);
+
+    /**
+     * Adds a creature to the natural spawns inside every structure in the tag, in the category the
+     * type was built with. It can appear wherever one of the structure's pieces is, underground or
+     * not, on top of whatever the biome or the structure's own spawn overrides already allow there;
+     * nothing is taken away. The weight is asked on every spawn attempt, so it may read config, and
+     * 0 turns the spawn off. Pair it with {@link IPlatformHelper#registerSpawnPlacement}.
+     */
+    default void addSpawnToStructures(TagKey<Structure> structures, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {
+        StructureSpawns.add(structures, type, weight, minCount, maxCount);
+    }
 
     @FunctionalInterface
     interface BiomePredicate {
