@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "assortedlib:custom_spawner_is_ticked_by_its_level",
+  "structure": "assortedlib:test_box",
+  "max_ticks": 100,
+  "setup_ticks": 0,
+  "required": true
+}

@@ -20,6 +20,7 @@ import com.grim3212.assorted.lib.platform.ForgePlatformHelper;
 import com.grim3212.assorted.lib.platform.ForgeRecipeSyncHelper;
 import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.worldgen.LibForgeWorldGen;
+import com.grim3212.assorted.lib.worldgen.CustomSpawners;
 import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
@@ -39,6 +40,7 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.level.ModifyCustomSpawnersEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -73,6 +75,9 @@ public class AssortedLibForge {
                 StructureSpawns.at(level.structureManager(), event.getMobCategory(), event.getPos()).forEach(event::addSpawnerData);
             }
         });
+
+        // Fabric appends the same spawners from ServerLevelMixin.
+        NeoForge.EVENT_BUS.addListener((final ModifyCustomSpawnersEvent event) -> CustomSpawners.createFor(event.getLevel()).forEach(event::addCustomSpawner));
 
         Services.EVENTS.registerEventType(UseBlockEvent.class, () -> {
             NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, (final PlayerInteractEvent.RightClickBlock event) -> {

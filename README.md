@@ -220,6 +220,118 @@ SyncedRecipes.require(MyRecipes.KILN_TYPE, KilnRecipeSerializer.INSTANCE);
 A recipe with no `RecipeDisplay` like a machine recipe kept out of the recipe book can say how it should
 be drawn by implementing `IManualRecipeProvider`.
 
+## Spawn habits
+
+A spawn habit sets a creature down the way vanilla's cat and patrol spawners do: near players, at its
+own odds, in whole packs, and only up to a count of what already lives nearby. It never touches the
+biome spawn lists or the mob caps, so it is the way to have a creature that is rare, that arrives
+together, that keeps to the surface, or that lives inside a structure.
+
+### The file
+
+One habit per json at `data/<namespace>/spawn_habit/<name>.json`. Datapacks add and override them
+like any other data. Every field but `entity` has a default.
+
+```json
+{
+  "entity": "assortedmobs:seal",
+  "part": "sea_creatures",
+  "interval": 1200,
+  "chance": 0.3,
+  "distance": {"min": 24, "max": 48},
+  "tries": 4,
+  "site": {"type": "assortedlib:land"},
+  "biomes": "#assortedmobs:spawns_seals",
+  "not_biomes": ["minecraft:ice_spikes"],
+  "daylight": "any",
+  "group": {"min": 2, "max": 4},
+  "spread": 4,
+  "cap": {"range": 64, "max": 6, "counted": "#assortedmobs:ice_herd", "skip_persistent": false},
+  "persistent": false
+}
+```
+
+### What happens each interval
+
+Every `interval` ticks, per level, the habit rolls `chance` once for each player. A spot nearer than
+`distance.min` to *any* player is refused, not just to the one whose roll won it, so a habit holds
+its distance on a server as well as in single player. Vanilla's own rule is 24 blocks, and this is
+not asked while a chunk generates, where vanilla does not ask either. For each player it
+wins, it picks up to `tries` columns, each `distance` blocks off along both axes, and hands them to
+the `site`, which turns a column into a spot or refuses it. The first column that gives a spot the
+biome, time and cap allow gets the pack: `group` creatures within `spread` blocks of it, or none at
+all if that many will not fit. Every spot is also put to the creature's own spawn placement, the one
+it registers for the biome spawner, and to the same block collision check vanilla makes last, so a
+creature is never set down standing inside a stair or a fence.
+
+### Seeding new terrain
+
+The spawner only ever runs near players, so on its own it leaves freshly generated terrain empty
+until someone has stood in it a while. `seed` fills that gap: as each chunk generates, every habit
+rolls its `seed` odds and, if it wins, tries `tries` columns inside the chunk for one pack, with
+the same site, biome and placement checks. Caps and `mob_cap` are not consulted there, as vanilla's
+generation packs consult none either; the odds are what bound it. Nothing outside the chunk is read,
+which is why a `structure` site never seeds: a structure's start may lie chunks away.
+
+### Fields
+
+| Field | Default | Meaning |
+|---|---|---|
+| `entity` | required | The creature's id. |
+| `part` | none | A part name given to `IConditionHelper#registerPartCondition`; the habit sleeps while it is off. |
+| `interval` | 1200 | Ticks between tries, per level. |
+| `chance` | 1.0 | The odds, 0 to 1, that a try near a player goes ahead. |
+| `distance` | 24 to 48 | How far from the player a column is picked, along each axis. The minimum doubles as how near the nearest player may be, which is vanilla's rule at 24. |
+| `tries` | 4 | Columns tried per player before giving up until the next interval. |
+| `site` | land | Where in the column the spot is; see below. |
+| `biomes` | any | Only where the biome at the spot is in this set. |
+| `not_biomes` | none | Never where the biome is in this set, whatever `biomes` says. |
+| `daylight` | `any` | `day` or `night` by the sky's light. |
+| `group` | 1 | How many are set down together, whole or not at all. |
+| `spread` | 4 | How far from the first spot the rest of the pack lands. |
+| `cap` | none | Refuses the pack when enough already live nearby; see below. |
+| `mob_cap` | false | Also waits for vanilla's cap for the creature's category to have room, as a biome spawn would. |
+| `persistent` | false | Never despawns, as a cat spawned in a witch hut does not. |
+| `seed` | 0 | The odds that a chunk gets a pack as it generates, the way the biome lists populate new terrain. Vanilla's own animal packs use 0.1. |
+
+A hostile creature, one whose category is not friendly, also waits for vanilla's word that hostile
+mobs may spawn, so it stays off peaceful.
+
+### Sites
+
+| `site.type` | Options | The spot |
+|---|---|---|
+| `assortedlib:land` | `heightmap`, default `MOTION_BLOCKING_NO_LEAVES` | The block above the ground, as the biome spawner places land creatures. Never a cave. |
+| `assortedlib:column` | `min_y`, `max_y`, `below_surface` | A random height in the column, as vanilla's natural spawner picks: the surface or a cave, whichever the placement accepts. Bounded by the level's floor and the surface unless told otherwise; `below_surface` keeps it under the surface block. Most heights are inside stone, so give it tries. |
+| `assortedlib:water` | `depth` (a min and max, default 0), `under_ice` | A water block that deep under the top of the water. The top must be open to the air unless `under_ice`, which looks through ice for it, as a narwhal under the frozen ocean needs. |
+| `assortedlib:structure` | `structures` | A random height inside a random piece of a matching structure in the column, so mineshafts and strongholds work underground. Give it tries. |
+
+Mods add their own with `SpawnSites.register`.
+
+### Sets
+
+`biomes`, `not_biomes`, `structures` and `counted` each take one of three forms: a tag as
+`"#namespace:path"`, a single id, or a list of ids. They are matched when the habit runs, against
+the level's own registries, so a datapack's biomes and structures work.
+
+### Caps as populations
+
+`cap` refuses a pack when `max` or more of the `counted` types are already within `range` blocks of
+the spot. Left out, `counted` is the habit's own creature. Given a tag, several habits can share one
+population: seals and walruses both counting `#assortedmobs:ice_herd` means so many of either on the
+ice at once, whatever the mix. `skip_persistent` leaves out mobs that never despawn, tame ones and
+the like, so they do not hold a place against wild ones.
+
+A habit's cap is its own; vanilla's per-category mob caps are not consulted unless `mob_cap` is set.
+A creature whose category is `creature` still counts toward the animal cap whatever set it down, so
+a habit with `mob_cap` lives among the farm animals exactly as a biome spawn does, and a `misc`
+creature lives outside every cap.
+
+### Datagen
+
+`LibSpawnHabitProvider` writes the files from a `SpawnHabitBuilder`, whose methods are the fields
+above with the same defaults. Add it to the NeoForge data generators; the output serves both loaders.
+
 ## Building
 
 JDK 25 and the bundled Gradle wrapper. `common/` holds the loader-agnostic code; both loader

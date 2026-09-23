@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:function",
+  "environment": "assortedlib:daylight",
+  "function": "assortedlib:spawn_habit_defers_to_the_mob_cap",
+  "structure": "assortedlib:test_box",
+  "max_ticks": 100,
+  "setup_ticks": 0,
+  "sky_access": true,
+  "required": true
+}

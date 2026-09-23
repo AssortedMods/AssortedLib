@@ -1,5 +1,11 @@
 package com.grim3212.assorted.lib.platform.services;
 
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.level.ServerLevelAccessor;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import com.grim3212.assorted.lib.dist.Dist;
@@ -114,6 +120,10 @@ public interface IPlatformHelper {
      * already had. Call from common init, after the type is registered.
      */
     <T extends Mob> void registerSpawnPlacement(Supplier<EntityType<T>> type, SpawnPlacementType placement, Heightmap.Types heightmap, SpawnPlacements.SpawnPredicate<T> predicate);
+
+    /** Mob#finalizeSpawn, which NeoForge deprecates in favour of its FinalizeSpawnEvent hook; Fabric has only the method. */
+    @Nullable
+    SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData);
 
     <T extends BlockEntity> BlockEntityType<T> createBlockEntityType(BiFunction<BlockPos, BlockState, T> builder, Block... blocks);
 

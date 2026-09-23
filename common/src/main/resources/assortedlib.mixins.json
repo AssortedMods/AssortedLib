@@ -17,7 +17,9 @@
     "data.AccessorBlockLootSubProvider",
     "entity.EntityAccessor",
     "item.ItemStackMixin",
-    "world.level.MonsterRoomFeatureAccessor"
+    "world.level.MonsterRoomFeatureAccessor",
+    "world.level.NaturalSpawnerSeedMixin",
+    "world.level.SpawnStateAccessor"
   ],
   "client": [
     "client.gui.GuiGraphicsExtractorAccessor",

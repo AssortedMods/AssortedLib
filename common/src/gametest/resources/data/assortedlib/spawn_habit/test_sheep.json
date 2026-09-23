@@ -1,0 +1,21 @@
+{
+  "entity": "minecraft:sheep",
+  "interval": 40,
+  "chance": 0.0,
+  "distance": {
+    "min": 0,
+    "max": 48
+  },
+  "site": {
+    "type": "assortedlib:land"
+  },
+  "group": {
+    "min": 2,
+    "max": 3
+  },
+  "spread": 2,
+  "cap": {
+    "range": 16,
+    "max": 2
+  }
+}

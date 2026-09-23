@@ -1,5 +1,11 @@
 package com.grim3212.assorted.lib.platform;
 
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.level.ServerLevelAccessor;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry;
@@ -119,6 +125,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {
         FabricDefaultAttributeRegistry.register(type.get(), attributes.get());
+    }
+
+    @Override
+    public @Nullable SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
+        return mob.finalizeSpawn(level, difficulty, reason, groupData);
     }
 
     @Override

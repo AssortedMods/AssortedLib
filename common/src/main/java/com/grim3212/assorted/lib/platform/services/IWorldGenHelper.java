@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.platform.services;
 
+import com.grim3212.assorted.lib.worldgen.CustomSpawnerFactory;
+import com.grim3212.assorted.lib.worldgen.CustomSpawners;
 import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
@@ -40,6 +42,15 @@ public interface IWorldGenHelper {
      */
     default void addSpawnToStructures(TagKey<Structure> structures, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {
         StructureSpawns.add(structures, type, weight, minCount, maxCount);
+    }
+
+    /**
+     * A {@code CustomSpawner} on every server level, beside vanilla's cat and patrol spawners; the factory
+     * is asked per level and may return null. Ticked while spawn_mobs is on, in name order on both loaders.
+     * Neither the biome spawn lists nor the category caps are involved: it is a mod's own pacing.
+     */
+    default void addCustomSpawner(Identifier name, CustomSpawnerFactory factory) {
+        CustomSpawners.add(name, factory);
     }
 
     @FunctionalInterface

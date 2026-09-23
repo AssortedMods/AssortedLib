@@ -1,5 +1,9 @@
 package com.grim3212.assorted.lib;
 
+import com.grim3212.assorted.lib.platform.Services;
+import com.grim3212.assorted.lib.spawn.CreatureSpawner;
+import com.grim3212.assorted.lib.spawn.SpawnHabits;
+import net.minecraft.resources.Identifier;
 import com.grim3212.assorted.lib.crafting.SyncedRecipes;
 import com.grim3212.assorted.lib.manual.ManualInteractions;
 import com.grim3212.assorted.lib.manual.LibItems;
@@ -21,6 +25,10 @@ public class LibCommonSetup {
 
         ManualInteractions.register();
         requireVanillaRecipes();
+
+        // Spawn habits: every mod's data/<ns>/spawn_habit/*.json, driven by one spawner per level.
+        Services.PLATFORM.addReloadListener(SpawnHabits.ID, new SpawnHabits());
+        Services.WORLD_GEN.addCustomSpawner(Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "creatures"), CreatureSpawner::new);
     }
 
     /** Recipe pages and JEI need whole recipes on the client, so these are always synced. */

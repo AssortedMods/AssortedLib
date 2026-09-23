@@ -2,6 +2,8 @@
 
 ## 4.2.0
 
+- `IWorldGenHelper#addCustomSpawner` adds a custom spawner to every server level, beside vanilla's
+  own, on both loaders. A factory makes each level its own copy.
 - Mods can add creatures now. `IPlatformHelper#registerEntityAttributes` and
   `#registerSpawnPlacement` register a mob's attributes and where it may spawn, and
   `IWorldGenHelper#addSpawnToBiomes` adds it to the natural spawns of the biomes. 

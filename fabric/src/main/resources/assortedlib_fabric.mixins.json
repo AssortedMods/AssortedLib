@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "package": "com.grim3212.assorted.lib.mixin",
   "mixins": [
+    "server.level.ServerLevelMixin",
     "world.block.BlockStateBaseMixin",
     "world.entity.EntityWorldlyBlockMixin",
     "world.entity.ExperienceOrbWorldlyBlockMixin",
