@@ -9,6 +9,19 @@
   the drops.
 - `IClientHelper#registerLevelSubmit` adds geometry to every level frame, after entities and
   block entities, on both loaders.
+- Registry aliases, for a mod that moves its content to a new id: `IRegistryFactory#alias`, or
+  `RegistryProvider#aliasFrom(oldNamespace)` to alias everything a provider registers. A world
+  saved under the old ids loads the same entities, items and blocks.
+- `SharedCreativeTabs` gives a family of mods one creative tab between them, registered by
+  whichever is installed first and filled in a fixed order.
+- A mod's manual chapters can join another namespace's section: `LibManualProvider` takes a
+  manual namespace, and a section's `icon` can list several items, the first registered drawn.
+- `MovedIds` keeps a player's recipe book and advancement progress when a mod moves its recipes and
+  advancements to new ids: `inherit(oldNamespace, newNamespace)`, and `renameCriteria` for criteria
+  that were renamed. It also carries over structures already in a world and the loot of chests
+  that were never opened. `migration.carryOverMovedIds` in the new `assortedlib-common.toml` turns it off.
+- `AdvancementIcons` draws an advancement with the first of several items that is installed, for a
+  root advancement a family of mods ships between them.
 
 ## 4.2.0
 

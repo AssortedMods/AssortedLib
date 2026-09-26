@@ -94,6 +94,9 @@ public interface IPlatformHelper {
 
     void modifyCreativeTab(final ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks);
 
+    /** Registers a tab under an id no one mod owns, which is what a family's shared tab is; see {@code SharedCreativeTabs}. */
+    void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab);
+
     /**
      * Shows a data component's {@link TooltipProvider} lines on every stack carrying it, ahead of
      * vanilla's own component lines; otherwise vanilla only asks the components on its fixed list.

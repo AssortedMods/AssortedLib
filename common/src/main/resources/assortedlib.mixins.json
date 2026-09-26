@@ -4,6 +4,12 @@
   "compatibilityLevel": "JAVA_21",
   "package": "com.grim3212.assorted.lib.mixin",
   "mixins": [
+    "advancements.PlayerAdvancementsMixin",
+    "advancements.ServerAdvancementManagerMixin",
+    "stats.ServerRecipeBookMixin",
+    "server.ReloadableServerRegistriesHolderMixin",
+    "world.level.chunk.SerializableChunkDataMixin",
+    "world.level.StructureCheckMixin",
     "block.BlockEntityMixin",
     "block.BlockMixin",
     "block.CactusBlockMixin",

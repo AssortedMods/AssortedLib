@@ -132,6 +132,14 @@ public class ForgePlatformHelper implements IPlatformHelper {
         tabsToRegister.computeIfAbsent(key, tab -> new CopyOnWriteArrayList<>()).add(displayStacks);
     }
 
+    // Registered on Lib's own bus by AssortedLibForge: the tab's namespace may be a mod that is not installed.
+    public static final Map<Identifier, Supplier<CreativeModeTab>> creativeTabsToRegister = new ConcurrentHashMap<>();
+
+    @Override
+    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+        creativeTabsToRegister.putIfAbsent(id, tab);
+    }
+
     public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new ArrayList<>();
 
     // Registered from AssortedLibForge's RegisterTooltipAppendersEvent listener, once the types exist.

@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.platform;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
@@ -116,6 +117,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
         CreativeModeTabEvents.modifyOutputEvent(key).register(output -> {
             output.acceptAll(displayStacks.get());
         });
+    }
+
+    @Override
+    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id, tab.get());
     }
 
     @Override

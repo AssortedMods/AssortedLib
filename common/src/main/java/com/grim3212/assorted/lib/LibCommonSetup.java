@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib;
 
+import com.grim3212.assorted.lib.config.LibCommonConfig;
 import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.spawn.CreatureSpawner;
 import com.grim3212.assorted.lib.spawn.SpawnHabits;
@@ -19,6 +20,8 @@ import net.minecraft.world.item.crafting.StonecutterRecipe;
 
 /** The library's own content, as opposed to its services. Called from both loaders' entry points. */
 public class LibCommonSetup {
+
+    public static final LibCommonConfig COMMON_CONFIG = new LibCommonConfig();
 
     public static void init() {
         LibItems.init();

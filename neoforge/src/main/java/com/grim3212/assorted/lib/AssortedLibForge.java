@@ -4,6 +4,7 @@ import com.grim3212.assorted.lib.data.AssortedLibLanguageProvider;
 import com.grim3212.assorted.lib.data.AssortedLibManualProvider;
 import com.grim3212.assorted.lib.client.data.LibItemModelProvider;
 import com.grim3212.assorted.lib.data.LibRecipes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import net.neoforged.neoforge.common.tooltip.TooltipAppender;
@@ -65,6 +66,8 @@ public class AssortedLibForge {
         modBus.addListener(this::registerIngredientTypes);
         modBus.addListener(this::registerConditionCodecs);
         modBus.addListener(this::modifyCreativeTabs);
+        modBus.addListener((final RegisterEvent event) -> event.register(Registries.CREATIVE_MODE_TAB,
+                helper -> ForgePlatformHelper.creativeTabsToRegister.forEach((id, tab) -> helper.register(id, tab.get()))));
         modBus.addListener(this::registerComponentTooltips);
         modBus.addListener((final EntityAttributeCreationEvent event) -> ForgePlatformHelper.attributesToRegister.forEach(registration -> registration.register(event)));
         modBus.addListener((final RegisterSpawnPlacementsEvent event) -> ForgePlatformHelper.spawnPlacementsToRegister.forEach(registration -> registration.register(event)));

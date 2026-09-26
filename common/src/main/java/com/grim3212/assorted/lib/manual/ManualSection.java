@@ -2,14 +2,14 @@ package com.grim3212.assorted.lib.manual;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.Item;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -44,22 +44,29 @@ public record ManualSection(String modId, int sortOrder, Supplier<ItemStack> ico
         return Component.translatable("manual." + this.modId + ".description");
     }
 
-    /** A section file, before the path has told us which mod it belongs to. */
-    public record Definition(int sortOrder, Optional<Holder<Item>> icon) {
+    /**
+     * A section file, before the path has told us which mod it belongs to. {@code icon} is one item
+     * or a list, the first one registered drawn: mods sharing a section each name the others' items.
+     */
+    public record Definition(int sortOrder, List<Identifier> icons) {
 
         public static final Codec<Definition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.INT.optionalFieldOf("sort_order", DEFAULT_SORT_ORDER).forGetter(Definition::sortOrder),
-                BuiltInRegistries.ITEM.holderByNameCodec().optionalFieldOf("icon").forGetter(Definition::icon)
+                ExtraCodecs.compactListCodec(Identifier.CODEC).optionalFieldOf("icon", List.of()).forGetter(Definition::icons)
         ).apply(instance, Definition::new));
 
         /**
-         * The icon stays a holder until the index is actually drawn. Sections are read during the
+         * The icon is looked up when the index is actually drawn. Sections are read during the
          * first resource reload, which happens before item components are bound, and building a
          * stack then fails.
          */
         public ManualSection bind(String modId) {
-            Holder<Item> item = this.icon.orElse(null);
-            return new ManualSection(modId, this.sortOrder, () -> item == null ? new ItemStack(Items.BOOK) : new ItemStack(item));
+            List<Identifier> icons = this.icons;
+            return new ManualSection(modId, this.sortOrder, () -> icons.stream()
+                    .flatMap(id -> BuiltInRegistries.ITEM.getOptional(id).stream())
+                    .findFirst()
+                    .map(ItemStack::new)
+                    .orElseGet(() -> new ItemStack(Items.BOOK)));
         }
     }
 }
