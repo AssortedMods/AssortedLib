@@ -5,6 +5,7 @@
   "package": "com.grim3212.assorted.lib.mixin",
   "mixins": [
     "server.level.ServerLevelMixin",
+    "server.level.ServerPlayerDeathMixin",
     "world.block.BlockStateBaseMixin",
     "world.entity.EntityWorldlyBlockMixin",
     "world.entity.ExperienceOrbWorldlyBlockMixin",

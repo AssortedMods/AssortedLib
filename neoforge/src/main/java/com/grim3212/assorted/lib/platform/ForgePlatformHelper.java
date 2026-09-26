@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.platform;
 
+import net.minecraft.world.level.block.FireBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
@@ -142,6 +144,19 @@ public class ForgePlatformHelper implements IPlatformHelper {
     // constructed in parallel.
     public static final List<AttributeRegistration<?>> attributesToRegister = new CopyOnWriteArrayList<>();
     public static final List<SpawnPlacementRegistration<?>> spawnPlacementsToRegister = new CopyOnWriteArrayList<>();
+    public static final List<FlammableRegistration> flammablesToRegister = new CopyOnWriteArrayList<>();
+
+    @Override
+    public void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        flammablesToRegister.add(new FlammableRegistration(block, igniteOdds, burnOdds));
+    }
+
+    /** NeoForge has no registry for this; its default {@code getFlammability} reads vanilla's fire table. */
+    public record FlammableRegistration(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        public void register() {
+            ((FireBlock) Blocks.FIRE).setFlammable(this.block.get(), this.igniteOdds, this.burnOdds);
+        }
+    }
 
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {

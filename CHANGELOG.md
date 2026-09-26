@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.3.0
+
+- `IPlatformHelper#registerFlammable` lets fire spread to and burn away a mod's block, with the
+  same odds on both loaders.
+- `PlayerDeathDropsEvent` fires once a player's death is final, after any totem, and before their
+  inventory and experience drop. Fabric's own death events come either before the totem or after
+  the drops.
+- `IClientHelper#registerLevelSubmit` adds geometry to every level frame, after entities and
+  block entities, on both loaders.
+
 ## 4.2.0
 
 - `IWorldGenHelper#addCustomSpawner` adds a custom spawner to every server level, beside vanilla's

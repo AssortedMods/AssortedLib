@@ -25,6 +25,7 @@ import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -38,12 +39,14 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.ModifyCustomSpawnersEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -65,6 +68,7 @@ public class AssortedLibForge {
         modBus.addListener(this::registerComponentTooltips);
         modBus.addListener((final EntityAttributeCreationEvent event) -> ForgePlatformHelper.attributesToRegister.forEach(registration -> registration.register(event)));
         modBus.addListener((final RegisterSpawnPlacementsEvent event) -> ForgePlatformHelper.spawnPlacementsToRegister.forEach(registration -> registration.register(event)));
+        modBus.addListener((final FMLCommonSetupEvent event) -> event.enqueueWork(() -> ForgePlatformHelper.flammablesToRegister.forEach(ForgePlatformHelper.FlammableRegistration::register)));
 
         // Recipes are not sent to clients by default; anything that opted a type into
         // SyncedRecipes is asked for here, while the datapack is being synced.
@@ -113,6 +117,15 @@ public class AssortedLibForge {
                 Services.EVENTS.handleEvents(newEvent);
                 event.setCanceled(newEvent.isCanceled());
                 event.setCancellationResult(newEvent.getInteractionResult());
+            });
+        });
+
+        // LivingDeathEvent fires at the top of die(), after any totem has had its chance.
+        Services.EVENTS.registerEventType(PlayerDeathDropsEvent.class, () -> {
+            NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, (final LivingDeathEvent event) -> {
+                if (event.getEntity() instanceof ServerPlayer player) {
+                    Services.EVENTS.handleEvents(new PlayerDeathDropsEvent(player, event.getSource()));
+                }
             });
         });
 

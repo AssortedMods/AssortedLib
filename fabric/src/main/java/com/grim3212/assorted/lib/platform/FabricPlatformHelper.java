@@ -19,6 +19,7 @@ import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
+import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
@@ -125,6 +126,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {
         FabricDefaultAttributeRegistry.register(type.get(), attributes.get());
+    }
+
+    @Override
+    public void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        FlammableBlockRegistry.getDefaultInstance().add(block.get(), burnOdds, igniteOdds);
     }
 
     @Override

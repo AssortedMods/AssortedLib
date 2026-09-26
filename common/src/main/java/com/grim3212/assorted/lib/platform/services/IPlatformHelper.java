@@ -121,6 +121,12 @@ public interface IPlatformHelper {
      */
     <T extends Mob> void registerSpawnPlacement(Supplier<EntityType<T>> type, SpawnPlacementType placement, Heightmap.Types heightmap, SpawnPlacements.SpawnPredicate<T> predicate);
 
+    /**
+     * Lets fire spread to and burn away a block, with vanilla's odds: planks are 5 and 20, logs 5 and 5.
+     * Call from common init, after the block is registered.
+     */
+    void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds);
+
     /** Mob#finalizeSpawn, which NeoForge deprecates in favour of its FinalizeSpawnEvent hook; Fabric has only the method. */
     @Nullable
     SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData);

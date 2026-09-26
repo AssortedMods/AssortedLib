@@ -3,6 +3,7 @@ package com.grim3212.assorted.lib.platform;
 import com.google.common.collect.Maps;
 import com.grim3212.assorted.lib.client.events.ClientTickHandler;
 import com.grim3212.assorted.lib.client.events.HudElementHandler;
+import com.grim3212.assorted.lib.client.events.LevelSubmitHandler;
 import com.grim3212.assorted.lib.client.model.loader.ForgePlatformModelLoaderPlatformDelegate;
 import com.grim3212.assorted.lib.client.model.loader.ForgeBakedModelDelegate;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecification;
@@ -52,6 +53,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -181,6 +183,11 @@ public class ForgeClientHelper implements IClientHelper {
     @Override
     public void registerHudElement(Identifier id, HudElementHandler element) {
         getRegistration().hudElements.put(id, element);
+    }
+
+    @Override
+    public void registerLevelSubmit(LevelSubmitHandler handler) {
+        NeoForge.EVENT_BUS.addListener((SubmitCustomGeometryEvent event) -> handler.submit(event.getPoseStack(), event.getSubmitNodeCollector(), event.getLevelRenderState().cameraRenderState));
     }
 
     @Override
