@@ -124,6 +124,12 @@ public class FabricPlatformHelper implements IPlatformHelper {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id, tab.get());
     }
 
+    // Fabric registries stay open through every mod's initializer, so this can register at once.
+    @Override
+    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+        Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, id, type.get());
+    }
+
     @Override
     public <T extends TooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type) {
         ItemComponentTooltipProviderRegistry.addFirst(type.get());

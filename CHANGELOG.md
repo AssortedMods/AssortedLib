@@ -20,8 +20,32 @@
   advancements to new ids: `inherit(oldNamespace, newNamespace)`, and `renameCriteria` for criteria
   that were renamed. It also carries over structures already in a world and the loot of chests
   that were never opened. `migration.carryOverMovedIds` in the new `assortedlib-common.toml` turns it off.
+- `ICanColor` marks a block a paint roller can recolor, so blocks from one mod take another mod's paint.
 - `AdvancementIcons` draws an advancement with the first of several items that is installed, for a
   root advancement a family of mods ships between them.
+- The storage pieces Assorted Storage's parts share now live here, so they can become separate mods.
+  `core.storage` has `StorageMaterial`, the base storage block, block entity and menus, and
+  `core.storage.ender` the locked ender inventories. Their screens are in `client.screen.storage`.
+- `LockConversions` says what a lock turns a block into, so one padlock locks the containers of
+  whichever mods are installed. `LockItems` and the new `c:locks` and `c:keys` tags let a container
+  take a lock or check a key without knowing the mod that adds them.
+- `LevelUpgrades` says how a mod's containers upgrade from one material to the next, so a level
+  upgrade works on all of them.
+- `StorageAccessUtil` moved here too, and `registerKeySource` adds somewhere else a key can be, such
+  as an accessory slot.
+- `SharedDataComponents` gives a family of mods one data component type between them, registered
+  under its id by whichever asks first. `StorageInfo`, the lock and level lines on storage items, uses
+  it, and the shared container backgrounds are Lib's own textures now.
+- `core.tool` holds the tool materials Assorted Tools' parts share. `ToolTiers.get()` gives wood through
+  netherite and 17 extra materials such as tin and ruby, from `assortedlib-tool-tiers.toml`, which only
+  exists once a mod asks for it, and `shown(tier)` hides an extra material no mod adds when that
+  file says to. `ArmorMaterialConfig`, `ConfigurableArmorItem`, `ConfigurableTieredItem`
+  and `HarvestTiers` came with them.
+- `ISwitchModes` items share one switch-modes key, Z by default. A mod turns it on with
+  `ModeSwitching.enable()` and, on the client, `ModeSwitchKey.enable()`; without one, there is no key
+  and no packet.
+- `MovedIds` also carries over data-driven entries saved under an old id, such as an enchantment on an
+  item or a book, which vanilla would drop.
 
 ## 4.2.0
 

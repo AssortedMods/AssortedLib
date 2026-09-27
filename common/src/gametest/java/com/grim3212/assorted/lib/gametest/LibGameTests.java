@@ -29,5 +29,6 @@ public final class LibGameTests {
         SpawnerTests.register(out);
         RegistryAliasTests.register(out);
         MovedIdsTests.register(out);
+        SharedToolTests.register(out);
     }
 }

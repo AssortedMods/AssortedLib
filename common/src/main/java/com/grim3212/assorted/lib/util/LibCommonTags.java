@@ -180,6 +180,16 @@ public class LibCommonTags {
         public static final TagKey<Item> INGOTS_IRON = commonTag("ingots/iron");
         public static final TagKey<Item> INGOTS_NETHERITE = commonTag("ingots/netherite");
         public static final TagKey<Item> INGOTS_NETHER_BRICK = commonTag("bricks/nether");
+        public static final TagKey<Item> INGOTS_ALUMINUM = commonTag("ingots/aluminum");
+        public static final TagKey<Item> INGOTS_BRONZE = commonTag("ingots/bronze");
+        public static final TagKey<Item> INGOTS_ELECTRUM = commonTag("ingots/electrum");
+        public static final TagKey<Item> INGOTS_INVAR = commonTag("ingots/invar");
+        public static final TagKey<Item> INGOTS_LEAD = commonTag("ingots/lead");
+        public static final TagKey<Item> INGOTS_NICKEL = commonTag("ingots/nickel");
+        public static final TagKey<Item> INGOTS_PLATINUM = commonTag("ingots/platinum");
+        public static final TagKey<Item> INGOTS_SILVER = commonTag("ingots/silver");
+        public static final TagKey<Item> INGOTS_STEEL = commonTag("ingots/steel");
+        public static final TagKey<Item> INGOTS_TIN = commonTag("ingots/tin");
         public static final TagKey<Item> LEATHER = commonTag("leathers");
         public static final TagKey<Item> NETHER_STARS = commonTag("nether_stars");
         public static final TagKey<Item> NETHERRACK = commonTag("netherracks");
@@ -206,6 +216,10 @@ public class LibCommonTags {
         public static final TagKey<Item> GEMS_LAPIS = commonTag("gems/lapis");
         public static final TagKey<Item> GEMS_PRISMARINE = commonTag("gems/prismarine");
         public static final TagKey<Item> GEMS_QUARTZ = commonTag("gems/quartz");
+        public static final TagKey<Item> GEMS_PERIDOT = commonTag("gems/peridot");
+        public static final TagKey<Item> GEMS_RUBY = commonTag("gems/ruby");
+        public static final TagKey<Item> GEMS_SAPPHIRE = commonTag("gems/sapphire");
+        public static final TagKey<Item> GEMS_TOPAZ = commonTag("gems/topaz");
         public static final TagKey<Item> EGGS = commonTag("eggs");
         public static final TagKey<Item> DUSTS = commonTag("dusts");
         public static final TagKey<Item> DUSTS_PRISMARINE = commonTag("dusts/prismarine");
@@ -219,6 +233,9 @@ public class LibCommonTags {
         public static final TagKey<Item> CHESTS_ENDER = commonTag("chests/ender");
         public static final TagKey<Item> CHESTS_TRAPPED = commonTag("chests/trapped");
         public static final TagKey<Item> CHESTS_WOODEN = commonTag("chests/wooden");
+        // Filled by the mod that adds locks and keys, so containers never need to know its items
+        public static final TagKey<Item> LOCKS = commonTag("locks");
+        public static final TagKey<Item> KEYS = commonTag("keys");
         public static final TagKey<Item> COBBLESTONE = commonTag("cobblestones");
         public static final TagKey<Item> GLASS = commonTag("glass_blocks");
         public static final TagKey<Item> GLASS_BLACK = commonTag("glass_blocks/black");

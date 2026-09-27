@@ -1,15 +1,21 @@
 package com.grim3212.assorted.lib.gametest;
 
+import com.google.gson.JsonParser;
 import com.grim3212.assorted.lib.migration.AdvancementIcons;
 import com.grim3212.assorted.lib.migration.MovedIds;
 import com.grim3212.assorted.lib.test.TestSupport;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.SharedConstants;
 import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerAdvancements;
@@ -17,8 +23,12 @@ import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.RecipeBookSettings;
 import net.minecraft.stats.ServerRecipeBook;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -56,6 +66,7 @@ final class MovedIdsTests {
         out.accept("moved_ids_advancement_progress_carries_over", MovedIdsTests::advancementProgressCarriesOver);
         out.accept("moved_ids_chunk_structures_carry_over", MovedIdsTests::chunkStructuresCarryOver);
         out.accept("moved_ids_loot_table_carries_over", MovedIdsTests::lootTableCarriesOver);
+        out.accept("moved_ids_enchantments_carry_over", MovedIdsTests::enchantmentsCarryOver);
     }
 
     private static void advancementIconIsTheFirstInstalled(GameTestHelper helper) {
@@ -122,5 +133,28 @@ final class MovedIdsTests {
         helper.assertTrue(registries.getLootTable(ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(OLD, "never_was"))) == LootTable.EMPTY,
                 "an unknown loot table id did not stay empty");
         helper.succeed();
+    }
+
+    /** An item and a book saved with enchantments under an old id, read the way a chest reads its items. */
+    private static void enchantmentsCarryOver(GameTestHelper helper) {
+        RegistryAccess access = helper.getLevel().registryAccess();
+        Holder<Enchantment> sharpness = access.lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SHARPNESS);
+        Holder<Enchantment> mending = access.lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.MENDING);
+
+        ItemStack sword = readStack(access, "{\"id\": \"minecraft:diamond_sword\", \"count\": 1, \"components\": {\"minecraft:enchantments\": {\"" + OLD + ":sharpness\": 3, \"" + OLD + ":never_was\": 1}}}");
+        helper.assertTrue(sword.is(Items.DIAMOND_SWORD), "the sword itself was lost");
+        ItemEnchantments enchantments = sword.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+        helper.assertTrue(enchantments.getLevel(sharpness) == 3, "sharpness saved under its old id did not carry over, got " + enchantments);
+        helper.assertTrue(enchantments.size() == 1, "an unknown enchantment id was kept, got " + enchantments);
+
+        ItemStack book = readStack(access, "{\"id\": \"minecraft:enchanted_book\", \"count\": 1, \"components\": {\"minecraft:stored_enchantments\": {\"" + OLD + ":mending\": 1}}}");
+        helper.assertTrue(book.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY).getLevel(mending) == 1, "a book's stored enchantment saved under its old id did not carry over");
+        helper.succeed();
+    }
+
+    private static ItemStack readStack(RegistryAccess access, String json) {
+        // Partial, as a chest keeps what it could read of an item.
+        return ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, access), JsonParser.parseString(json)).resultOrPartial(error -> {
+        }).orElse(ItemStack.EMPTY);
     }
 }

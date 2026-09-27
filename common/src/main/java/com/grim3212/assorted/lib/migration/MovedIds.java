@@ -20,7 +20,7 @@ import java.util.function.Predicate;
 
 /**
  * Content a mod took over from another namespace, as each mod split out of one does. Recipe books, advancement progress,
- * chunks' structures and chests' loot tables saved under an old id that no longer exists carry over to the new one.
+ * structures, chest loot and data-driven entries such as enchantments saved under an old id carry over to the new one.
  */
 public final class MovedIds {
 
@@ -39,6 +39,16 @@ public final class MovedIds {
     /** Criteria of {@code advancement} that were renamed, old name to new, so progress on them carries over. */
     public static void renameCriteria(Identifier advancement, Map<String, String> renames) {
         CRITERIA.computeIfAbsent(advancement, key -> new ConcurrentHashMap<>()).putAll(renames);
+    }
+
+    /** Whether any mod has moved anything, cheap enough to ask of every id a codec reads. */
+    public static boolean anyMoved() {
+        return !HEIRS.isEmpty();
+    }
+
+    /** Whether some mod took over {@code namespace}. */
+    public static boolean moved(String namespace) {
+        return HEIRS.containsKey(namespace);
     }
 
     public static boolean enabled() {

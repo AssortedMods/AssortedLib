@@ -1,4 +1,7 @@
 {
+  "assortedlib.info.combo": "Combo: %s",
+  "assortedlib.info.locked": "Locked",
+  "assortedlib.info.storage_level": "Storage Level %s",
   "gui.assortedlib.manual.accepts_fuel": "Accepts any furnace fuel",
   "gui.assortedlib.manual.accepts_tag": "Accepts any %s",
   "gui.assortedlib.manual.chapter_missing": "This chapter is no longer part of the book.",
@@ -14,6 +17,8 @@
   "gui.assortedlib.manual.shapeless": "Shapeless Recipe",
   "gui.assortedlib.manual.title": "Instruction Manual",
   "item.assortedlib.instruction_manual": "Instruction Manual",
+  "key.assortedlib.switch_modes": "Switch Tool Modes",
+  "key.category.assortedlib.general": "Assorted Mods",
   "manual.assortedlib.chapter.reading": "Reading the Manual",
   "manual.assortedlib.chapter.reading.crafting": "A book, a piece of leather to bind it and any dye for the ink.",
   "manual.assortedlib.chapter.reading.crafting.title": "The Manual",
@@ -59,6 +64,8 @@
   "tag.item.c.glass_panes.red": "Red Glass Panes",
   "tag.item.c.glass_panes.white": "White Glass Panes",
   "tag.item.c.glass_panes.yellow": "Yellow Glass Panes",
+  "tag.item.c.keys": "Keys",
+  "tag.item.c.locks": "Locks",
   "tag.item.c.storage_blocks.amethyst": "Amethyst Storage Blocks",
   "tag.item.c.storage_blocks.quartz": "Quartz Storage Blocks"
 }

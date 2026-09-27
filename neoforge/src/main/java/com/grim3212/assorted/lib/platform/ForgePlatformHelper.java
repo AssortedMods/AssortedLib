@@ -140,6 +140,13 @@ public class ForgePlatformHelper implements IPlatformHelper {
         creativeTabsToRegister.putIfAbsent(id, tab);
     }
 
+    public static final Map<Identifier, Supplier<? extends DataComponentType<?>>> componentTypesToRegister = new ConcurrentHashMap<>();
+
+    @Override
+    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+        componentTypesToRegister.putIfAbsent(id, type);
+    }
+
     public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new ArrayList<>();
 
     // Registered from AssortedLibForge's RegisterTooltipAppendersEvent listener, once the types exist.

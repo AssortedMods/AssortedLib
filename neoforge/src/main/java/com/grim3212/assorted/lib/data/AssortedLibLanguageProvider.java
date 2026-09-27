@@ -26,6 +26,13 @@ public class AssortedLibLanguageProvider extends LibLanguageProvider {
         }
         this.add("tag.item.c.containers.fluid", "Fluid Containers");
         this.add("tag.item.c.dusts.prismarine", "Prismarine Dusts");
+        this.add("assortedlib.info.combo", "Combo: %s");
+        this.add("key.assortedlib.switch_modes", "Switch Tool Modes");
+        this.add("key.category.assortedlib.general", "Assorted Mods");
+        this.add("assortedlib.info.locked", "Locked");
+        this.add("assortedlib.info.storage_level", "Storage Level %s");
+        this.add("tag.item.c.keys", "Keys");
+        this.add("tag.item.c.locks", "Locks");
         this.add("tag.item.c.storage_blocks.amethyst", "Amethyst Storage Blocks");
         this.add("tag.item.c.storage_blocks.quartz", "Quartz Storage Blocks");
 

@@ -68,6 +68,8 @@ public class AssortedLibForge {
         modBus.addListener(this::modifyCreativeTabs);
         modBus.addListener((final RegisterEvent event) -> event.register(Registries.CREATIVE_MODE_TAB,
                 helper -> ForgePlatformHelper.creativeTabsToRegister.forEach((id, tab) -> helper.register(id, tab.get()))));
+        modBus.addListener((final RegisterEvent event) -> event.register(Registries.DATA_COMPONENT_TYPE,
+                helper -> ForgePlatformHelper.componentTypesToRegister.forEach((id, type) -> helper.register(id, type.get()))));
         modBus.addListener(this::registerComponentTooltips);
         modBus.addListener((final EntityAttributeCreationEvent event) -> ForgePlatformHelper.attributesToRegister.forEach(registration -> registration.register(event)));
         modBus.addListener((final RegisterSpawnPlacementsEvent event) -> ForgePlatformHelper.spawnPlacementsToRegister.forEach(registration -> registration.register(event)));

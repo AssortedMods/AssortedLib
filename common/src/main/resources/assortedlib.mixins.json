@@ -7,6 +7,7 @@
     "advancements.PlayerAdvancementsMixin",
     "advancements.ServerAdvancementManagerMixin",
     "stats.ServerRecipeBookMixin",
+    "resources.RegistryFixedCodecMixin",
     "server.ReloadableServerRegistriesHolderMixin",
     "world.level.chunk.SerializableChunkDataMixin",
     "world.level.StructureCheckMixin",
