@@ -26,6 +26,10 @@
 - The storage pieces Assorted Storage's parts share now live here, so they can become separate mods.
   `core.storage` has `StorageMaterial`, the base storage block, block entity and menus, and
   `core.storage.ender` the locked ender inventories. Their screens are in `client.screen.storage`.
+- The chest, barrel, hopper and shulker box blocks are here too, with their block entities, menus,
+  renderers and models, so Assorted Locks can own the locked vanilla ones while each part keeps its
+  materials. Nothing is registered by Lib. A mod hands its blocks the block entity and menu types it
+  registered through `StorageTypes`, and a block entity takes its type from its block.
 - `LockConversions` says what a lock turns a block into, so one padlock locks the containers of
   whichever mods are installed. `LockItems` and the new `c:locks` and `c:keys` tags let a container
   take a lock or check a key without knowing the mod that adds them.

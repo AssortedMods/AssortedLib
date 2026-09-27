@@ -43,7 +43,7 @@ public final class MovedIds {
 
     /** Whether any mod has moved anything, cheap enough to ask of every id a codec reads. */
     public static boolean anyMoved() {
-        return !HEIRS.isEmpty();
+        return !HEIRS.isEmpty() || !CRITERIA.isEmpty();
     }
 
     /** Whether some mod took over {@code namespace}. */
@@ -51,8 +51,9 @@ public final class MovedIds {
         return HEIRS.containsKey(namespace);
     }
 
+    /** Whether the hooks should carry anything over; false at once when no mod has moved anything. */
     public static boolean enabled() {
-        return LibCommonSetup.COMMON_CONFIG.carryOverMovedIds.get();
+        return anyMoved() && LibCommonSetup.COMMON_CONFIG.carryOverMovedIds.get();
     }
 
     /** Where {@code id} went: the first heir of its namespace that has its path, or nothing if it did not move. */

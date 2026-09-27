@@ -11,6 +11,7 @@ import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.core.inventory.locking.StorageUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
@@ -18,6 +19,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -224,6 +226,12 @@ public abstract class BaseStorageBlockEntity extends BlockEntity implements Menu
     }
 
     protected abstract Component getDefaultName();
+
+    /** {@code <namespace>.container.<path>} of this block's id, so each mod names the blocks it registered. */
+    protected Component blockContainerName() {
+        Identifier id = BuiltInRegistries.BLOCK.getKey(this.getBlockState().getBlock());
+        return Component.translatable(id.getNamespace() + ".container." + id.getPath());
+    }
 
     protected SoundEvent openSound() {
         return SoundEvents.CHEST_OPEN;
