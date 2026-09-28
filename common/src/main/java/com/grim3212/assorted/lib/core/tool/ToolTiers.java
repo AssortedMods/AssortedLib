@@ -5,7 +5,6 @@ import com.grim3212.assorted.lib.config.ConfigurationType;
 import com.grim3212.assorted.lib.config.IConfigurationBuilder;
 import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.util.LibCommonTags;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ToolMaterial;
@@ -14,7 +13,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * The tool materials the Assorted mods share, so a tin hammer and a tin bucket from two mods agree. The
@@ -33,14 +31,11 @@ public final class ToolTiers {
     public final ToolTier iron;
     public final ToolTier diamond;
     public final ToolTier netherite;
-    public final Supplier<Boolean> hideUnobtainable;
     private final Map<String, ToolTier> extras = new LinkedHashMap<>();
 
     private ToolTiers() {
         // Needed at registration: items bake their material as they are constructed.
         IConfigurationBuilder builder = Services.CONFIG.createBuilder(ConfigurationType.NEEDED_AT_REGISTRATION, CONFIG_NAME);
-
-        this.hideUnobtainable = builder.defineBoolean("general.hideUnobtainableItems", false, "Set this to true to hide the tools and armor of an extra material no installed mod adds, such as tin, from the creative menu and JEI.");
 
         this.wood = new ToolTier(builder, "vanilla_materials", "wood", ToolMaterial.WOOD, 6.0F, -3.2F);
         this.stone = new ToolTier(builder, "vanilla_materials", "stone", ToolMaterial.STONE, 7.0F, -3.2F);
@@ -88,11 +83,6 @@ public final class ToolTiers {
     /** Whether any mod has asked for the tiers, and so whether their config file exists. */
     public static boolean created() {
         return instance != null;
-    }
-
-    /** Whether a creative tab should list this tier's items: not if they cannot be made and the config hides those. */
-    public boolean shown(ToolTier tier) {
-        return !this.hideUnobtainable.get() || BuiltInRegistries.ITEM.get(tier.getRepairItems()).map(holders -> holders.size() > 0).orElse(false);
     }
 
     public List<ToolTier> vanilla() {

@@ -24,6 +24,8 @@
 - `AdvancementIcons` draws an advancement with the first of several items that is installed, for a
   root advancement a family of mods ships between them.
 - Mods can join a family to share a creative tab and manual section, and each one can be turned off in the family's parts config
+- `creative.hideUncraftableItems` in `assortedlib-common.toml` hides items from the creative menu when nothing installed
+  provides their material. Mods add those items with `CreativeTabItems#addIfObtainable`, and `ItemUtil.isTagEmpty` does the check
 - The storage pieces Assorted Storage's parts share now live here, so they can become separate mods.
   `core.storage` has `StorageMaterial`, the base storage block, block entity and menus, and
   `core.storage.ender` the locked ender inventories. Their screens are in `client.screen.storage`.
@@ -43,8 +45,7 @@
   it, and the shared container backgrounds are Lib's own textures now.
 - `core.tool` holds the tool materials Assorted Tools' parts share. `ToolTiers.get()` gives wood through
   netherite and 17 extra materials such as tin and ruby, from `assortedlib-tool-tiers.toml`, which only
-  exists once a mod asks for it, and `shown(tier)` hides an extra material no mod adds when that
-  file says to. `ArmorMaterialConfig`, `ConfigurableArmorItem`, `ConfigurableTieredItem`
+  exists once a mod asks for it. `ArmorMaterialConfig`, `ConfigurableArmorItem`, `ConfigurableTieredItem`
   and `HarvestTiers` came with them.
 - `ISwitchModes` items share one switch-modes key, Z by default. A mod turns it on with
   `ModeSwitching.enable()` and, on the client, `ModeSwitchKey.enable()`; without one, there is no key

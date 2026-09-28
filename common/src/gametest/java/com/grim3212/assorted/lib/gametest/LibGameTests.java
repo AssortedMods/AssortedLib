@@ -31,5 +31,6 @@ public final class LibGameTests {
         MovedIdsTests.register(out);
         SharedToolTests.register(out);
         PartToggleTests.register(out);
+        CreativeTabItemsTests.register(out);
     }
 }

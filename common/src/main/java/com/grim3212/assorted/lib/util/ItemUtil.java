@@ -1,8 +1,11 @@
 package com.grim3212.assorted.lib.util;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -11,6 +14,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class ItemUtil {
+
+    /** Whether no item is in {@code tag}, including when no pack defines it, as with Assorted Core's metals without Core. */
+    public static boolean isTagEmpty(TagKey<Item> tag) {
+        return !BuiltInRegistries.ITEM.getTagOrEmpty(tag).iterator().hasNext();
+    }
 
     /**
      * Breaks a block as the player would. It drops nothing unless the main-hand item is the correct
