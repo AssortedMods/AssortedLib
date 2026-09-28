@@ -9,7 +9,6 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.event.EventHooks;
-import java.util.ArrayList;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
@@ -147,7 +146,8 @@ public class ForgePlatformHelper implements IPlatformHelper {
         componentTypesToRegister.putIfAbsent(id, type);
     }
 
-    public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new ArrayList<>();
+    // Concurrent because mods are constructed in parallel.
+    public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new CopyOnWriteArrayList<>();
 
     // Registered from AssortedLibForge's RegisterTooltipAppendersEvent listener, once the types exist.
     @Override

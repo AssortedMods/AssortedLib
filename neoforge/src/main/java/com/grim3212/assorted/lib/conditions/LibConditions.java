@@ -7,6 +7,7 @@ import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,7 +20,8 @@ import java.util.function.Supplier;
  */
 public final class LibConditions {
 
-    private static final Map<Identifier, RecipeConditionWrapper> DYNAMIC_CONDITIONS = new LinkedHashMap<>();
+    // Synchronized because mods are constructed in parallel; linked so the codecs register in a steady order.
+    private static final Map<Identifier, RecipeConditionWrapper> DYNAMIC_CONDITIONS = Collections.synchronizedMap(new LinkedHashMap<>());
 
     private LibConditions() {
     }
@@ -62,8 +64,10 @@ public final class LibConditions {
             registry.register(TagPopulatedCondition.ItemTagPopulatedCondition.NAME, TagPopulatedCondition.ItemTagPopulatedCondition.CODEC);
             registry.register(TagPopulatedCondition.BlockTagPopulatedCondition.NAME, TagPopulatedCondition.BlockTagPopulatedCondition.CODEC);
 
-            for (Map.Entry<Identifier, RecipeConditionWrapper> entry : DYNAMIC_CONDITIONS.entrySet()) {
-                registry.register(entry.getKey(), entry.getValue().codec());
+            synchronized (DYNAMIC_CONDITIONS) {
+                for (Map.Entry<Identifier, RecipeConditionWrapper> entry : DYNAMIC_CONDITIONS.entrySet()) {
+                    registry.register(entry.getKey(), entry.getValue().codec());
+                }
             }
         });
     }

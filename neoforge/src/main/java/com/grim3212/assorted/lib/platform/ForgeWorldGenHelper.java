@@ -17,7 +17,6 @@ import net.neoforged.neoforge.common.world.BiomeModifier;
 import net.neoforged.neoforge.common.world.ModifiableBiomeInfo;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -25,8 +24,9 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 public class ForgeWorldGenHelper implements IWorldGenHelper {
-    private static final List<BiomeModification> biomeModifications = new ArrayList<>();
-    private static final List<BiomeModification> biomeRemovals = new ArrayList<>();
+    // Concurrent because mods are constructed in parallel, and each one sorts after it adds.
+    private static final List<BiomeModification> biomeModifications = new CopyOnWriteArrayList<>();
+    private static final List<BiomeModification> biomeRemovals = new CopyOnWriteArrayList<>();
 
     /**
      * Kept in the order Fabric applies its own modifications in, which is by the placed feature's id
