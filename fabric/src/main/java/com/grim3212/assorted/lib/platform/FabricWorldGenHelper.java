@@ -1,6 +1,7 @@
 package com.grim3212.assorted.lib.platform;
 
 import com.grim3212.assorted.lib.LibConstants;
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.platform.services.IWorldGenHelper;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.ModificationPhase;
@@ -24,7 +25,7 @@ public class FabricWorldGenHelper implements IWorldGenHelper {
 
     @Override
     public void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier placedFeatureIdentifier) {
-        BiomeModifications.addFeature(it -> biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()), step, ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier));
+        BiomeModifications.addFeature(it -> PartToggles.isEnabled(placedFeatureIdentifier) && biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()), step, ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier));
     }
 
     @Override
@@ -43,7 +44,7 @@ public class FabricWorldGenHelper implements IWorldGenHelper {
     public void addSpawnToBiomes(BiomePredicate biomePredicate, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {
         EntityType<?> entityType = type.get();
         BiomeModifications.create(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)).add(ModificationPhase.ADDITIONS,
-                it -> biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()),
+                it -> PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)) && biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()),
                 context -> context.getMobSpawnSettings().addSpawn(entityType.getCategory(), new MobSpawnSettings.SpawnerData(entityType, minCount, maxCount), weight.getAsInt()));
     }
 }

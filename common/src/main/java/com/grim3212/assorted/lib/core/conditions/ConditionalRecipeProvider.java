@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.core.conditions;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.data.CrossLoaderData;
 import com.grim3212.assorted.lib.platform.Services;
 import net.minecraft.core.HolderLookup;
@@ -34,9 +35,20 @@ public abstract class ConditionalRecipeProvider extends RecipeProvider {
     // why this goes through a private constructor. The wrapper reads it lazily on each accept, so
     // registerConditions() populating it later still works.
     private ConditionalRecipeProvider(HolderLookup.Provider registries, RecipeOutput output, String modId, Map<Identifier, List<LibConditionProvider>> conditions) {
-        super(registries, Services.CONDITIONS.conditionalOutput(output, conditions));
+        super(registries, Services.CONDITIONS.conditionalOutput(output, recipe -> withPart(conditions.get(recipe), modId)));
         this.modId = modId;
         this.conditions = conditions;
+    }
+
+    /** A mod with a {@link PartToggles} switch has every recipe turned off with it. */
+    private static List<LibConditionProvider> withPart(@Nullable List<LibConditionProvider> conditions, String modId) {
+        if (!PartToggles.has(modId)) {
+            return conditions;
+        }
+
+        List<LibConditionProvider> all = conditions == null ? new ArrayList<>() : new ArrayList<>(conditions);
+        all.add(Services.CONDITIONS.partEnabled(modId));
+        return all;
     }
 
     public LibConditionProvider and(LibConditionProvider... providers) {

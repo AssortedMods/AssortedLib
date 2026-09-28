@@ -2,6 +2,7 @@ package com.grim3212.assorted.lib;
 
 import com.grim3212.assorted.lib.core.item.IItemEnchantmentCondition;
 import com.grim3212.assorted.lib.core.item.LibDataComponents;
+import com.grim3212.assorted.lib.family.FamilySwitches;
 import com.grim3212.assorted.lib.platform.FabricConfigHelper;
 import com.grim3212.assorted.lib.platform.Services;
 import net.fabricmc.api.ModInitializer;
@@ -21,6 +22,7 @@ public class AssortedLibFabric implements ModInitializer {
         Services.INGREDIENTS.register();
 
         FabricConfigHelper.init();
+        FamilySwitches.makeOnFirstRead();
 
         LibCommonSetup.init();
 

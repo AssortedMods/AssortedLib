@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.worldgen;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.platform.services.IWorldGenHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -62,7 +63,7 @@ public final class StructureSpawns {
         for (Addition addition : additions) {
             EntityType<?> type = addition.type().get();
             int weight = addition.weight().getAsInt();
-            if (type.getCategory() != category || weight <= 0 || !structureManager.getStructureWithPieceAt(pos, addition.structures()).isValid()) {
+            if (type.getCategory() != category || weight <= 0 || !PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(type)) || !structureManager.getStructureWithPieceAt(pos, addition.structures()).isValid()) {
                 continue;
             }
 

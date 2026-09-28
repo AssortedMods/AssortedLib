@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.Block;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -51,11 +51,11 @@ public class FabricConditionHelper implements IConditionHelper {
      * provider mixin writes them out alongside the serialised recipe.
      */
     @Override
-    public RecipeOutput conditionalOutput(RecipeOutput output, Map<Identifier, List<LibConditionProvider>> conditions) {
+    public RecipeOutput conditionalOutput(RecipeOutput output, Function<Identifier, List<LibConditionProvider>> conditions) {
         return new RecipeOutput() {
             @Override
             public void accept(ResourceKey<Recipe<?>> key, Recipe<?> recipe, AdvancementHolder advancement) {
-                final List<LibConditionProvider> recipeConditions = conditions.get(key.identifier());
+                final List<LibConditionProvider> recipeConditions = conditions.apply(key.identifier());
                 if (recipeConditions != null && !recipeConditions.isEmpty()) {
                     FabricDataGenHelper.addConditions(recipe, recipeConditions.stream().map(FabricConditionHelper::unwrap).toArray(ResourceCondition[]::new));
                 }

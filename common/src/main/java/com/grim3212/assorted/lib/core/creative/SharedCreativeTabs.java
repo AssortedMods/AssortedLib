@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.core.creative;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.platform.Services;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -35,9 +36,15 @@ public final class SharedCreativeTabs {
      * that is registered, so every mod of the family passes the same list.
      */
     public static ResourceKey<CreativeModeTab> tab(Identifier id, List<Identifier> icons) {
+        List<Identifier> fixed = List.copyOf(icons);
+        return tab(id, () -> fixed);
+    }
+
+    /** As above, with icons asked for when the tab is first drawn, so they can depend on what is switched on. */
+    public static ResourceKey<CreativeModeTab> tab(Identifier id, Supplier<List<Identifier>> icons) {
         ResourceKey<CreativeModeTab> key = ResourceKey.create(Registries.CREATIVE_MODE_TAB, id);
         CONTENTS.computeIfAbsent(key, created -> {
-            Services.PLATFORM.registerCreativeTab(id, () -> build(id, List.copyOf(icons)));
+            Services.PLATFORM.registerCreativeTab(id, () -> build(id, icons));
             Services.PLATFORM.modifyCreativeTab(created, () -> stacks(created));
             return new CopyOnWriteArrayList<>();
         });
@@ -64,10 +71,11 @@ public final class SharedCreativeTabs {
 
     // Built empty and filled through modifyCreativeTab; the builder is deprecated only by NeoForge's patches.
     @SuppressWarnings("deprecation")
-    private static CreativeModeTab build(Identifier id, List<Identifier> icons) {
+    private static CreativeModeTab build(Identifier id, Supplier<List<Identifier>> icons) {
         return CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable("itemGroup." + id.getNamespace()))
-                .icon(() -> icons.stream()
+                .icon(() -> icons.get().stream()
+                        .filter(PartToggles::isEnabled)
                         .flatMap(icon -> BuiltInRegistries.ITEM.getOptional(icon).stream())
                         .findFirst()
                         .map(ItemStack::new)

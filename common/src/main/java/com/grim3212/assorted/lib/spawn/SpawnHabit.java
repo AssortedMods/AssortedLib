@@ -1,6 +1,7 @@
 package com.grim3212.assorted.lib.spawn;
 
 import com.grim3212.assorted.lib.conditions.LibParts;
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.mixin.world.level.SpawnStateAccessor;
 import com.grim3212.assorted.lib.platform.Services;
 import com.mojang.serialization.Codec;
@@ -60,9 +61,10 @@ public record SpawnHabit(EntityType<?> entity, Optional<String> part, int interv
             Codec.doubleRange(0.0D, 1.0D).optionalFieldOf("seed", 0.0D).forGetter(SpawnHabit::seed)
     ).apply(instance, SpawnHabit::new));
 
-    /** Off while its part is, or if the part is one nobody registered. */
+    /** Off while its part or its entity's mod is switched off, or if the part is one nobody registered. */
     public boolean isEnabled() {
-        return this.part.map(part -> LibParts.isRegistered(part) && LibParts.isEnabled(part)).orElse(true);
+        return PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(this.entity))
+                && this.part.map(part -> LibParts.isRegistered(part) && LibParts.isEnabled(part)).orElse(true);
     }
 
     /** Hostile creatures wait for vanilla's word that hostile mobs may spawn. */

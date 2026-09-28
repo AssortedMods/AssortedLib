@@ -10,6 +10,8 @@ import net.minecraft.core.component.DataComponentType;
 import net.neoforged.neoforge.common.tooltip.TooltipAppender;
 import net.neoforged.neoforge.event.RegisterTooltipAppendersEvent;
 import com.grim3212.assorted.lib.conditions.LibConditions;
+import com.grim3212.assorted.lib.conditions.PartToggles;
+import com.grim3212.assorted.lib.family.FamilySwitches;
 import com.grim3212.assorted.lib.core.block.IBlockOnPlayerBreak;
 import com.grim3212.assorted.lib.core.item.LibDataComponents;
 import com.grim3212.assorted.lib.data.ForgeBiomeTagProvider;
@@ -65,6 +67,8 @@ public class AssortedLibForge {
         modBus.addListener(this::gatherClientData);
         modBus.addListener(this::registerIngredientTypes);
         modBus.addListener(this::registerConditionCodecs);
+        // Registry events follow the construction of every mod and precede config loading, so every member has joined.
+        modBus.addListener((final RegisterEvent event) -> FamilySwitches.makeAll());
         modBus.addListener(this::modifyCreativeTabs);
         modBus.addListener((final RegisterEvent event) -> event.register(Registries.CREATIVE_MODE_TAB,
                 helper -> ForgePlatformHelper.creativeTabsToRegister.forEach((id, tab) -> helper.register(id, tab.get()))));
@@ -184,7 +188,7 @@ public class AssortedLibForge {
     private void modifyCreativeTabs(final BuildCreativeModeTabContentsEvent event) {
         for (var tab : ForgePlatformHelper.tabsToRegister.entrySet()) {
             if (event.getTabKey() == tab.getKey()) {
-                tab.getValue().forEach(stacks -> event.acceptAll(stacks.get()));
+                tab.getValue().forEach(stacks -> event.acceptAll(PartToggles.visible(stacks.get())));
             }
         }
     }

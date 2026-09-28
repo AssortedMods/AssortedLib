@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * An advancement's icon picked when advancements load: the first of a list that is registered. A family of mods ships
@@ -19,14 +20,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AdvancementIcons {
 
     // Concurrent: NeoForge constructs mods in parallel.
-    private static final Map<Identifier, List<Identifier>> ICONS = new ConcurrentHashMap<>();
+    private static final Map<Identifier, Supplier<List<Identifier>>> ICONS = new ConcurrentHashMap<>();
 
     private AdvancementIcons() {
     }
 
     /** Draws {@code advancement} with the first of {@code icons} that is registered; with none, its file's own icon. */
     public static void register(Identifier advancement, List<Identifier> icons) {
-        ICONS.put(advancement, List.copyOf(icons));
+        List<Identifier> fixed = List.copyOf(icons);
+        register(advancement, () -> fixed);
+    }
+
+    /** As above, with the icons asked for each time advancements load, such as {@code Families#icons}. */
+    public static void register(Identifier advancement, Supplier<List<Identifier>> icons) {
+        ICONS.put(advancement, icons);
     }
 
     /** The advancements as loaded, with every registered icon swapped in. */
@@ -38,7 +45,7 @@ public final class AdvancementIcons {
         Map<Identifier, Advancement> changed = new HashMap<>(advancements);
         ICONS.forEach((id, icons) -> {
             Advancement advancement = advancements.get(id);
-            Optional<ItemStackTemplate> icon = icons.stream()
+            Optional<ItemStackTemplate> icon = icons.get().stream()
                     .flatMap(item -> BuiltInRegistries.ITEM.getOptional(item).stream())
                     .findFirst()
                     .map(ItemStackTemplate::new);

@@ -23,6 +23,7 @@
 - `ICanColor` marks a block a paint roller can recolor, so blocks from one mod take another mod's paint.
 - `AdvancementIcons` draws an advancement with the first of several items that is installed, for a
   root advancement a family of mods ships between them.
+- Mods can join a family to share a creative tab and manual section, and each one can be turned off in the family's parts config
 - The storage pieces Assorted Storage's parts share now live here, so they can become separate mods.
   `core.storage` has `StorageMaterial`, the base storage block, block entity and menus, and
   `core.storage.ender` the locked ender inventories. Their screens are in `client.screen.storage`.

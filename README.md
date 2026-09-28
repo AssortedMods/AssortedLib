@@ -220,6 +220,49 @@ SyncedRecipes.require(MyRecipes.KILN_TYPE, KilnRecipeSerializer.INSTANCE);
 A recipe with no `RecipeDisplay` like a machine recipe kept out of the recipe book can say how it should
 be drawn by implementing `IManualRecipeProvider`.
 
+## Families
+
+A family is a group of mods that can each be installed on their own but act as one. They share a
+creative tab and a manual section, and each one can be turned off in one config file. A mod joins a
+family from its common init, while it is being constructed. A client only mod joins from its client
+init instead, and checks `PartToggles.isEnabled(modId)` before doing its own thing.
+
+```java
+Families.join(Constants.MOD_ID, "assortedtech")
+        .icon(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "iron_spike"), 30)
+        .manualOrder(100);
+```
+
+Joining a family does these things.
+
+- The mod gets a line in `config/<family>-parts.toml`, named by its mod id. The file lists every member
+  that is installed. On Fabric the file is `.json` like the library's other configs.
+- Turning a line off hides the mod's items from creative tabs and turns off its recipes and their
+  recipe book advancements, its manual chapters, the features it places and the mobs it spawns.
+  Nothing is unregistered, so blocks and items already in a world stay.
+- The family gets a manual section named after the family id. A member puts chapters in it by
+  passing the family id as the manual namespace to `LibManualProvider` and not calling `section`.
+- `icon` offers an item for the family's tab, manual section and advancement root. The highest
+  weight among members that are installed and turned on is drawn, and any item can be offered.
+- `manualOrder` places the family's section in the manual index. Every member should give the same
+  number, and if they don't the first one is kept and a warning is logged.
+
+Joining does not do these things.
+
+- It doesn't make the creative tab. A member asks for it with `Families.tab(familyId)` and adds its
+  own items with `SharedCreativeTabs.add`.
+- It doesn't alias old ids or carry over recipe book and advancement progress. A mod split out of an
+  older one does that itself with `RegistryProvider#aliasFrom` and `MovedIds.inherit`.
+- It doesn't turn off things the library can't see, like loot a mod adds to vanilla chests or a
+  structure it generates in code. Those check `PartToggles.isEnabled(modId)` themselves.
+
+The config file is made once every mod has joined, so a switch can't be read while mods are still
+being constructed. Reading one that early is an error. Recipes, creative tabs, world generation
+and spawns all read them later, when a world loads or a tab is drawn.
+
+A mod that isn't in a family can still be switched off from its own config with
+`PartToggles.register(modId, config::enabled)`.
+
 ## Spawn habits
 
 A spawn habit sets a creature down the way vanilla's cat and patrol spawners do: near players, at its

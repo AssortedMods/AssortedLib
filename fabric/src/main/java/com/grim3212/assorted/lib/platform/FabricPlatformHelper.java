@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.platform;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -115,7 +116,7 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public void modifyCreativeTab(ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks) {
         CreativeModeTabEvents.modifyOutputEvent(key).register(output -> {
-            output.acceptAll(displayStacks.get());
+            output.acceptAll(PartToggles.visible(displayStacks.get()));
         });
     }
 

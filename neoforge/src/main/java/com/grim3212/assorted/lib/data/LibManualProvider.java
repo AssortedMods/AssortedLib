@@ -4,6 +4,7 @@ import com.grim3212.assorted.lib.client.manual.ManualChapter;
 import com.grim3212.assorted.lib.conditions.DisplayCondition;
 import com.grim3212.assorted.lib.conditions.DisplayConditions;
 import com.grim3212.assorted.lib.conditions.LibParts;
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.client.manual.ManualPage;
 import com.grim3212.assorted.lib.client.manual.ManualPageEntry;
 import com.grim3212.assorted.lib.client.manual.ManualPageTypes;
@@ -29,6 +30,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -63,7 +66,9 @@ public abstract class LibManualProvider implements DataProvider {
     private final PackOutput.PathProvider chapterPath;
 
     private final List<ChapterBuilder> chapters = new ArrayList<>();
-    private ManualSection.Definition section = new ManualSection.Definition(ManualSection.DEFAULT_SORT_ORDER, List.of());
+    // Null writes no section.json: a family's section is registered by Families.join instead.
+    @Nullable
+    private ManualSection.Definition section;
 
     protected LibManualProvider(PackOutput output, String modId) {
         this(output, modId, modId);
@@ -118,8 +123,10 @@ public abstract class LibManualProvider implements DataProvider {
         this.verify();
 
         List<CompletableFuture<?>> writes = new ArrayList<>();
-        writes.add(DataProvider.saveStable(cache, ManualSection.Definition.CODEC, this.section,
-                this.root.resolve("section.json")));
+        if (this.section != null) {
+            writes.add(DataProvider.saveStable(cache, ManualSection.Definition.CODEC, this.section,
+                    this.root.resolve("section.json")));
+        }
         writes.add(DataProvider.saveStable(cache, ManualLinks.Group.FILE_CODEC, this.groups(),
                 this.linksRoot.resolve("links.json")));
 
@@ -302,8 +309,13 @@ public abstract class LibManualProvider implements DataProvider {
             for (PageBuilder page : this.pages) {
                 entries.add(new ManualPageEntry(Optional.of(page.id), List.copyOf(page.conditions), page.build()));
             }
+            List<DisplayCondition> conditions = new ArrayList<>(this.conditions);
+            // A mod with a PartToggles switch hides its chapters with it.
+            if (PartToggles.has(LibManualProvider.this.modId)) {
+                conditions.add(partEnabled(LibManualProvider.this.modId));
+            }
             return new ManualChapter.Definition(Optional.empty(), Optional.empty(), this.sortOrder,
-                    List.copyOf(this.conditions), entries);
+                    List.copyOf(conditions), entries);
         }
     }
 

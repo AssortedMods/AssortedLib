@@ -30,5 +30,6 @@ public final class LibGameTests {
         RegistryAliasTests.register(out);
         MovedIdsTests.register(out);
         SharedToolTests.register(out);
+        PartToggleTests.register(out);
     }
 }
