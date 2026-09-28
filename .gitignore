@@ -33,3 +33,6 @@ fabric/src/generated/resources/.cache
 # Datagen hash cache - regenerated output, not source
 common/src/generated/client/.cache/
 common/src/generated/server/.cache/
+
+# JVM crash logs
+hs_err_pid*.log
