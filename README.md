@@ -10,7 +10,7 @@ version; `26.2` is the current one.
 Please include the following
 
 * Minecraft version
-* Loader and its version — NeoForge, or Fabric Loader together with Fabric API
+* Loader and its version, so NeoForge, or Fabric Loader together with Fabric API
 * Assorted Lib version
 * Which Assorted mod you were using it with
 * The full `latest.log`, plus the crash report if the game crashed
@@ -160,7 +160,7 @@ public class KilnManualProvider extends LibManualProvider {
         this.section(0, MyBlocks.KILN.get());
 
         ChapterBuilder machines = this.chapter("machines");
-        machines.recipes("kiln", "kiln").opens(MyBlocks.KILN.get());
+        machines.recipes("kiln", MyBlocks.KILN.get()).opens(MyBlocks.KILN.get());
         machines.items("tiers", MyBlocks.KILN.get(), MyBlocks.BIG_KILN.get()).every(50)
                 .opens(MyBlocks.BIG_KILN.get());
         machines.text("firing");
@@ -186,23 +186,23 @@ A chapter or page can carry conditions, written the way a recipe's load conditio
 {
   "conditions": [
     { "type": "assortedlib:mod_loaded", "mod": "jei" },
-    { "type": "assortedlib:not", "value": { "type": "assortedlib:part_enabled", "part": "cage" } }
+    { "type": "assortedlib:not", "value": { "type": "assortedlib:part_enabled", "part": "assortedpaint" } }
   ],
   "pages": [ ... ]
 }
 ```
 
-The library provides `part_enabled` (a piece of a mod its config can switch off), `mod_loaded`,
-`item_exists`, `block_exists`, and `all_of` / `any_of` / `not` to combine them. A mod with a
+The library provides `part_enabled` (a family member's switch, named by its mod id, or a part a mod
+registered itself), `mod_loaded`, `item_exists`, `block_exists`, and `all_of` / `any_of` / `not` to
+combine them. A mod's own chapters already follow its own switch, so only another mod's needs naming. A mod with a
 question of its own registers a type for it with `DisplayConditions.register` rather than making
 one of these fit.
 
 From the provider:
 
 ```java
-ChapterBuilder colorizer = this.chapter("colorizer").whenPartEnabled(Parts.COLORIZER);
-lights.recipes("fluro", "fluro_white").whenPartEnabled(Parts.FLURO);
-hanging.recipes("plaque", "plaque").when(modLoaded("jei"), itemExists(SOME_ITEM));
+ChapterBuilder painting = this.chapter("painting").whenPartEnabled("assortedpaint");
+painting.recipes("roller", MyItems.ROLLER.get()).when(modLoaded("jei"), itemExists(SOME_ITEM));
 ```
 
 Conditions are applied when the book's data loads, when a world is joined and on every `/reload`.
@@ -277,19 +277,18 @@ like any other data. Every field but `entity` has a default.
 
 ```json
 {
-  "entity": "assortedmobs:seal",
-  "part": "sea_creatures",
+  "entity": "assortedseacreatures:seal",
   "interval": 1200,
   "chance": 0.3,
   "distance": {"min": 24, "max": 48},
   "tries": 4,
   "site": {"type": "assortedlib:land"},
-  "biomes": "#assortedmobs:spawns_seals",
+  "biomes": "#assortedseacreatures:spawns_seals",
   "not_biomes": ["minecraft:ice_spikes"],
   "daylight": "any",
   "group": {"min": 2, "max": 4},
   "spread": 4,
-  "cap": {"range": 64, "max": 6, "counted": "#assortedmobs:ice_herd", "skip_persistent": false},
+  "cap": {"range": 64, "max": 6, "counted": "#assortedseacreatures:ice_herd", "skip_persistent": false},
   "persistent": false
 }
 ```
@@ -321,7 +320,7 @@ which is why a `structure` site never seeds: a structure's start may lie chunks 
 | Field | Default | Meaning |
 |---|---|---|
 | `entity` | required | The creature's id. |
-| `part` | none | A part name given to `IConditionHelper#registerPartCondition`; the habit sleeps while it is off. |
+| `part` | none | A part name given to `IConditionHelper#registerPartCondition`; the habit sleeps while it is off. It also sleeps while the creature's own mod is switched off in its family. |
 | `interval` | 1200 | Ticks between tries, per level. |
 | `chance` | 1.0 | The odds, 0 to 1, that a try near a player goes ahead. |
 | `distance` | 24 to 48 | How far from the player a column is picked, along each axis. The minimum doubles as how near the nearest player may be, which is vanilla's rule at 24. |
@@ -361,7 +360,7 @@ the level's own registries, so a datapack's biomes and structures work.
 
 `cap` refuses a pack when `max` or more of the `counted` types are already within `range` blocks of
 the spot. Left out, `counted` is the habit's own creature. Given a tag, several habits can share one
-population: seals and walruses both counting `#assortedmobs:ice_herd` means so many of either on the
+population: seals and walruses both counting `#assortedseacreatures:ice_herd` means so many of either on the
 ice at once, whatever the mix. `skip_persistent` leaves out mobs that never despawn, tame ones and
 the like, so they do not hold a place against wild ones.
 
@@ -381,9 +380,9 @@ JDK 25 and the bundled Gradle wrapper. `common/` holds the loader-agnostic code;
 modules compile those sources inline rather than depending on a common jar, so there is nothing to
 install between them.
 
-How the build works - the Minecraft and loader versions, the runs, the tests, publishing - lives in
-[AssortedBuild](https://github.com/AssortedMods/AssortedBuild), pinned by `assortedbuild_version` in
-`gradle.properties`. This repository only says what the mod is.
+How the build works, from the Minecraft and loader versions to the runs, the tests and publishing,
+lives in [AssortedBuild](https://github.com/AssortedMods/AssortedBuild), pinned by `assortedbuild_version`
+in `gradle.properties`. This repository only says what the mod is.
 
 ```bash
 ./gradlew build                        # every module; jars land in <module>/build/libs

@@ -19,13 +19,13 @@
 - `MovedIds` keeps a player's recipe book and advancement progress when a mod moves its recipes and
   advancements to new ids: `inherit(oldNamespace, newNamespace)`, and `renameCriteria` for criteria
   that were renamed. It also carries over structures already in a world and the loot of chests
-  that were never opened. `migration.carryOverMovedIds` in the new `assortedlib-common.toml` turns it off.
+  that were never opened. `migration.carryOverMovedIds` in the new `assortedlib-common.toml` (`.json` on Fabric) turns it off.
 - `ICanColor` marks a block a paint roller can recolor, so blocks from one mod take another mod's paint.
 - `AdvancementIcons` draws an advancement with the first of several items that is installed, for a
   root advancement a family of mods ships between them.
-- Mods can join a family to share a creative tab and manual section, and each one can be turned off in the family's parts config
-- `creative.hideUncraftableItems` in `assortedlib-common.toml` hides items from the creative menu when nothing installed
-  provides their material. Mods add those items with `CreativeTabItems#addIfObtainable`, and `ItemUtil.isTagEmpty` does the check
+- Mods can join a family to share a creative tab and manual section, and each one can be turned off in the family's parts config.
+- `creative.hideUncraftableItems` in `assortedlib-common.toml` (`.json` on Fabric) hides items from the creative menu when nothing installed
+  provides their material. Mods add those items with `CreativeTabItems#addIfObtainable`, and `ItemUtil.isTagEmpty` does the check.
 - The storage pieces Assorted Storage's parts share now live here, so they can become separate mods.
   `core.storage` has `StorageMaterial`, the base storage block, block entity and menus, and
   `core.storage.ender` the locked ender inventories. Their screens are in `client.screen.storage`.
@@ -52,6 +52,8 @@
   and no packet.
 - `MovedIds` also carries over data-driven entries saved under an old id, such as an enchantment on an
   item or a book, which vanilla would drop.
+- `IConditionHelper#conditionalOutput` takes a function from a recipe id to its conditions instead of a map. A mod that calls it directly can pass `map::get`.
+- Fixed recipe conditions, tooltips and biome changes that could go missing on NeoForge when several mods added them at the same time while loading.
 
 ## 4.2.0
 
