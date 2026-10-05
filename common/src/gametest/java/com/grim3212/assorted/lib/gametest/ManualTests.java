@@ -80,6 +80,7 @@ final class ManualTests {
         out.accept("manual_conditions_read_and_compose", ManualTests::conditionsReadAndCompose);
         out.accept("manual_sections_sort_by_index", ManualTests::sectionsSortByIndex);
         out.accept("manual_section_is_registered", ManualTests::sectionIsRegistered);
+        out.accept("manual_section_icon_takes_the_first_registered", ManualTests::sectionIconTakesTheFirstRegistered);
         out.accept("manual_codecs_read_the_shipped_data", ManualTests::codecsReadTheShippedData);
         out.accept("manual_tooltip_counts_sections", ManualTests::tooltipCountsSections);
     }
@@ -338,6 +339,22 @@ final class ManualTests {
             helper.fail("A registered section should appear in the index order");
         }
 
+        helper.succeed();
+    }
+
+    /** Mods sharing a section each ship its file naming all their items, so a missing one is skipped. */
+    private static void sectionIconTakesTheFirstRegistered(GameTestHelper helper) {
+        ManualSection.Definition shared = ManualSection.Definition.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString("{\"sort_order\": 70, \"icon\": [\"assortedlibtest:not_installed\", \"minecraft:clock\"]}")).getOrThrow();
+        helper.assertTrue(shared.bind("assortedlibtest").icon().get().is(Items.CLOCK), "the first icon that is registered is drawn");
+
+        ManualSection.Definition single = ManualSection.Definition.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString("{\"icon\": \"minecraft:clock\"}")).getOrThrow();
+        helper.assertTrue(single.bind("assortedlibtest").icon().get().is(Items.CLOCK), "a single icon still reads");
+
+        ManualSection.Definition none = ManualSection.Definition.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString("{\"icon\": [\"assortedlibtest:not_installed\"]}")).getOrThrow();
+        helper.assertTrue(none.bind("assortedlibtest").icon().get().is(Items.BOOK), "with none installed the section falls back to a book");
         helper.succeed();
     }
 

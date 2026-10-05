@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.platform;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.platform.services.IWorldGenHelper;
 import com.grim3212.assorted.lib.worldgen.BiomeModification;
 import net.minecraft.core.Holder;
@@ -17,7 +18,6 @@ import net.neoforged.neoforge.common.world.BiomeModifier;
 import net.neoforged.neoforge.common.world.ModifiableBiomeInfo;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -25,8 +25,9 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 public class ForgeWorldGenHelper implements IWorldGenHelper {
-    private static final List<BiomeModification> biomeModifications = new ArrayList<>();
-    private static final List<BiomeModification> biomeRemovals = new ArrayList<>();
+    // Concurrent because mods are constructed in parallel, and each one sorts after it adds.
+    private static final List<BiomeModification> biomeModifications = new CopyOnWriteArrayList<>();
+    private static final List<BiomeModification> biomeRemovals = new CopyOnWriteArrayList<>();
 
     /**
      * Kept in the order Fabric applies its own modifications in, which is by the placed feature's id
@@ -42,7 +43,7 @@ public class ForgeWorldGenHelper implements IWorldGenHelper {
     @Override
     public void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier placedFeatureIdentifier) {
         ResourceKey<PlacedFeature> resourceKey = ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier);
-        biomeModifications.add(new BiomeModification(biomePredicate, step, resourceKey));
+        biomeModifications.add(new BiomeModification((key, biome) -> PartToggles.isEnabled(placedFeatureIdentifier) && biomePredicate.test(key, biome), step, resourceKey));
         biomeModifications.sort(FABRIC_ORDER);
     }
 
@@ -65,7 +66,8 @@ public class ForgeWorldGenHelper implements IWorldGenHelper {
 
     @Override
     public void addSpawnToBiomes(BiomePredicate biomePredicate, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {
-        spawnAdditions.add(new SpawnAddition(biomePredicate, type, weight, minCount, maxCount));
+        BiomePredicate enabled = (key, biome) -> PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(type.get())) && biomePredicate.test(key, biome);
+        spawnAdditions.add(new SpawnAddition(enabled, type, weight, minCount, maxCount));
     }
 
     private record SpawnAddition(BiomePredicate biomePredicate, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {

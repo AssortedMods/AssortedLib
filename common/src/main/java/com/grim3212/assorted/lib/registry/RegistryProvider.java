@@ -19,5 +19,11 @@ public interface RegistryProvider<T> extends ILoaderRegistry<T> {
 
     <I extends T> IRegistryObject<I> register(String name, Supplier<? extends I> supplier);
 
+    /**
+     * Aliases {@code oldNamespace:<name>} to every entry registered from here on, for a mod whose
+     * content used to live under another id. Call it before registering anything.
+     */
+    RegistryProvider<T> aliasFrom(String oldNamespace);
+
     Collection<IRegistryObject<T>> getEntries();
 }

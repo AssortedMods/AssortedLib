@@ -21,6 +21,8 @@ public final class LibNeoForgeGameTests {
     @SubscribeEvent
     public static void registerGameTests(final RegisterEvent event) {
         SpawnerTests.install();
+        RegistryAliasTests.install();
+        MovedIdsTests.install();
         event.register(Registries.TEST_FUNCTION, helper -> LibGameTests.forEach(
                 (name, function) -> helper.register(Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, name), function)));
     }

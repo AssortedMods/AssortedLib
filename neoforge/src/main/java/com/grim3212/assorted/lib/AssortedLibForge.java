@@ -4,11 +4,14 @@ import com.grim3212.assorted.lib.data.AssortedLibLanguageProvider;
 import com.grim3212.assorted.lib.data.AssortedLibManualProvider;
 import com.grim3212.assorted.lib.client.data.LibItemModelProvider;
 import com.grim3212.assorted.lib.data.LibRecipes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import net.neoforged.neoforge.common.tooltip.TooltipAppender;
 import net.neoforged.neoforge.event.RegisterTooltipAppendersEvent;
 import com.grim3212.assorted.lib.conditions.LibConditions;
+import com.grim3212.assorted.lib.conditions.PartToggles;
+import com.grim3212.assorted.lib.family.FamilySwitches;
 import com.grim3212.assorted.lib.core.block.IBlockOnPlayerBreak;
 import com.grim3212.assorted.lib.core.item.LibDataComponents;
 import com.grim3212.assorted.lib.data.ForgeBiomeTagProvider;
@@ -25,6 +28,7 @@ import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -38,12 +42,14 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.ModifyCustomSpawnersEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -61,10 +67,17 @@ public class AssortedLibForge {
         modBus.addListener(this::gatherClientData);
         modBus.addListener(this::registerIngredientTypes);
         modBus.addListener(this::registerConditionCodecs);
+        // Registry events follow the construction of every mod and precede config loading, so every member has joined.
+        modBus.addListener((final RegisterEvent event) -> FamilySwitches.makeAll());
         modBus.addListener(this::modifyCreativeTabs);
+        modBus.addListener((final RegisterEvent event) -> event.register(Registries.CREATIVE_MODE_TAB,
+                helper -> ForgePlatformHelper.creativeTabsToRegister.forEach((id, tab) -> helper.register(id, tab.get()))));
+        modBus.addListener((final RegisterEvent event) -> event.register(Registries.DATA_COMPONENT_TYPE,
+                helper -> ForgePlatformHelper.componentTypesToRegister.forEach((id, type) -> helper.register(id, type.get()))));
         modBus.addListener(this::registerComponentTooltips);
         modBus.addListener((final EntityAttributeCreationEvent event) -> ForgePlatformHelper.attributesToRegister.forEach(registration -> registration.register(event)));
         modBus.addListener((final RegisterSpawnPlacementsEvent event) -> ForgePlatformHelper.spawnPlacementsToRegister.forEach(registration -> registration.register(event)));
+        modBus.addListener((final FMLCommonSetupEvent event) -> event.enqueueWork(() -> ForgePlatformHelper.flammablesToRegister.forEach(ForgePlatformHelper.FlammableRegistration::register)));
 
         // Recipes are not sent to clients by default; anything that opted a type into
         // SyncedRecipes is asked for here, while the datapack is being synced.
@@ -113,6 +126,15 @@ public class AssortedLibForge {
                 Services.EVENTS.handleEvents(newEvent);
                 event.setCanceled(newEvent.isCanceled());
                 event.setCancellationResult(newEvent.getInteractionResult());
+            });
+        });
+
+        // LivingDeathEvent fires at the top of die(), after any totem has had its chance.
+        Services.EVENTS.registerEventType(PlayerDeathDropsEvent.class, () -> {
+            NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, (final LivingDeathEvent event) -> {
+                if (event.getEntity() instanceof ServerPlayer player) {
+                    Services.EVENTS.handleEvents(new PlayerDeathDropsEvent(player, event.getSource()));
+                }
             });
         });
 
@@ -166,7 +188,7 @@ public class AssortedLibForge {
     private void modifyCreativeTabs(final BuildCreativeModeTabContentsEvent event) {
         for (var tab : ForgePlatformHelper.tabsToRegister.entrySet()) {
             if (event.getTabKey() == tab.getKey()) {
-                tab.getValue().forEach(stacks -> event.acceptAll(stacks.get()));
+                tab.getValue().forEach(stacks -> event.acceptAll(PartToggles.visible(stacks.get())));
             }
         }
     }

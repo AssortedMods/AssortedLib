@@ -10,7 +10,7 @@ version; `26.2` is the current one.
 Please include the following
 
 * Minecraft version
-* Loader and its version — NeoForge, or Fabric Loader together with Fabric API
+* Loader and its version, so NeoForge, or Fabric Loader together with Fabric API
 * Assorted Lib version
 * Which Assorted mod you were using it with
 * The full `latest.log`, plus the crash report if the game crashed
@@ -160,7 +160,7 @@ public class KilnManualProvider extends LibManualProvider {
         this.section(0, MyBlocks.KILN.get());
 
         ChapterBuilder machines = this.chapter("machines");
-        machines.recipes("kiln", "kiln").opens(MyBlocks.KILN.get());
+        machines.recipes("kiln", MyBlocks.KILN.get()).opens(MyBlocks.KILN.get());
         machines.items("tiers", MyBlocks.KILN.get(), MyBlocks.BIG_KILN.get()).every(50)
                 .opens(MyBlocks.BIG_KILN.get());
         machines.text("firing");
@@ -186,23 +186,23 @@ A chapter or page can carry conditions, written the way a recipe's load conditio
 {
   "conditions": [
     { "type": "assortedlib:mod_loaded", "mod": "jei" },
-    { "type": "assortedlib:not", "value": { "type": "assortedlib:part_enabled", "part": "cage" } }
+    { "type": "assortedlib:not", "value": { "type": "assortedlib:part_enabled", "part": "assortedpaint" } }
   ],
   "pages": [ ... ]
 }
 ```
 
-The library provides `part_enabled` (a piece of a mod its config can switch off), `mod_loaded`,
-`item_exists`, `block_exists`, and `all_of` / `any_of` / `not` to combine them. A mod with a
+The library provides `part_enabled` (a family member's switch, named by its mod id, or a part a mod
+registered itself), `mod_loaded`, `item_exists`, `block_exists`, and `all_of` / `any_of` / `not` to
+combine them. A mod's own chapters already follow its own switch, so only another mod's needs naming. A mod with a
 question of its own registers a type for it with `DisplayConditions.register` rather than making
 one of these fit.
 
 From the provider:
 
 ```java
-ChapterBuilder colorizer = this.chapter("colorizer").whenPartEnabled(Parts.COLORIZER);
-lights.recipes("fluro", "fluro_white").whenPartEnabled(Parts.FLURO);
-hanging.recipes("plaque", "plaque").when(modLoaded("jei"), itemExists(SOME_ITEM));
+ChapterBuilder painting = this.chapter("painting").whenPartEnabled("assortedpaint");
+painting.recipes("roller", MyItems.ROLLER.get()).when(modLoaded("jei"), itemExists(SOME_ITEM));
 ```
 
 Conditions are applied when the book's data loads, when a world is joined and on every `/reload`.
@@ -220,6 +220,49 @@ SyncedRecipes.require(MyRecipes.KILN_TYPE, KilnRecipeSerializer.INSTANCE);
 A recipe with no `RecipeDisplay` like a machine recipe kept out of the recipe book can say how it should
 be drawn by implementing `IManualRecipeProvider`.
 
+## Families
+
+A family is a group of mods that can each be installed on their own but act as one. They share a
+creative tab and a manual section, and each one can be turned off in one config file. A mod joins a
+family from its common init, while it is being constructed. A client only mod joins from its client
+init instead, and checks `PartToggles.isEnabled(modId)` before doing its own thing.
+
+```java
+Families.join(Constants.MOD_ID, "assortedtech")
+        .icon(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "iron_spike"), 30)
+        .manualOrder(100);
+```
+
+Joining a family does these things.
+
+- The mod gets a line in `config/<family>-parts.toml`, named by its mod id. The file lists every member
+  that is installed. On Fabric the file is `.json` like the library's other configs.
+- Turning a line off hides the mod's items from creative tabs and turns off its recipes and their
+  recipe book advancements, its manual chapters, the features it places and the mobs it spawns.
+  Nothing is unregistered, so blocks and items already in a world stay.
+- The family gets a manual section named after the family id. A member puts chapters in it by
+  passing the family id as the manual namespace to `LibManualProvider` and not calling `section`.
+- `icon` offers an item for the family's tab, manual section and advancement root. The highest
+  weight among members that are installed and turned on is drawn, and any item can be offered.
+- `manualOrder` places the family's section in the manual index. Every member should give the same
+  number, and if they don't the first one is kept and a warning is logged.
+
+Joining does not do these things.
+
+- It doesn't make the creative tab. A member asks for it with `Families.tab(familyId)` and adds its
+  own items with `SharedCreativeTabs.add`.
+- It doesn't alias old ids or carry over recipe book and advancement progress. A mod split out of an
+  older one does that itself with `RegistryProvider#aliasFrom` and `MovedIds.inherit`.
+- It doesn't turn off things the library can't see, like loot a mod adds to vanilla chests or a
+  structure it generates in code. Those check `PartToggles.isEnabled(modId)` themselves.
+
+The config file is made once every mod has joined, so a switch can't be read while mods are still
+being constructed. Reading one that early is an error. Recipes, creative tabs, world generation
+and spawns all read them later, when a world loads or a tab is drawn.
+
+A mod that isn't in a family can still be switched off from its own config with
+`PartToggles.register(modId, config::enabled)`.
+
 ## Spawn habits
 
 A spawn habit sets a creature down the way vanilla's cat and patrol spawners do: near players, at its
@@ -234,19 +277,18 @@ like any other data. Every field but `entity` has a default.
 
 ```json
 {
-  "entity": "assortedmobs:seal",
-  "part": "sea_creatures",
+  "entity": "assortedseacreatures:seal",
   "interval": 1200,
   "chance": 0.3,
   "distance": {"min": 24, "max": 48},
   "tries": 4,
   "site": {"type": "assortedlib:land"},
-  "biomes": "#assortedmobs:spawns_seals",
+  "biomes": "#assortedseacreatures:spawns_seals",
   "not_biomes": ["minecraft:ice_spikes"],
   "daylight": "any",
   "group": {"min": 2, "max": 4},
   "spread": 4,
-  "cap": {"range": 64, "max": 6, "counted": "#assortedmobs:ice_herd", "skip_persistent": false},
+  "cap": {"range": 64, "max": 6, "counted": "#assortedseacreatures:ice_herd", "skip_persistent": false},
   "persistent": false
 }
 ```
@@ -278,7 +320,7 @@ which is why a `structure` site never seeds: a structure's start may lie chunks 
 | Field | Default | Meaning |
 |---|---|---|
 | `entity` | required | The creature's id. |
-| `part` | none | A part name given to `IConditionHelper#registerPartCondition`; the habit sleeps while it is off. |
+| `part` | none | A part name given to `IConditionHelper#registerPartCondition`; the habit sleeps while it is off. It also sleeps while the creature's own mod is switched off in its family. |
 | `interval` | 1200 | Ticks between tries, per level. |
 | `chance` | 1.0 | The odds, 0 to 1, that a try near a player goes ahead. |
 | `distance` | 24 to 48 | How far from the player a column is picked, along each axis. The minimum doubles as how near the nearest player may be, which is vanilla's rule at 24. |
@@ -318,7 +360,7 @@ the level's own registries, so a datapack's biomes and structures work.
 
 `cap` refuses a pack when `max` or more of the `counted` types are already within `range` blocks of
 the spot. Left out, `counted` is the habit's own creature. Given a tag, several habits can share one
-population: seals and walruses both counting `#assortedmobs:ice_herd` means so many of either on the
+population: seals and walruses both counting `#assortedseacreatures:ice_herd` means so many of either on the
 ice at once, whatever the mix. `skip_persistent` leaves out mobs that never despawn, tame ones and
 the like, so they do not hold a place against wild ones.
 
@@ -338,9 +380,9 @@ JDK 25 and the bundled Gradle wrapper. `common/` holds the loader-agnostic code;
 modules compile those sources inline rather than depending on a common jar, so there is nothing to
 install between them.
 
-How the build works - the Minecraft and loader versions, the runs, the tests, publishing - lives in
-[AssortedBuild](https://github.com/AssortedMods/AssortedBuild), pinned by `assortedbuild_version` in
-`gradle.properties`. This repository only says what the mod is.
+How the build works, from the Minecraft and loader versions to the runs, the tests and publishing,
+lives in [AssortedBuild](https://github.com/AssortedMods/AssortedBuild), pinned by `assortedbuild_version`
+in `gradle.properties`. This repository only says what the mod is.
 
 ```bash
 ./gradlew build                        # every module; jars land in <module>/build/libs
@@ -357,4 +399,4 @@ regenerated, never hand-edited.
 
 ## License
 
-[LGPL-3.0-only](LICENSE).
+[GPL-3.0-only](LICENSE).

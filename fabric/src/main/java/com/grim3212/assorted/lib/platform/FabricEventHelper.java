@@ -4,6 +4,7 @@ import com.grim3212.assorted.lib.events.AnvilUpdatedEvent;
 import com.grim3212.assorted.lib.events.EntityInteractEvent;
 import com.grim3212.assorted.lib.events.FabricLootTableModificationContext;
 import com.grim3212.assorted.lib.events.LootTableModifyEvent;
+import com.grim3212.assorted.lib.events.PlayerDeathDropsEvent;
 import com.grim3212.assorted.lib.events.UseBlockEvent;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
@@ -39,6 +40,9 @@ public class FabricEventHelper extends EventHelperBase {
         // MultiPlayerGameModeWorldlyBlockMixin for the two sides of an entity interaction - so
         // there is no Fabric event to subscribe to.
         this.registerEventType(AnvilUpdatedEvent.class, () -> {
+        });
+        // ServerPlayerDeathMixin: Fabric's AFTER_DEATH comes after the drops and ALLOW_DEATH before the totem.
+        this.registerEventType(PlayerDeathDropsEvent.class, () -> {
         });
         this.registerEventType(EntityInteractEvent.class, () -> {
         });

@@ -5,6 +5,7 @@ import com.grim3212.assorted.lib.registry.IRegistryObject;
 import com.grim3212.assorted.lib.registry.RegistryProvider;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModContainer;
@@ -34,8 +35,22 @@ public class ForgeRegistryProvider implements IRegistryFactory {
         return new Provider<>(register);
     }
 
-    private static class Provider<T> implements RegistryProvider<T> {
+    @Override
+    public <T> void alias(ResourceKey<? extends Registry<T>> registry, Identifier from, Identifier to) {
+        Registry<?> target = BuiltInRegistries.REGISTRY.getValue(registry.identifier());
+        if (target == null) {
+            throw new IllegalArgumentException("No registry " + registry.identifier() + " to alias " + from + " in");
+        }
+
+        // NeoForge keeps a registry's aliases in a plain map, and mods are constructed in parallel.
+        synchronized (target) {
+            target.addAlias(from, to);
+        }
+    }
+
+    private class Provider<T> implements RegistryProvider<T> {
         private final DeferredRegister<T> registry;
+        private volatile String aliasNamespace;
 
         private final Set<IRegistryObject<T>> entries = new HashSet<>();
         private final Set<IRegistryObject<T>> entriesView = Collections.unmodifiableSet(entries);
@@ -48,6 +63,9 @@ public class ForgeRegistryProvider implements IRegistryFactory {
         @SuppressWarnings("unchecked")
         public <I extends T> IRegistryObject<I> register(String name, Supplier<? extends I> supplier) {
             final var obj = registry.<I>register(name, supplier);
+            if (this.aliasNamespace != null) {
+                alias(this.registry.getRegistryKey(), Identifier.fromNamespaceAndPath(this.aliasNamespace, name), obj.getId());
+            }
             final var ro = new IRegistryObject<I>() {
 
                 @Override
@@ -75,6 +93,12 @@ public class ForgeRegistryProvider implements IRegistryFactory {
             };
             entries.add((IRegistryObject<T>) ro);
             return ro;
+        }
+
+        @Override
+        public RegistryProvider<T> aliasFrom(String oldNamespace) {
+            this.aliasNamespace = oldNamespace;
+            return this;
         }
 
         @Override

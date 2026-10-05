@@ -4,6 +4,7 @@ import com.grim3212.assorted.lib.client.manual.ManualChapter;
 import com.grim3212.assorted.lib.conditions.DisplayCondition;
 import com.grim3212.assorted.lib.conditions.DisplayConditions;
 import com.grim3212.assorted.lib.conditions.LibParts;
+import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.client.manual.ManualPage;
 import com.grim3212.assorted.lib.client.manual.ManualPageEntry;
 import com.grim3212.assorted.lib.client.manual.ManualPageTypes;
@@ -30,6 +31,8 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,21 +54,36 @@ import java.util.function.Predicate;
  * page at all.
  * <p>
  * A page's heading and body are translation keys, derived rather than passed:
- * {@code manual.<modId>.chapter.<chapter>.<page>} and the same with {@code .title}. A chapter's own
- * name is {@code manual.<modId>.chapter.<chapter>}.
+ * {@code manual.<section>.chapter.<chapter>.<page>} and the same with {@code .title}. A chapter's own
+ * name is {@code manual.<section>.chapter.<chapter>}, where the section is the mod's unless it shares one.
  */
 public abstract class LibManualProvider implements DataProvider {
 
     private final String modId;
+    private final String manualNamespace;
     private final Path root;
+    private final Path linksRoot;
     private final PackOutput.PathProvider chapterPath;
 
     private final List<ChapterBuilder> chapters = new ArrayList<>();
-    private ManualSection.Definition section = new ManualSection.Definition(ManualSection.DEFAULT_SORT_ORDER, Optional.empty());
+    // Null writes no section.json: a family's section is registered by Families.join instead.
+    @Nullable
+    private ManualSection.Definition section;
 
     protected LibManualProvider(PackOutput output, String modId) {
+        this(output, modId, modId);
+    }
+
+    /**
+     * Chapters in the section of {@code manualNamespace} rather than a section of their own, as the
+     * mods of one family share theirs. Each writes that section's file, and its own links.
+     */
+    protected LibManualProvider(PackOutput output, String modId, String manualNamespace) {
         this.modId = modId;
-        this.root = output.getOutputFolder(PackOutput.Target.RESOURCE_PACK).resolve(modId).resolve("manual");
+        this.manualNamespace = manualNamespace;
+        Path assets = output.getOutputFolder(PackOutput.Target.RESOURCE_PACK);
+        this.root = assets.resolve(manualNamespace).resolve("manual");
+        this.linksRoot = assets.resolve(modId).resolve("manual");
         this.chapterPath = output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "manual/chapters");
 
         // Datagen never runs client init, which is where these are normally named.
@@ -80,8 +98,12 @@ public abstract class LibManualProvider implements DataProvider {
      * This mod's place in the index. Lower sorts first; the icon is drawn beside it.
      */
     protected void section(int sortOrder, ItemLike icon) {
-        Holder<Item> holder = BuiltInRegistries.ITEM.wrapAsHolder(icon.asItem());
-        this.section = new ManualSection.Definition(sortOrder, Optional.of(holder));
+        this.section(sortOrder, BuiltInRegistries.ITEM.getKey(icon.asItem()));
+    }
+
+    /** As above, drawing the first of {@code icons} that is registered: a shared section names every mod's. */
+    protected void section(int sortOrder, Identifier... icons) {
+        this.section = new ManualSection.Definition(sortOrder, List.of(icons));
     }
 
     /** A chapter, sorted by the order it is declared in. */
@@ -101,14 +123,16 @@ public abstract class LibManualProvider implements DataProvider {
         this.verify();
 
         List<CompletableFuture<?>> writes = new ArrayList<>();
-        writes.add(DataProvider.saveStable(cache, ManualSection.Definition.CODEC, this.section,
-                this.root.resolve("section.json")));
+        if (this.section != null) {
+            writes.add(DataProvider.saveStable(cache, ManualSection.Definition.CODEC, this.section,
+                    this.root.resolve("section.json")));
+        }
         writes.add(DataProvider.saveStable(cache, ManualLinks.Group.FILE_CODEC, this.groups(),
-                this.root.resolve("links.json")));
+                this.linksRoot.resolve("links.json")));
 
         for (ChapterBuilder chapter : this.chapters) {
             writes.add(DataProvider.saveStable(cache, ManualChapter.Definition.CODEC, chapter.build(),
-                    this.chapterPath.json(Identifier.fromNamespaceAndPath(this.modId, chapter.id))));
+                    this.chapterPath.json(Identifier.fromNamespaceAndPath(this.manualNamespace, chapter.id))));
         }
 
         return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));
@@ -127,7 +151,7 @@ public abstract class LibManualProvider implements DataProvider {
                 if (page.opensNothing()) {
                     continue;
                 }
-                groups.add(new ManualLinks.Group(ManualPageRef.of(this.modId, chapter.id, page.id),
+                groups.add(new ManualLinks.Group(ManualPageRef.of(this.manualNamespace, chapter.id, page.id),
                         List.copyOf(page.blocks), List.copyOf(page.items), List.copyOf(page.entities)));
             }
         }
@@ -285,8 +309,13 @@ public abstract class LibManualProvider implements DataProvider {
             for (PageBuilder page : this.pages) {
                 entries.add(new ManualPageEntry(Optional.of(page.id), List.copyOf(page.conditions), page.build()));
             }
+            List<DisplayCondition> conditions = new ArrayList<>(this.conditions);
+            // A mod with a PartToggles switch hides its chapters with it.
+            if (PartToggles.has(LibManualProvider.this.modId)) {
+                conditions.add(partEnabled(LibManualProvider.this.modId));
+            }
             return new ManualChapter.Definition(Optional.empty(), Optional.empty(), this.sortOrder,
-                    List.copyOf(this.conditions), entries);
+                    List.copyOf(conditions), entries);
         }
     }
 
@@ -457,6 +486,6 @@ public abstract class LibManualProvider implements DataProvider {
     }
 
     private String key(String chapter, String page) {
-        return key(this.modId, chapter, page);
+        return key(this.manualNamespace, chapter, page);
     }
 }

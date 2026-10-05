@@ -94,6 +94,12 @@ public interface IPlatformHelper {
 
     void modifyCreativeTab(final ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks);
 
+    /** Registers a tab under an id no one mod owns, which is what a family's shared tab is; see {@code SharedCreativeTabs}. */
+    void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab);
+
+    /** Registers a data component type under an id no one mod owns; see {@code SharedDataComponents}. */
+    void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type);
+
     /**
      * Shows a data component's {@link TooltipProvider} lines on every stack carrying it, ahead of
      * vanilla's own component lines; otherwise vanilla only asks the components on its fixed list.
@@ -120,6 +126,12 @@ public interface IPlatformHelper {
      * already had. Call from common init, after the type is registered.
      */
     <T extends Mob> void registerSpawnPlacement(Supplier<EntityType<T>> type, SpawnPlacementType placement, Heightmap.Types heightmap, SpawnPlacements.SpawnPredicate<T> predicate);
+
+    /**
+     * Lets fire spread to and burn away a block, with vanilla's odds: planks are 5 and 20, logs 5 and 5.
+     * Call from common init, after the block is registered.
+     */
+    void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds);
 
     /** Mob#finalizeSpawn, which NeoForge deprecates in favour of its FinalizeSpawnEvent hook; Fabric has only the method. */
     @Nullable

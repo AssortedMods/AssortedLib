@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.platform;
 
+import net.minecraft.world.level.block.FireBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
@@ -7,7 +9,6 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.event.EventHooks;
-import java.util.ArrayList;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
@@ -130,7 +131,23 @@ public class ForgePlatformHelper implements IPlatformHelper {
         tabsToRegister.computeIfAbsent(key, tab -> new CopyOnWriteArrayList<>()).add(displayStacks);
     }
 
-    public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new ArrayList<>();
+    // Registered on Lib's own bus by AssortedLibForge: the tab's namespace may be a mod that is not installed.
+    public static final Map<Identifier, Supplier<CreativeModeTab>> creativeTabsToRegister = new ConcurrentHashMap<>();
+
+    @Override
+    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+        creativeTabsToRegister.putIfAbsent(id, tab);
+    }
+
+    public static final Map<Identifier, Supplier<? extends DataComponentType<?>>> componentTypesToRegister = new ConcurrentHashMap<>();
+
+    @Override
+    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+        componentTypesToRegister.putIfAbsent(id, type);
+    }
+
+    // Concurrent because mods are constructed in parallel.
+    public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new CopyOnWriteArrayList<>();
 
     // Registered from AssortedLibForge's RegisterTooltipAppendersEvent listener, once the types exist.
     @Override
@@ -142,6 +159,19 @@ public class ForgePlatformHelper implements IPlatformHelper {
     // constructed in parallel.
     public static final List<AttributeRegistration<?>> attributesToRegister = new CopyOnWriteArrayList<>();
     public static final List<SpawnPlacementRegistration<?>> spawnPlacementsToRegister = new CopyOnWriteArrayList<>();
+    public static final List<FlammableRegistration> flammablesToRegister = new CopyOnWriteArrayList<>();
+
+    @Override
+    public void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        flammablesToRegister.add(new FlammableRegistration(block, igniteOdds, burnOdds));
+    }
+
+    /** NeoForge has no registry for this; its default {@code getFlammability} reads vanilla's fire table. */
+    public record FlammableRegistration(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        public void register() {
+            ((FireBlock) Blocks.FIRE).setFlammable(this.block.get(), this.igniteOdds, this.burnOdds);
+        }
+    }
 
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {

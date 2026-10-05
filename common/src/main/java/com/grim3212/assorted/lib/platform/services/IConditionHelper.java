@@ -9,7 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public interface IConditionHelper {
@@ -20,10 +20,10 @@ public interface IConditionHelper {
      * registered for its id. Recipes are serialised by codec, so the output is the only place to
      * attach them.
      *
-     * @param conditions conditions per recipe id. Read on each accept, so it may still be filled
-     *                   after this call.
+     * @param conditions the conditions for a recipe id, or null for none. Asked on each accept, so
+     *                   what it reads may still be filled after this call.
      */
-    RecipeOutput conditionalOutput(RecipeOutput output, Map<Identifier, List<LibConditionProvider>> conditions);
+    RecipeOutput conditionalOutput(RecipeOutput output, Function<Identifier, List<LibConditionProvider>> conditions);
 
     void register(Identifier name, LibCondition condition);
 

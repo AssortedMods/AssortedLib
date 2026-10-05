@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -38,7 +38,7 @@ public class ForgeConditionHelper implements IConditionHelper {
     }
 
     @Override
-    public RecipeOutput conditionalOutput(RecipeOutput output, Map<Identifier, List<LibConditionProvider>> conditions) {
+    public RecipeOutput conditionalOutput(RecipeOutput output, Function<Identifier, List<LibConditionProvider>> conditions) {
         return new ConditionalOutput(output, conditions);
     }
 
@@ -116,13 +116,13 @@ public class ForgeConditionHelper implements IConditionHelper {
     /**
      * Attaches the conditions registered for a recipe id to that recipe as it is written.
      * {@code RecipeOutput#withConditions} applies one set to everything, so this dispatches on the
-     * recipe key. The map is read on every accept, so a provider may still fill it after wrapping.
+     * recipe key. The lookup runs on every accept, so a provider may still fill it after wrapping.
      */
-    private record ConditionalOutput(RecipeOutput delegate, Map<Identifier, List<LibConditionProvider>> conditions) implements RecipeOutput {
+    private record ConditionalOutput(RecipeOutput delegate, Function<Identifier, List<LibConditionProvider>> conditions) implements RecipeOutput {
 
         @Override
         public void accept(ResourceKey<Recipe<?>> key, Recipe<?> recipe, @Nullable AdvancementHolder advancement, ICondition... extraConditions) {
-            List<LibConditionProvider> registered = this.conditions.get(key.identifier());
+            List<LibConditionProvider> registered = this.conditions.apply(key.identifier());
             if (registered == null || registered.isEmpty()) {
                 this.delegate.accept(key, recipe, advancement, extraConditions);
                 return;

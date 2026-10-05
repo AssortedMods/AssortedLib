@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.platform;
 
+import com.grim3212.assorted.lib.conditions.PartToggles;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
@@ -19,6 +21,7 @@ import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
+import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
@@ -113,8 +116,19 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public void modifyCreativeTab(ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks) {
         CreativeModeTabEvents.modifyOutputEvent(key).register(output -> {
-            output.acceptAll(displayStacks.get());
+            output.acceptAll(PartToggles.visible(displayStacks.get()));
         });
+    }
+
+    @Override
+    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id, tab.get());
+    }
+
+    // Fabric registries stay open through every mod's initializer, so this can register at once.
+    @Override
+    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+        Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, id, type.get());
     }
 
     @Override
@@ -125,6 +139,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {
         FabricDefaultAttributeRegistry.register(type.get(), attributes.get());
+    }
+
+    @Override
+    public void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
+        FlammableBlockRegistry.getDefaultInstance().add(block.get(), burnOdds, igniteOdds);
     }
 
     @Override

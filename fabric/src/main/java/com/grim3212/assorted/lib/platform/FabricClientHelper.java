@@ -2,6 +2,7 @@ package com.grim3212.assorted.lib.platform;
 
 import com.grim3212.assorted.lib.client.events.ClientTickHandler;
 import com.grim3212.assorted.lib.client.events.HudElementHandler;
+import com.grim3212.assorted.lib.client.events.LevelSubmitHandler;
 import com.grim3212.assorted.lib.client.model.loader.FabricPlatformModelLoaderPlatformDelegate;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationLoader;
 import com.grim3212.assorted.lib.client.render.ISpecialModelRendererRegistry;
@@ -30,6 +31,7 @@ import net.fabricmc.fabric.api.client.particle.v1.ParticleProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.minecraft.client.KeyMapping;
@@ -176,6 +178,11 @@ public class FabricClientHelper implements IClientHelper {
     @Override
     public void registerHudElement(Identifier id, HudElementHandler element) {
         HudElementRegistry.attachElementAfter(VanillaHudElements.CROSSHAIR, id, element::extract);
+    }
+
+    @Override
+    public void registerLevelSubmit(LevelSubmitHandler handler) {
+        LevelRenderEvents.COLLECT_SUBMITS.register(context -> handler.submit(context.poseStack(), context.submitNodeCollector(), context.levelState().cameraRenderState));
     }
 
     @Override
