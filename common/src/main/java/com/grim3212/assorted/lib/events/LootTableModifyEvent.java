@@ -1,6 +1,8 @@
 package com.grim3212.assorted.lib.events;
 
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 
@@ -49,5 +51,8 @@ public class LootTableModifyEvent extends GenericEvent {
         default void addPool(LootPool.Builder pool) {
             addPool(pool.build());
         }
+
+        /** Another loot table, for {@code NestedLootTable.lootTableReference}, which takes the holder now. */
+        Holder<LootTable> lootTable(ResourceKey<LootTable> key);
     }
 }

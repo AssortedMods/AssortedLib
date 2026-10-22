@@ -71,8 +71,8 @@ final class MovedIdsTests {
 
     private static void advancementIconIsTheFirstInstalled(GameTestHelper helper) {
         AdvancementHolder root = helper.getLevel().getServer().getAdvancements().get(STORY_ROOT);
-        helper.assertTrue(root.value().display().orElseThrow().getIcon().item().value() == Items.CLOCK,
-                "the story root is drawn with " + root.value().display().orElseThrow().getIcon() + ", not the clock, the first of its icons installed");
+        helper.assertTrue(root.value().display().orElseThrow().icon().item().value() == Items.CLOCK,
+                "the story root is drawn with " + root.value().display().orElseThrow().icon() + ", not the clock, the first of its icons installed");
         helper.succeed();
     }
 

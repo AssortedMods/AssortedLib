@@ -117,7 +117,7 @@ public class LockedShulkerBoxBlockEntity extends BaseStorageBlockEntity implemen
             if (!list.isEmpty()) {
                 for (int i = 0; i < list.size(); ++i) {
                     Entity entity = list.get(i);
-                    if (entity.getPistonPushReaction() != PushReaction.IGNORE) {
+                    if (entity.getPistonPushReaction() != PushReaction.IGNORE_ENTITY) {
                         entity.move(MoverType.SHULKER_BOX, new Vec3((aabb.getXsize() + 0.01D) * (double) direction.getStepX(), (aabb.getYsize() + 0.01D) * (double) direction.getStepY(), (aabb.getZsize() + 0.01D) * (double) direction.getStepZ()));
                     }
                 }

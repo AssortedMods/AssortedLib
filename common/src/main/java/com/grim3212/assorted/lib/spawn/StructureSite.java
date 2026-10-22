@@ -10,7 +10,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.StructureManager;
-import net.minecraft.world.level.ChunkPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -47,13 +47,13 @@ public record StructureSite(EntrySet<Structure> structures) implements SpawnSite
         Registry<Structure> registry = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
         // A generating chunk's starts are in its region, not the level yet.
         StructureManager structures = level instanceof WorldGenRegion region ? level.getLevel().structureManager().forWorldGenRegion(region) : level.getLevel().structureManager();
-        // One boolean off the chunk, before startsForStructure, which resolves every reference by loading its start's chunk.
-        if (!structures.hasAnyStructureAt(column)) {
+        // The chunk's reference map, before startsForStructure, which resolves every reference by loading its start's chunk.
+        if (structures.getAllStructuresAt(column).isEmpty()) {
             return null;
         }
         List<StructurePiece> pieces = null;
         // As StructureManager#getStructureWithPieceAt asks, for a column rather than a block.
-        for (StructureStart start : structures.startsForStructure(ChunkPos.containing(column),
+        for (StructureStart start : structures.startsForStructure(SectionPos.blockToSectionCoord(column.getX()), SectionPos.blockToSectionCoord(column.getZ()),
                 structure -> registry.get(registry.getId(structure)).map(this.structures::contains).orElse(false))) {
             for (StructurePiece piece : start.getPieces()) {
                 BoundingBox box = piece.getBoundingBox();

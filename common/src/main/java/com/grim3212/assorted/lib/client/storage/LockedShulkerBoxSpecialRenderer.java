@@ -49,8 +49,8 @@ public class LockedShulkerBoxSpecialRenderer implements SpecialModelRenderer<Loc
         SpriteId colorSprite = data != null && data.colorSprite() != null ? data.colorSprite() : Sheets.DEFAULT_SHULKER_TEXTURE_LOCATION;
         ShulkerBoxModel.State state = new ShulkerBoxModel.State(0.0F, data != null && data.locked());
 
-        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, colorSprite, this.sprites, outlineColor, null);
-        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, this.materialSprite, this.sprites, outlineColor, null);
+        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, colorSprite, this.sprites, outlineColor);
+        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, this.materialSprite, this.sprites, outlineColor);
     }
 
     @Override

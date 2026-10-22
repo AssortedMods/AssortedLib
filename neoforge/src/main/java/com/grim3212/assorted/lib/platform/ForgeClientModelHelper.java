@@ -9,9 +9,7 @@ import com.grim3212.assorted.lib.client.model.data.IModelDataKey;
 import com.grim3212.assorted.lib.client.model.loader.ForgeBakedModelDelegate;
 import com.grim3212.assorted.lib.platform.services.IClientModelHelper;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.client.NeoForgeRenderTypes;
 import net.neoforged.neoforge.model.data.ModelData;
 import net.neoforged.neoforge.model.data.ModelProperty;
 import org.jetbrains.annotations.NotNull;
@@ -48,13 +46,4 @@ public class ForgeClientModelHelper implements IClientModelHelper {
         return new ForgeBakedModelDelegate(model);
     }
 
-    @Override
-    public RenderType getItemUnlitUnsortedTranslucentRenderType() {
-        return NeoForgeRenderTypes.ITEM_UNSORTED_UNLIT_TRANSLUCENT.get();
-    }
-
-    @Override
-    public RenderType getItemUnsortedTranslucentRenderType() {
-        return NeoForgeRenderTypes.ITEM_UNSORTED_TRANSLUCENT.get();
-    }
 }

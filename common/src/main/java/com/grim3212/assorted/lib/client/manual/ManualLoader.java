@@ -15,7 +15,6 @@ import net.minecraft.util.profiling.ProfilerFiller;
 
 import java.io.BufferedReader;
 import java.util.Map;
-import java.util.function.Predicate;
 
 /**
  * Reads the whole manual out of the loaded resource packs, so a pack can change any of it.
@@ -79,7 +78,7 @@ public class ManualLoader extends SimplePreparableReloadListener<ManualContent> 
 
     /** Ids are the path below {@code directory} less the extension, slashes and all. */
     private static void forEach(ResourceManager manager, String directory, Entry out) {
-        Predicate<Identifier> isJson = path -> path.getPath().endsWith(EXTENSION);
+        ResourceManager.Selector isJson = path -> path.getPath().endsWith(EXTENSION);
 
         for (Map.Entry<Identifier, Resource> entry : manager.listResources(directory, isJson).entrySet()) {
             Identifier path = entry.getKey();

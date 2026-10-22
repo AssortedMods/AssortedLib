@@ -108,7 +108,7 @@ public class UnbakedGeometryHelper {
      * Turns a single {@link CuboidFace} into a {@link BakedQuad}.
      */
     public static BakedQuad bakeElementFace(ModelBaker baker, CuboidModelElement element, CuboidFace face, Material.Baked material, Direction direction, ModelState state) {
-        return FaceBakery.bakeQuad(baker, element.from(), element.to(), face, material, direction, state, element.rotation(), element.shade(), element.lightEmission());
+        return FaceBakery.bakeQuad(baker, element.from(), element.to(), face, material, direction, state, element.rotation(), element.shadeDirectionOverride(), element.lightEmission());
     }
 
     /**

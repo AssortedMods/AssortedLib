@@ -26,10 +26,10 @@ public class ForgeConfigHelper implements IConfigHelper {
     private static ModConfig.Type remapType(final ConfigurationType type) {
         return switch (type) {
             case CLIENT_ONLY -> ModConfig.Type.CLIENT;
-            case NOT_SYNCED -> ModConfig.Type.COMMON;
-            case SYNCED -> ModConfig.Type.SERVER;
+            case NOT_SYNCED -> ModConfig.Type.LOCAL;
+            case SYNCED -> ModConfig.Type.SYNCED;
             // STARTUP is loaded before the registries are populated, which is the whole point of
-            // this type. COMMON is not, and reading one during RegisterEvent throws.
+            // this type. LOCAL is not, and reading one during RegisterEvent throws.
             case NEEDED_AT_REGISTRATION -> ModConfig.Type.STARTUP;
         };
     }

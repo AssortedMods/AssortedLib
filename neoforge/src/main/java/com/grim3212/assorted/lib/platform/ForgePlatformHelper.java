@@ -1,7 +1,5 @@
 package com.grim3212.assorted.lib.platform;
 
-import net.minecraft.world.level.block.FireBlock;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
@@ -16,8 +14,10 @@ import com.grim3212.assorted.lib.core.inventory.MenuData;
 import com.grim3212.assorted.lib.dist.Dist;
 import com.grim3212.assorted.lib.platform.services.IPlatformHelper;
 import com.grim3212.assorted.lib.registry.ILoaderRegistry;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
@@ -39,6 +39,7 @@ import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -53,12 +54,12 @@ import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class ForgePlatformHelper implements IPlatformHelper {
@@ -155,6 +156,14 @@ public class ForgePlatformHelper implements IPlatformHelper {
         componentTooltips.add(type);
     }
 
+    // Applied from AssortedLibForge's ModifyDefaultComponentsEvent listener. Concurrent because mods are constructed in parallel.
+    public static final List<Pair<Supplier<? extends ItemLike>, Consumer<DataComponentMap.Builder>>> defaultComponents = new CopyOnWriteArrayList<>();
+
+    @Override
+    public void modifyDefaultComponents(Supplier<? extends ItemLike> item, Consumer<DataComponentMap.Builder> components) {
+        defaultComponents.add(Pair.of(item, components));
+    }
+
     // Both handed to their mod bus events from AssortedLibForge. Concurrent because mods are
     // constructed in parallel.
     public static final List<AttributeRegistration<?>> attributesToRegister = new CopyOnWriteArrayList<>();
@@ -166,11 +175,8 @@ public class ForgePlatformHelper implements IPlatformHelper {
         flammablesToRegister.add(new FlammableRegistration(block, igniteOdds, burnOdds));
     }
 
-    /** NeoForge has no registry for this; its default {@code getFlammability} reads vanilla's fire table. */
+    /** Written to NeoForge's flammable data map by {@code ForgeRegistryEntries}, as NeoForge reads the odds from it. */
     public record FlammableRegistration(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
-        public void register() {
-            ((FireBlock) Blocks.FIRE).setFlammable(this.block.get(), this.igniteOdds, this.burnOdds);
-        }
     }
 
     @Override

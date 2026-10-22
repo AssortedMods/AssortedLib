@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.item.ModelRenderProperties;
 import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.ResolvedModel;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.geometry.ItemQuads;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
@@ -118,8 +119,9 @@ public final class DataAwareItemModel implements ItemModel {
             }
         }
 
-        List<BakedQuad> quads = layer.prepareQuadList();
+        List<BakedQuad> quads = new ArrayList<>();
         int materialFlags = collectQuads(data, quads);
+        layer.setQuads(ItemQuads.split(quads));
 
         // A render state is reused between frames unless it says it is animated, so an item drawing an
         // animated block would freeze on whichever frame it was first drawn with. Which data is

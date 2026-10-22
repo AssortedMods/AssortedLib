@@ -4,9 +4,9 @@ name: Build
 #
 # Manual only for now, until the pipeline has been run by hand a few times. Add back
 #   push:
-#     branches: [ 26.2 ]
+#     branches: [ 26.3 ]
 #   pull_request:
-#     branches: [ 26.2 ]
+#     branches: [ 26.3 ]
 # above workflow_dispatch to have it run on its own.
 on:
   workflow_dispatch:

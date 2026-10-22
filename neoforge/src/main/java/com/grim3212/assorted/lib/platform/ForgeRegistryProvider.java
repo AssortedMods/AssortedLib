@@ -72,7 +72,7 @@ public class ForgeRegistryProvider implements IRegistryFactory {
                 public ResourceKey<I> getResourceKey() {
                     // A DeferredHolder is keyed by the registry's type rather than the registered
                     // type, so the narrowing this interface promises has to be done here.
-                    return (ResourceKey<I>) obj.getKey();
+                    return (ResourceKey<I>) obj.keyOrNull();
                 }
 
                 @Override

@@ -2,8 +2,8 @@ package com.grim3212.assorted.lib.data;
 
 import com.grim3212.assorted.lib.annotations.LoaderImplement;
 import com.grim3212.assorted.lib.mixin.data.AccessorBlockLootSubProvider;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.data.loot.LootTableSubProvider;
 import net.minecraft.data.loot.packs.VanillaBlockLoot;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
@@ -12,24 +12,23 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public abstract class LibBlockLootProvider extends VanillaBlockLoot {
 
     private final Supplier<Iterable<Block>> knownBlocks;
 
-
-    public LibBlockLootProvider(HolderLookup.Provider registries, Supplier<Iterable<Block>> knownBlocks) {
-        super(registries);
+    public LibBlockLootProvider(LootTableSubProvider.Context context, Supplier<Iterable<Block>> knownBlocks) {
+        super(context);
         this.knownBlocks = knownBlocks;
     }
 
     @Override
     public abstract void generate();
 
+    /** Vanilla's loop over only this mod's blocks; NeoForge's patch can narrow it, the vanilla jar cannot. */
     @Override
-    public void generate(BiConsumer<ResourceKey<LootTable>, LootTable.Builder> biConsumer) {
+    public void run() {
         this.generate();
         Set<ResourceKey<LootTable>> set = new HashSet<>();
         AccessorBlockLootSubProvider provider = ((AccessorBlockLootSubProvider) this);
@@ -44,7 +43,7 @@ public abstract class LibBlockLootProvider extends VanillaBlockLoot {
                             throw new IllegalStateException(String.format(Locale.ROOT, "Missing loottable '%s' for '%s'", lootTable.identifier(), BuiltInRegistries.BLOCK.getKey(block)));
                         }
 
-                        biConsumer.accept(lootTable, loottable$builder);
+                        this.output.accept(lootTable, loottable$builder);
                     }
                 });
             }
@@ -56,7 +55,7 @@ public abstract class LibBlockLootProvider extends VanillaBlockLoot {
     }
 
     @LoaderImplement(loader = LoaderImplement.Loader.FORGE, value = "BlockLootSubProvider")
-    protected Iterable<Block> getKnownBlocks() {
+    public Iterable<Block> getKnownBlocks() {
         return this.knownBlocks.get();
     }
 

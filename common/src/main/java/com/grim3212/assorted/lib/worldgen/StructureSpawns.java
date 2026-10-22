@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.random.Weighted;
+import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.StructureManager;
@@ -70,7 +71,7 @@ public final class StructureSpawns {
             if (found == null) {
                 found = new ArrayList<>();
             }
-            found.add(new Weighted<>(new MobSpawnSettings.SpawnerData(type, addition.minCount(), addition.maxCount()), weight));
+            found.add(new Weighted<>(new MobSpawnSettings.SpawnerData(type, UniformInt.of(addition.minCount(), addition.maxCount())), weight));
         }
         return found == null ? List.of() : found;
     }

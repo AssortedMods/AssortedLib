@@ -17,6 +17,7 @@ import com.grim3212.assorted.lib.core.item.LibDataComponents;
 import com.grim3212.assorted.lib.data.ForgeBiomeTagProvider;
 import com.grim3212.assorted.lib.data.ForgeBlockTagProvider;
 import com.grim3212.assorted.lib.data.ForgeItemTagProvider;
+import com.grim3212.assorted.lib.data.ForgeRegistryEntries;
 import com.grim3212.assorted.lib.data.LibCommonTagProvider;
 import com.grim3212.assorted.lib.events.*;
 import com.grim3212.assorted.lib.platform.ForgePlatformHelper;
@@ -49,7 +50,7 @@ import net.neoforged.neoforge.event.level.ModifyCustomSpawnersEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.event.ModifyDefaultComponentsEvent;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -75,9 +76,10 @@ public class AssortedLibForge {
         modBus.addListener((final RegisterEvent event) -> event.register(Registries.DATA_COMPONENT_TYPE,
                 helper -> ForgePlatformHelper.componentTypesToRegister.forEach((id, type) -> helper.register(id, type.get()))));
         modBus.addListener(this::registerComponentTooltips);
+        modBus.addListener((final ModifyDefaultComponentsEvent event) -> ForgePlatformHelper.defaultComponents
+                .forEach(entry -> event.modify(entry.getFirst().get(), (components, context, key) -> entry.getSecond().accept(components))));
         modBus.addListener((final EntityAttributeCreationEvent event) -> ForgePlatformHelper.attributesToRegister.forEach(registration -> registration.register(event)));
         modBus.addListener((final RegisterSpawnPlacementsEvent event) -> ForgePlatformHelper.spawnPlacementsToRegister.forEach(registration -> registration.register(event)));
-        modBus.addListener((final FMLCommonSetupEvent event) -> event.enqueueWork(() -> ForgePlatformHelper.flammablesToRegister.forEach(ForgePlatformHelper.FlammableRegistration::register)));
 
         // Recipes are not sent to clients by default; anything that opted a type into
         // SyncedRecipes is asked for here, while the datapack is being synced.
@@ -140,7 +142,7 @@ public class AssortedLibForge {
 
         Services.EVENTS.registerEventType(LootTableModifyEvent.class, () -> {
             NeoForge.EVENT_BUS.addListener((final LootTableLoadEvent event) -> {
-                final LootTableModifyEvent newEvent = new LootTableModifyEvent(event.getTable(), event.getName(), new ForgeLootTableModificationContext(event.getTable()), true);
+                final LootTableModifyEvent newEvent = new LootTableModifyEvent(event.getTable(), event.getName(), new ForgeLootTableModificationContext(event.getTable(), event.getRegistries()), true);
                 Services.EVENTS.handleEvents(newEvent);
             });
         });
@@ -207,9 +209,9 @@ public class AssortedLibForge {
 
     private void gatherData(final GatherDataEvent.Server event) {
         PackOutput packOutput = event.getGenerator().getPackOutput();
-        CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
+        CompletableFuture<HolderLookup.Provider> lookupProvider = event.getWorldLookupProvider();
 
-        event.addProvider(new LibRecipes.Runner(packOutput, lookupProvider));
+        ForgeRegistryEntries.of(LibConstants.MOD_ID).recipes(LibRecipes::new).addTo(event);
         ForgeBlockTagProvider blockTagProvider = event.addProvider(new ForgeBlockTagProvider(packOutput, lookupProvider, LibConstants.MOD_ID, new LibCommonTagProvider.BlockTagProvider(packOutput, lookupProvider)));
         event.addProvider(new ForgeItemTagProvider(packOutput, lookupProvider, blockTagProvider.contentsGetter(), LibConstants.MOD_ID, new LibCommonTagProvider.ItemTagProvider(packOutput, lookupProvider, blockTagProvider.contentsGetter())));
         event.addProvider(new ForgeBiomeTagProvider(packOutput, lookupProvider, LibConstants.MOD_ID, new LibCommonTagProvider.BiomeTagProvider(packOutput, lookupProvider)));

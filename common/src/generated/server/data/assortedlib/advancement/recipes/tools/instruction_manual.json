@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "assortedlib:instruction_manual"
+        "recipes": "assortedlib:instruction_manual"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

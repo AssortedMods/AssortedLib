@@ -1,43 +1,61 @@
 package com.grim3212.assorted.lib.core.conditions;
 
 import com.grim3212.assorted.lib.conditions.PartToggles;
-import com.grim3212.assorted.lib.data.CrossLoaderData;
 import com.grim3212.assorted.lib.platform.Services;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.CachedOutput;
-import net.minecraft.data.DataProvider;
-import net.minecraft.data.PackOutput;
-import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 public abstract class ConditionalRecipeProvider extends RecipeProvider {
 
     protected final Map<Identifier, List<LibConditionProvider>> conditions;
+    protected final HolderGetter<Item> items;
+    private final BootstrapContext<Recipe<?>> recipes;
     private final String modId;
 
-    public ConditionalRecipeProvider(HolderLookup.Provider registries, RecipeOutput output, String modId) {
-        this(registries, output, modId, new HashMap<>());
+    /**
+     * Recipes are registry entries built in a bootstrap now. Both contexts are wrapped so each recipe and its
+     * unlock advancement carry the conditions, read lazily so registerConditions() can still fill them.
+     */
+    public ConditionalRecipeProvider(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements, String modId) {
+        Map<Identifier, List<LibConditionProvider>> conditions = new HashMap<>();
+        this.conditions = conditions;
+        this.modId = modId;
+        this.recipes = recipes;
+        this.items = recipes.lookup(Registries.ITEM);
+        super(Services.CONDITIONS.conditionalContext(recipes, key -> withPart(conditions.get(key.identifier()), modId)),
+                Services.CONDITIONS.conditionalContext(advancements, key -> withPart(conditions.get(unlockedRecipe(conditions, key.identifier())), modId)));
     }
 
-    // The map has to exist before the super call so the wrapped output can close over it, which is
-    // why this goes through a private constructor. The wrapper reads it lazily on each accept, so
-    // registerConditions() populating it later still works.
-    private ConditionalRecipeProvider(HolderLookup.Provider registries, RecipeOutput output, String modId, Map<Identifier, List<LibConditionProvider>> conditions) {
-        super(registries, Services.CONDITIONS.conditionalOutput(output, recipe -> withPart(conditions.get(recipe), modId)));
-        this.modId = modId;
-        this.conditions = conditions;
+    /** The recipe an unlock advancement belongs to: vanilla's {@code recipes/<folder>/<path>}, or a mod builder's {@code recipes/<path>}. */
+    private static Identifier unlockedRecipe(Map<Identifier, List<LibConditionProvider>> conditions, Identifier advancement) {
+        String path = advancement.getPath();
+        if (!path.startsWith("recipes/")) {
+            return advancement;
+        }
+        Identifier unfiled = advancement.withPath(path.substring("recipes/".length()));
+        int folderEnd = path.indexOf('/', "recipes/".length());
+        return folderEnd < 0 || conditions.containsKey(unfiled) ? unfiled : advancement.withPath(path.substring(folderEnd + 1));
+    }
+
+    /** What {@code RecipeProvider#registries} was for: holders from any registry the recipes name. */
+    protected <S> HolderGetter<S> lookup(ResourceKey<? extends Registry<? extends S>> key) {
+        return this.recipes.lookup(key);
     }
 
     /** A mod with a {@link PartToggles} switch has every recipe turned off with it. */
@@ -134,43 +152,9 @@ public abstract class ConditionalRecipeProvider extends RecipeProvider {
      */
     public abstract void registerConditions();
 
-    // public, not protected: RecipeProvider.buildRecipes() is public abstract on the vanilla jar
-    // (what Fabric compiles against) and protected on NeoForge's patched jar. Widening satisfies
-    // both.
+    // public, not protected, so the mods' overrides can stay public; widening an override is allowed.
     @Override
     public void buildRecipes() {
         this.registerConditions();
-    }
-
-    /**
-     * Writes a mod's recipes for both loaders. Recipe providers are no longer data providers
-     * themselves in 26.2 - a {@link RecipeProvider.Runner} owns the file writing - and its
-     * {@code run} is final, so this wraps one and hands it a {@link CrossLoaderData} output.
-     */
-    public abstract static class Runner implements DataProvider {
-        protected final String modId;
-        private final RecipeProvider.Runner delegate;
-
-        public Runner(PackOutput output, CompletableFuture<HolderLookup.Provider> registries, String modId) {
-            this.modId = modId;
-            this.delegate = new RecipeProvider.Runner(output, registries) {
-                @Override
-                protected RecipeProvider createRecipeProvider(HolderLookup.Provider lookup, RecipeOutput recipeOutput) {
-                    return Runner.this.createRecipeProvider(lookup, recipeOutput);
-                }
-
-                @Override
-                public String getName() {
-                    return Runner.this.getName();
-                }
-            };
-        }
-
-        @Override
-        public CompletableFuture<?> run(CachedOutput output) {
-            return this.delegate.run(CrossLoaderData.wrap(output));
-        }
-
-        protected abstract RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput output);
     }
 }

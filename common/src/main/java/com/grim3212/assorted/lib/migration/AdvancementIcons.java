@@ -6,7 +6,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,27 +35,25 @@ public final class AdvancementIcons {
         ICONS.put(advancement, icons);
     }
 
-    /** The advancements as loaded, with every registered icon swapped in. */
-    public static Map<Identifier, Advancement> apply(Map<Identifier, Advancement> advancements) {
-        if (ICONS.isEmpty()) {
-            return advancements;
+    /** The advancement as loaded, with its registered icon swapped in when it has one and that icon exists. */
+    public static Advancement apply(Identifier id, Advancement advancement) {
+        Supplier<List<Identifier>> icons = ICONS.get(id);
+        if (icons == null || advancement.display().isEmpty()) {
+            return advancement;
         }
 
-        Map<Identifier, Advancement> changed = new HashMap<>(advancements);
-        ICONS.forEach((id, icons) -> {
-            Advancement advancement = advancements.get(id);
-            Optional<ItemStackTemplate> icon = icons.get().stream()
-                    .flatMap(item -> BuiltInRegistries.ITEM.getOptional(item).stream())
-                    .findFirst()
-                    .map(ItemStackTemplate::new);
-            if (advancement != null && advancement.display().isPresent() && icon.isPresent()) {
-                DisplayInfo display = advancement.display().get();
-                DisplayInfo drawn = new DisplayInfo(icon.get(), display.getTitle(), display.getDescription(), display.getBackground(),
-                        display.getType(), display.shouldShowToast(), display.shouldAnnounceChat(), display.isHidden());
-                changed.put(id, new Advancement(advancement.parent(), Optional.of(drawn), advancement.rewards(), advancement.criteria(),
-                        advancement.requirements(), advancement.sendsTelemetryEvent(), advancement.name()));
-            }
-        });
-        return changed;
+        Optional<ItemStackTemplate> icon = icons.get().stream()
+                .flatMap(item -> BuiltInRegistries.ITEM.getOptional(item).stream())
+                .findFirst()
+                .map(ItemStackTemplate::new);
+        if (icon.isEmpty()) {
+            return advancement;
+        }
+
+        DisplayInfo display = advancement.display().get();
+        DisplayInfo drawn = new DisplayInfo(icon.get(), display.title(), display.description(), display.background(),
+                display.type(), display.showToast(), display.announceToChat(), display.hidden());
+        return new Advancement(advancement.parent(), Optional.of(drawn), advancement.rewards(), advancement.criteria(),
+                advancement.requirements(), advancement.sendsTelemetryEvent(), advancement.name());
     }
 }

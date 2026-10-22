@@ -9,6 +9,8 @@ import com.grim3212.assorted.lib.client.manual.ManualPageView;
 import com.grim3212.assorted.lib.manual.ManualLinks;
 import com.grim3212.assorted.lib.manual.ManualPageRef;
 import com.grim3212.assorted.lib.manual.ManualSection;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -286,6 +288,10 @@ public class ManualScreen extends Screen {
         this.drawScrollbar(graphics, 0, mouseX, mouseY);
         this.drawScrollbar(graphics, 1, mouseX, mouseY);
 
+        if (linkedPage(this.leftPageView) != null || linkedPage(this.rightPageView) != null) {
+            graphics.requestCursor(CursorTypes.POINTING_HAND);
+        }
+
         super.extractRenderState(graphics, mouseX, mouseY, a);
 
         // Last, so a tooltip is never painted over by the other page.
@@ -330,6 +336,12 @@ public class ManualScreen extends Screen {
 
         // Lights up on hover as well as while held, as an affordance.
         boolean active = this.draggingSide == side || (bar.grabbed(mouseX, mouseY) && bar.onThumb(mouseY));
+        // As a vanilla scroll area does.
+        if (this.draggingSide == side) {
+            graphics.requestCursor(CursorTypes.RESIZE_NS);
+        } else if (this.draggingSide < 0 && bar.grabbed(mouseX, mouseY)) {
+            graphics.requestCursor(CursorTypes.POINTING_HAND);
+        }
         int color = active ? this.style().hoveredTextColor() : this.style().mutedTextColor();
         graphics.fill(bar.x(), bar.top(), bar.x() + BAR_WIDTH, bar.top() + bar.track(), this.style().mutedTextColor() & 0x30FFFFFF);
         graphics.fill(bar.x(), bar.thumbY(), bar.x() + BAR_WIDTH, bar.thumbY() + bar.thumb(), color);
@@ -401,7 +413,11 @@ public class ManualScreen extends Screen {
 
     private void drawRows(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         for (Row row : this.rows) {
-            int color = row.contains(mouseX, mouseY) ? this.style().hoveredTextColor() : this.style().textColor();
+            boolean hovered = row.contains(mouseX, mouseY);
+            int color = hovered ? this.style().hoveredTextColor() : this.style().textColor();
+            if (hovered) {
+                graphics.requestCursor(CursorTypes.POINTING_HAND);
+            }
             graphics.text(this.font, row.label(), row.x(), row.y(), color, false);
         }
     }
@@ -410,7 +426,7 @@ public class ManualScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             // Asked first: the bar sits over the page margin and must win over what is behind it.
             for (int side = 0; side < 2; side++) {
                 Scrollbar bar = this.scrollbar(side);
@@ -449,22 +465,24 @@ public class ManualScreen extends Screen {
 
     /** An item drawn on a page is a link to its own page. */
     private boolean followHoveredItem(@Nullable ManualPageView view) {
-        if (view == null) {
-            return false;
-        }
-
-        ItemStack hovered = view.hoveredStack();
-        if (hovered.isEmpty()) {
-            return false;
-        }
-
-        ManualPageRef ref = ManualLinks.pageFor(hovered);
+        ManualPageRef ref = linkedPage(view);
         if (ref == null) {
             return false;
         }
 
         this.follow(ref);
         return true;
+    }
+
+    /** Where the item under the cursor links to, or null when it links nowhere. */
+    @Nullable
+    private static ManualPageRef linkedPage(@Nullable ManualPageView view) {
+        if (view == null) {
+            return null;
+        }
+
+        ItemStack hovered = view.hoveredStack();
+        return hovered.isEmpty() ? null : ManualLinks.pageFor(hovered);
     }
 
     @Override
@@ -482,7 +500,7 @@ public class ManualScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (this.draggingSide >= 0 && event.button() == 0) {
+        if (this.draggingSide >= 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             this.draggingSide = -1;
             return true;
         }

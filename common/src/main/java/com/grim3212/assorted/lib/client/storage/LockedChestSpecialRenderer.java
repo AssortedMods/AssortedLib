@@ -35,7 +35,7 @@ public class LockedChestSpecialRenderer implements SpecialModelRenderer<Boolean>
     @Override
     public void submit(@Nullable Boolean locked, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords, int overlayCoords, boolean hasFoil, int outlineColor) {
         StorageModelState state = Boolean.TRUE.equals(locked) ? StorageModelState.CLOSED_LOCKED : StorageModelState.CLOSED_UNLOCKED;
-        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, this.sprite, this.sprites, outlineColor, null);
+        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, this.sprite, this.sprites, outlineColor);
     }
 
     @Override

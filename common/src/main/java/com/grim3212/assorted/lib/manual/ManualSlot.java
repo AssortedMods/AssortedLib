@@ -58,7 +58,7 @@ public record ManualSlot(SlotDisplay display, int count) {
 
     private static void collectTags(SlotDisplay display, List<TagKey<Item>> out) {
         switch (display) {
-            case SlotDisplay.TagSlotDisplay tag -> out.add(tag.tag());
+            case SlotDisplay.TagSlotDisplay tag -> tag.tag().unwrapKey().ifPresent(out::add);
             // A composite is how several ingredients end up in one slot; each half may be a tag.
             case SlotDisplay.Composite composite -> composite.contents().forEach(part -> collectTags(part, out));
             case SlotDisplay.WithRemainder remainder -> collectTags(remainder.input(), out);

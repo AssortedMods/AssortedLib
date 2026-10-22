@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.client.storage;
 
+import com.grim3212.assorted.lib.client.util.SubmitHelper;
 import com.grim3212.assorted.lib.core.storage.BaseStorageBlock;
 import com.grim3212.assorted.lib.core.storage.BaseStorageBlockEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -70,10 +71,10 @@ public class LockedChestRenderer<T extends BaseStorageBlockEntity> implements Bl
 
         poseStack.pushPose();
         poseStack.translate(0.5D, 0.5D, 0.5D);
-        poseStack.mulPose(Axis.YP.rotationDegrees(-state.facing.toYRot()));
+        poseStack.rotate(Axis.YP.rotationDegrees(-state.facing.toYRot()));
         poseStack.translate(-0.5D, -0.5D, -0.5D);
 
-        submitNodeCollector.submitModel(this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.sprite, this.sprites, 0, state.breakProgress);
+        SubmitHelper.submitModel(submitNodeCollector, this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.sprite, this.sprites, 0, state.breakProgress);
 
         poseStack.popPose();
     }

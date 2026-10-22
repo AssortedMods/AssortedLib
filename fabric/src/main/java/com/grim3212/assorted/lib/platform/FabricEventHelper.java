@@ -32,7 +32,7 @@ public class FabricEventHelper extends EventHelperBase {
         // there is no loot manager to look the table up in any more - so the event's table is built from
         // the builder as it stands before this modification runs.
         this.registerEventType(LootTableModifyEvent.class, () -> LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
-            final LootTableModifyEvent event = new LootTableModifyEvent(tableBuilder.build(), key.identifier(), new FabricLootTableModificationContext(tableBuilder), source.isBuiltin());
+            final LootTableModifyEvent event = new LootTableModifyEvent(tableBuilder.build(), key.identifier(), new FabricLootTableModificationContext(tableBuilder, registries), source.isBuiltin());
             this.handleEvents(event);
         }));
 

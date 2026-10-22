@@ -1,5 +1,25 @@
 # Changelog
 
+## 5.0.0
+
+Updated to Minecraft 26.3, for NeoForge and Fabric.
+
+- Recipes, loot tables and advancements are registry entries in 26.3, so a mod's NeoForge datagen
+  writes them through `ForgeRegistryEntries` along with its worldgen. It replaces
+  `ForgeDatapackRegistryProvider` and the recipe `Runner`s, and still writes the files for both loaders.
+- `ConditionalRecipeProvider` and `LibBlockLootProvider` are built from 26.3's datagen contexts, and
+  `IConditionHelper#conditionalContext` gives each entry its load conditions.
+- Fuel is an item component now. `IPlatformHelper#isFuel` checks an item on either side,
+  `#getFuelTime` gives its burn time in a furnace, another block or anywhere on the server, and
+  `BurnTimes` names the burn times a mod's fuels use.
+- `CompostChances` and `IPlatformHelper#modifyDefaultComponents` set components on items, which is
+  where 26.3 keeps compost chances.
+- `LootTableModificationContext#lootTable` gives the holder a nested loot table needs now.
+- `SubmitHelper` keeps the `submitModel` calls that drew the block breaking overlay.
+- `BlockPosUtil` keeps the box shaped block searches `BlockPos` no longer has.
+- On NeoForge the blocks given to `registerFlammable` go in NeoForge's flammable data map, written
+  by datagen, so a datapack can change their fire odds.
+
 ## 4.3.0
 
 - `IPlatformHelper#registerFlammable` lets fire spread to and burn away a mod's block, with the

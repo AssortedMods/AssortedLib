@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.client.storage;
 
+import com.grim3212.assorted.lib.client.util.SubmitHelper;
 import com.grim3212.assorted.lib.core.storage.shulker.LockedShulkerBoxBlock;
 import com.grim3212.assorted.lib.core.storage.shulker.LockedShulkerBoxBlockEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -71,13 +72,13 @@ public class LockedShulkerBoxRenderer implements BlockEntityRenderer<LockedShulk
 		poseStack.translate(0.5D, 0.5D, 0.5D);
 		float f = 0.9995F;
 		poseStack.scale(f, f, f);
-		poseStack.mulPose(state.facing.getRotation());
+		poseStack.rotate(state.facing.getRotation());
 		poseStack.scale(1.0F, -1.0F, -1.0F);
 		poseStack.translate(0.0D, -1.0D, 0.0D);
 
-		submitNodeCollector.submitModel(this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.colorSprite, this.sprites, 0, state.breakProgress);
+		SubmitHelper.submitModel(submitNodeCollector, this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.colorSprite, this.sprites, 0, state.breakProgress);
 		// The material texture is only an overlay, drawn as a second pass over the dyed box.
-		submitNodeCollector.submitModel(this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.materialSprite, this.sprites, 0, state.breakProgress);
+		SubmitHelper.submitModel(submitNodeCollector, this.model, state.model, poseStack, state.lightCoords, OverlayTexture.NO_OVERLAY, -1, state.materialSprite, this.sprites, 0, state.breakProgress);
 
 		poseStack.popPose();
 	}

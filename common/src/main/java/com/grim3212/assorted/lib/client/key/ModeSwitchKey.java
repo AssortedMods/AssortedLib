@@ -33,7 +33,7 @@ public final class ModeSwitchKey {
         if (key != null) {
             return;
         }
-        key = ClientServices.KEYBINDS.createNew("key.assortedlib.switch_modes", ClientServices.KEYBINDS.getInGameKeyConflictContext(), InputConstants.Type.KEYSYM, InputConstants.KEY_Z, CATEGORY);
+        key = ClientServices.KEYBINDS.createNew("key.assortedlib.switch_modes", ClientServices.KEYBINDS.getInGameKeyConflictContext(), InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, CATEGORY);
         ClientServices.CLIENT.registerKeyMapping(key);
         ClientServices.CLIENT.registerClientTickStart(ModeSwitchKey::tick);
     }

@@ -14,11 +14,13 @@ import com.grim3212.assorted.lib.registry.ILoaderRegistry;
 import net.minecraft.util.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentMap;
 import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.util.RandomSource;
@@ -27,6 +29,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.SpawnPlacementType;
+import net.minecraft.world.entity.SlotAccess;
+import net.minecraft.world.entity.SlotProvider;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.player.Inventory;
@@ -37,17 +41,26 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.CookingFuel;
 import net.minecraft.world.item.component.Tool;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public interface IPlatformHelper {
@@ -108,6 +121,12 @@ public interface IPlatformHelper {
      */
     <T extends TooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type);
 
+    /**
+     * Sets components on an item made elsewhere, as 26.3 has compost chances and the like as components. Call from
+     * mod construction, before the items are built; the item is only asked for once they are.
+     */
+    void modifyDefaultComponents(Supplier<? extends ItemLike> item, Consumer<DataComponentMap.Builder> components);
+
     void addReloadListener(Identifier identifier, PreparableReloadListener reloadListener);
 
     default EntityType<?> getRandomDungeonEntity(RandomSource random) {
@@ -129,7 +148,7 @@ public interface IPlatformHelper {
 
     /**
      * Lets fire spread to and burn away a block, with vanilla's odds: planks are 5 and 20, logs 5 and 5.
-     * Call from common init, after the block is registered.
+     * Call from common init; on NeoForge the odds are data, written by {@code ForgeRegistryEntries}.
      */
     void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds);
 
@@ -162,14 +181,33 @@ public interface IPlatformHelper {
         T create(int syncId, Inventory inventory);
     }
 
+    /** Whether a furnace would take this as fuel. Only reads the stack, so it is safe on the client. */
+    default boolean isFuel(ItemStack stack) {
+        return stack.has(DataComponents.COOKING_FUEL);
+    }
+
     /**
-     * Burn times are data-driven and resolved per level. NeoForge deprecates
-     * {@code FuelValues#burnDuration} for an {@code ItemStack} extension that only exists in its
-     * patched jar, so the vanilla lookup is the only one common can call.
+     * Burn times live on the {@code cooking_fuel} component and can depend on where they burn, so they
+     * resolve against a container's loot context. 0 for anything that is not fuel.
      */
-    @SuppressWarnings("deprecation")
-    default int getFuelTime(Level level, ItemStack stack) {
-        return level.fuelValues().burnDuration(stack);
+    default int getFuelTime(ItemStack stack, LootContext context) {
+        return ResolvableInt.getFromItem(stack, DataComponents.COOKING_FUEL, CookingFuel::burnTime, context, 0);
+    }
+
+    /** The burn time away from any block, for a machine that is not a block entity, such as an entity. */
+    default int getFuelTime(ItemStack stack, ServerLevel level) {
+        return this.getFuelTime(stack, new LootContext.Builder(new LootParams.Builder(level).create(LootContextParamSets.EMPTY)).create(Optional.empty()));
+    }
+
+    /** The context a furnace resolves fuel with, for a block entity whose items are not a vanilla Container. */
+    default LootContext containerProcessContext(ServerLevel level, BlockEntity blockEntity, List<ItemStack> items) {
+        SlotProvider slots = slot -> slot >= 0 && slot < items.size() ? SlotAccess.forListElement(items, slot) : null;
+        return new LootContext.Builder(new LootParams.Builder(level)
+                .withParameter(LootContextParams.BLOCK_STATE, blockEntity.getBlockState())
+                .withParameter(LootContextParams.BLOCK_ENTITY, blockEntity)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockEntity.getBlockPos()))
+                .withParameter(LootContextParams.CONTAINER, slots)
+                .create(LootContextParamSets.CONTAINER_PROCESS)).create(Optional.empty());
     }
 
     enum ToolType {

@@ -11,29 +11,23 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.fabricmc.fabric.api.resource.conditions.v1.ResourceCondition;
 import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditionType;
 import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditions;
-import net.fabricmc.fabric.impl.datagen.FabricDataGenHelper;
-import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.block.Block;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * Fabric conditions are codec based in 26.2: a {@link ResourceCondition} is deserialised by the
- * {@link ResourceConditionType} registered for its id, and datagen attaches conditions to the recipe
- * object itself rather than writing them into the recipe json.
+ * Fabric conditions are codec based: a {@link ResourceCondition} is deserialised by the
+ * {@link ResourceConditionType} registered for its id.
  */
 public class FabricConditionHelper implements IConditionHelper {
     public static final Identifier PART_ENABLED = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "part_enabled");
@@ -45,39 +39,10 @@ public class FabricConditionHelper implements IConditionHelper {
         ResourceConditions.register(PartEnabledCondition.TYPE);
     }
 
-    /**
-     * Fabric's datagen keeps the conditions for a written object in a side table keyed by the object
-     * itself - the same mechanism {@code FabricRecipeProvider#withConditions} uses - and its data
-     * provider mixin writes them out alongside the serialised recipe.
-     */
+    /** Data is only generated on NeoForge, which writes Fabric's condition keys too. */
     @Override
-    public RecipeOutput conditionalOutput(RecipeOutput output, Function<Identifier, List<LibConditionProvider>> conditions) {
-        return new RecipeOutput() {
-            @Override
-            public void accept(ResourceKey<Recipe<?>> key, Recipe<?> recipe, AdvancementHolder advancement) {
-                final List<LibConditionProvider> recipeConditions = conditions.apply(key.identifier());
-                if (recipeConditions != null && !recipeConditions.isEmpty()) {
-                    FabricDataGenHelper.addConditions(recipe, recipeConditions.stream().map(FabricConditionHelper::unwrap).toArray(ResourceCondition[]::new));
-                }
-
-                output.accept(key, recipe, advancement);
-            }
-
-            @Override
-            public Advancement.Builder advancement() {
-                return output.advancement();
-            }
-
-            @Override
-            public void includeRootAdvancement() {
-                output.includeRootAdvancement();
-            }
-
-            @Override
-            public Identifier getRecipeIdentifier(Identifier identifier) {
-                return output.getRecipeIdentifier(identifier);
-            }
-        };
+    public <T> BootstrapContext<T> conditionalContext(BootstrapContext<T> context, Function<ResourceKey<T>, List<LibConditionProvider>> conditions) {
+        throw new UnsupportedOperationException("Assorted data is generated on NeoForge");
     }
 
     @Override

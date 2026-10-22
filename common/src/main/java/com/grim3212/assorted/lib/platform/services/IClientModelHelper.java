@@ -3,7 +3,6 @@ package com.grim3212.assorted.lib.platform.services;
 import com.grim3212.assorted.lib.client.model.data.IBlockModelData;
 import com.grim3212.assorted.lib.client.model.data.IModelDataBuilder;
 import com.grim3212.assorted.lib.client.model.data.IModelDataKey;
-import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
@@ -47,8 +46,4 @@ public interface IClientModelHelper {
     //  - a block model does not declare its render types (a terrain layer comes per quad from
     //    BakedQuad.MaterialInfo) and a fluid has only the ChunkSectionLayer on its baked FluidModel,
     //    so a caller that must know reads the layer itself.
-
-    RenderType getItemUnlitUnsortedTranslucentRenderType();
-
-    RenderType getItemUnsortedTranslucentRenderType();
 }

@@ -13,15 +13,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Lets an {@link IBlockEffectSupplier} block draw its own hit and break particles, through
- * {@link ClientLevel}'s {@code addBreakingBlockEffect} and {@code addDestroyBlockEffect}.
+ * {@link ClientLevel}'s {@code addBreakingParticles} and {@code addDestroyBlockEffect}.
  */
 @Mixin(ClientLevel.class)
 public abstract class ClientLevelMixin {
 
-    @Inject(method = "addBreakingBlockEffect(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V", at = @At("HEAD"), cancellable = true)
-    private void assortedlib_customHitEffects(BlockPos pos, Direction dir, CallbackInfo ci) {
+    // The particles alone: 26.3 plays the hit sound from the same caller, and that should still play.
+    @Inject(method = "addBreakingParticles(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;Lnet/minecraft/world/level/block/state/BlockState;)V", at = @At("HEAD"), cancellable = true)
+    private void assortedlib_customHitEffects(BlockPos pos, Direction dir, BlockState blockState, CallbackInfo ci) {
         final ClientLevel level = (ClientLevel) (Object) this;
-        BlockState blockState = level.getBlockState(pos);
         if (blockState.getBlock() instanceof IBlockEffectSupplier extraProperties) {
             if (extraProperties.getClientEffects().get().addHitEffects(blockState, level, pos, dir, Minecraft.getInstance().particleEngine)) {
                 ci.cancel();

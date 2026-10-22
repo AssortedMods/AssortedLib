@@ -1,14 +1,21 @@
 package com.grim3212.assorted.lib.client.manual;
 
+import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.manual.ManualSlot;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.item.crafting.display.SlotDisplay;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A region of a station's own container texture and where the items sit on it, so a recipe is drawn
@@ -80,25 +87,44 @@ public record ManualRecipeLayout(Identifier texture, int textureWidth, int textu
 
     /**
      * A slot belonging to the station rather than the recipe, filled from a vanilla
-     * {@link SlotDisplay}: {@code minecraft:any_fuel} or {@code minecraft:tag} both cycle and are
-     * marked as a choice.
+     * {@link SlotDisplay}: {@code minecraft:any_fuel} or {@code minecraft:tag} (a {@code #} tag) both
+     * cycle and are marked as a choice.
      *
      * @param tooltip a translation key added to the slot's tooltip, given the slot's own item name
      *                as {@code %s}. A slot the recipe does not explain itself needs one - the block
      *                doing the work, drawn beside the recipe, otherwise says nothing about what it
      *                is doing there. The wording belongs to whoever wrote the layout.
      */
-    public record Extra(Position position, SlotDisplay display, int count, Optional<String> tooltip) {
+    public record Extra(Position position, Dynamic<?> display, int count, Optional<String> tooltip) {
 
         public static final Codec<Extra> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Position.CODEC.fieldOf("position").forGetter(Extra::position),
-                SlotDisplay.CODEC.fieldOf("display").forGetter(Extra::display),
+                Codec.PASSTHROUGH.fieldOf("display").forGetter(Extra::display),
                 Codec.INT.optionalFieldOf("count", 0).forGetter(Extra::count),
                 Codec.STRING.optionalFieldOf("tooltip").forGetter(Extra::tooltip)
         ).apply(instance, Extra::new));
 
+        /** Each bad display is reported once, not every frame it is drawn. */
+        private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
+
+        /** Decoded when drawn, as a tag display needs the world's tags, which resources load before. */
         public ManualSlot slot() {
-            return ManualSlot.of(this.display, this.count);
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.level == null) {
+                return ManualSlot.of(SlotDisplay.Empty.INSTANCE, this.count);
+            }
+
+            SlotDisplay display = decode(this.display, minecraft.level.registryAccess())
+                    .orElse(SlotDisplay.Empty.INSTANCE);
+            return ManualSlot.of(display, this.count);
+        }
+
+        private static <T> Optional<SlotDisplay> decode(Dynamic<T> display, HolderLookup.Provider registries) {
+            return SlotDisplay.CODEC.parse(RegistryOps.create(display.getOps(), registries), display.getValue()).resultOrPartial(error -> {
+                if (REPORTED.add(error)) {
+                    LibConstants.LOG.error("Failed to read a manual recipe layout's display: {}", error);
+                }
+            });
         }
     }
 }

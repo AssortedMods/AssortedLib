@@ -4,7 +4,6 @@ import com.grim3212.assorted.lib.client.key.IKeyConflictHelper;
 import com.grim3212.assorted.lib.client.key.KeyModifier;
 import com.grim3212.assorted.lib.platform.services.IKeyBindingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -139,8 +138,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
         }
 
         private boolean isKeyModifierActive() {
-            // Screen's static modifier helpers are gone; modifier state is only reachable from the
-            // window itself now.
+            // Screen's static modifier helpers are gone; the keyboard state is read directly.
             return switch (keyModifier) {
                 case CONTROL -> isModifierDown(InputConstants.KEY_LCONTROL, InputConstants.KEY_RCONTROL);
                 case SHIFT -> isModifierDown(InputConstants.KEY_LSHIFT, InputConstants.KEY_RSHIFT);
@@ -149,8 +147,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
         }
 
         private static boolean isModifierDown(final int left, final int right) {
-            final Window window = Minecraft.getInstance().getWindow();
-            return InputConstants.isKeyDown(window, left) || InputConstants.isKeyDown(window, right);
+            return InputConstants.isKeyDown(left) || InputConstants.isKeyDown(right);
         }
 
         @Override

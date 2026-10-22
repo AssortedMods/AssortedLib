@@ -18,12 +18,12 @@ public final class ClientTransformationUtils {
         Vector3fc trans = transformation.translation();
         stack.translate(trans.x(), trans.y(), trans.z());
 
-        stack.mulPose(transformation.leftRotation());
+        stack.rotate(transformation.leftRotation());
 
         Vector3fc scale = transformation.scale();
         stack.scale(scale.x(), scale.y(), scale.z());
 
-        stack.mulPose(transformation.rightRotation());
+        stack.rotate(transformation.rightRotation());
     }
 
 }

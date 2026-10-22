@@ -1,12 +1,11 @@
 package com.grim3212.assorted.lib.mixin.world.level;
 
 import com.grim3212.assorted.lib.spawn.SpawnHabits;
-import net.minecraft.core.Holder;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.biome.Biome;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class NaturalSpawnerSeedMixin {
 
     @Inject(method = "spawnMobsForChunkGeneration", at = @At("TAIL"))
-    private static void assortedlib_seedSpawnHabits(ServerLevelAccessor level, Holder<Biome> biome, ChunkPos chunkPos, RandomSource random, CallbackInfo ci) {
+    private static void assortedlib_seedSpawnHabits(ServerLevelAccessor level, BlockPos sourcePos, ChunkPos chunkPos, RandomSource random, CallbackInfo ci) {
         SpawnHabits.seedChunk(level, chunkPos, random);
     }
 }

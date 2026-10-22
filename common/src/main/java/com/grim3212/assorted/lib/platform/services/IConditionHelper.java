@@ -1,9 +1,10 @@
 package com.grim3212.assorted.lib.platform.services;
 
 import com.grim3212.assorted.lib.core.conditions.LibCondition;
-import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.worldgen.BootstrapContext;
 import com.grim3212.assorted.lib.core.conditions.LibConditionProvider;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -16,14 +17,10 @@ public interface IConditionHelper {
     void init();
 
     /**
-     * Wraps a {@link RecipeOutput} so every recipe written through it carries the conditions
-     * registered for its id. Recipes are serialised by codec, so the output is the only place to
-     * attach them.
-     *
-     * @param conditions the conditions for a recipe id, or null for none. Asked on each accept, so
-     *                   what it reads may still be filled after this call.
+     * Gives every entry registered through a datagen context its load conditions, as recipes, loot and advancements
+     * are registry entries in 26.3. {@code conditions} is asked on each register, so it may be filled in later.
      */
-    RecipeOutput conditionalOutput(RecipeOutput output, Function<Identifier, List<LibConditionProvider>> conditions);
+    <T> BootstrapContext<T> conditionalContext(BootstrapContext<T> context, Function<ResourceKey<T>, List<LibConditionProvider>> conditions);
 
     void register(Identifier name, LibCondition condition);
 

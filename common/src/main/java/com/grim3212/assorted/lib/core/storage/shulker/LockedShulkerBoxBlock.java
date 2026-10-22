@@ -68,7 +68,7 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
     private final StorageTypes<LockedShulkerBoxBlockEntity, LockedMaterialContainer> types;
 
     public LockedShulkerBoxBlock(@Nullable StorageMaterial material, StorageTypes<LockedShulkerBoxBlockEntity, LockedMaterialContainer> types, Block.Properties props) {
-        super(props.dynamicShape().noOcclusion().isSuffocating(CLOSED).isViewBlocking(CLOSED).pushReaction(PushReaction.DESTROY));
+        super(props.dynamicShape().noOcclusion().isSuffocating(CLOSED).pushReaction(PushReaction.POPPED));
         this.material = material;
         this.types = types;
         this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.UP));

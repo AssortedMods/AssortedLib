@@ -10,7 +10,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
@@ -45,6 +44,6 @@ public class FabricWorldGenHelper implements IWorldGenHelper {
         EntityType<?> entityType = type.get();
         BiomeModifications.create(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)).add(ModificationPhase.ADDITIONS,
                 it -> PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)) && biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()),
-                context -> context.getMobSpawnSettings().addSpawn(entityType.getCategory(), new MobSpawnSettings.SpawnerData(entityType, minCount, maxCount), weight.getAsInt()));
+                context -> context.getMobSpawnSettings().addSpawn(entityType, weight.getAsInt(), minCount, maxCount));
     }
 }

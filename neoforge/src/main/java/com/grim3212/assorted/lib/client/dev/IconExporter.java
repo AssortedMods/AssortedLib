@@ -5,18 +5,19 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.grim3212.assorted.lib.LibConstants;
-import com.mojang.blaze3d.GpuFormat;
+import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.blaze3d.ProjectionType;
-import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.buffers.GpuBufferSlice;
-import com.mojang.blaze3d.buffers.GpuFence;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import com.mojang.renderpearl.api.commands.GpuFence;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.CommandEncoder;
-import com.mojang.blaze3d.systems.GpuDevice;
+import com.mojang.renderpearl.api.commands.CommandEncoder;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
@@ -25,6 +26,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.Projection;
 import net.minecraft.client.renderer.ProjectionMatrixBuffer;
 import net.minecraft.client.renderer.SubmitNodeStorage;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -51,6 +53,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -268,17 +272,15 @@ public final class IconExporter {
             final PoseStack pose = new PoseStack();
             pose.translate(this.size / 2.0F, this.size / 2.0F, 0.0F);
             pose.scale(this.size, -this.size, this.size);
-            RenderSystem.outputColorTextureOverride = this.colorView;
-            RenderSystem.outputDepthTextureOverride = this.depthView;
-            try {
-                this.projection.setupOrtho(-1000.0F, 1000.0F, this.size, this.size, true);
-                RenderSystem.setProjectionMatrix(this.projectionBuffer.getBuffer(this.projection), ProjectionType.ORTHOGRAPHIC);
-                this.mc.gameRenderer.lighting().setupFor(flat ? Lighting.Entry.ITEMS_FLAT : Lighting.Entry.ITEMS_3D);
-                this.state.submit(pose, this.submits, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
-                this.mc.gameRenderer.featureRenderDispatcher().renderAllFeatures(this.submits);
-            } finally {
-                RenderSystem.outputColorTextureOverride = null;
-                RenderSystem.outputDepthTextureOverride = null;
+            this.projection.setupOrtho(-1000.0F, 1000.0F, this.size, this.size, true);
+            RenderSystem.setProjectionMatrix(this.projectionBuffer.getBuffer(this.projection), ProjectionType.ORTHOGRAPHIC);
+            this.mc.gameRenderer.lighting().setupFor(flat ? Lighting.Entry.ITEMS_FLAT : Lighting.Entry.ITEMS_3D);
+            this.state.submit(pose, this.submits, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
+            // GuiItemAtlas's way of drawing into a texture of its own: a render pass on its views.
+            try (FeatureRenderDispatcher.PreparedFrame frame = this.mc.gameRenderer.featureRenderDispatcher().prepareFrame(this.submits);
+                 RenderPass renderPass = encoder.createRenderPass(() -> "Icon export", this.colorView, Optional.empty(), this.depthView, OptionalDouble.empty())) {
+                RenderSystem.bindDefaultUniforms(renderPass);
+                FeatureRenderDispatcher.renderAllFeatures(renderPass, frame);
             }
 
             this.readBack(encoder, file);

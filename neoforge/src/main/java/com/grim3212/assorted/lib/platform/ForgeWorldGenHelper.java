@@ -11,7 +11,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.neoforged.neoforge.common.world.BiomeModifier;
@@ -88,7 +87,7 @@ public class ForgeWorldGenHelper implements IWorldGenHelper {
             if (biomeId != null) {
                 spawnAdditions.stream().sorted(FABRIC_SPAWN_ORDER).filter(addition -> addition.biomePredicate().test(biomeId, biome)).forEach(addition -> {
                     EntityType<?> type = addition.type().get();
-                    builder.getMobSpawnSettings().addSpawn(type.getCategory(), addition.weight().getAsInt(), new MobSpawnSettings.SpawnerData(type, addition.minCount(), addition.maxCount()));
+                    builder.getMobSpawnSettings().addSpawn(type, addition.weight().getAsInt(), addition.minCount(), addition.maxCount());
                 });
             }
 

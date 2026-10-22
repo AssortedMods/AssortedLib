@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
@@ -30,7 +31,7 @@ public class QuadBakingVertexConsumer implements VertexConsumer {
     private int tintIndex = -1;
     private Direction direction = Direction.DOWN;
     private TextureAtlasSprite sprite = UnitTextureAtlasSprite.INSTANCE;
-    private boolean shade;
+    private @Nullable Direction shadeDirectionOverride;
     private int lightEmission;
 
     public QuadBakingVertexConsumer(Consumer<BakedQuad> quadConsumer) {
@@ -76,6 +77,11 @@ public class QuadBakingVertexConsumer implements VertexConsumer {
     }
 
     @Override
+    public VertexConsumer setUv3(float u, float v) {
+        return this;
+    }
+
+    @Override
     public VertexConsumer setNormal(float x, float y, float z) {
         return this;
     }
@@ -96,7 +102,7 @@ public class QuadBakingVertexConsumer implements VertexConsumer {
             return;
 
         Material.Baked material = new Material.Baked(sprite, false);
-        BakedQuad.MaterialInfo materialInfo = BakedQuad.MaterialInfo.of(material, sprite.contents().computeTransparency(0.0F, 0.0F, 1.0F, 1.0F), tintIndex, shade, lightEmission);
+        BakedQuad.MaterialInfo materialInfo = BakedQuad.MaterialInfo.of(material, sprite.contents().computeTransparency(0.0F, 0.0F, 1.0F, 1.0F), tintIndex, shadeDirectionOverride, lightEmission);
         quadConsumer.accept(new BakedQuad(positions[0], positions[1], positions[2], positions[3], packedUVs[0], packedUVs[1], packedUVs[2], packedUVs[3], direction, materialInfo));
         vertexIndex = 0;
     }
@@ -114,11 +120,11 @@ public class QuadBakingVertexConsumer implements VertexConsumer {
     }
 
     /**
-     * Whether the renderer applies its diffuse lighting term to this quad. This is what the old
-     * {@code hasAmbientOcclusion} flag ended up as on the quad.
+     * Whether the renderer applies its diffuse lighting term to this quad. 26.3 dropped the flag, so an
+     * unshaded quad is lit as if it faced up, the brightest side.
      */
     public void setShade(boolean shade) {
-        this.shade = shade;
+        this.shadeDirectionOverride = shade ? null : Direction.UP;
     }
 
     public void setLightEmission(int lightEmission) {

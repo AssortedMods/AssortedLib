@@ -2,6 +2,7 @@ package com.grim3212.assorted.lib.util;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
@@ -64,8 +65,9 @@ public class ItemUtil {
                     @SuppressWarnings("deprecation")
                     boolean hasCorrectToolForDrops = player.hasCorrectToolForDrops(blockState);
                     mainHandItem.mineBlock(level, blockState, blockPos, player);
-                    if (flag && hasCorrectToolForDrops) {
-                        block.playerDestroy(level, player, blockPos, blockState, blockEntity, mainHandCopy);
+                    // Drops are server only now, so playerDestroy takes the server's level and player.
+                    if (flag && hasCorrectToolForDrops && level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
+                        block.playerDestroy(serverLevel, serverPlayer, blockPos, blockState, blockEntity, mainHandCopy);
                     }
 
                     return true;

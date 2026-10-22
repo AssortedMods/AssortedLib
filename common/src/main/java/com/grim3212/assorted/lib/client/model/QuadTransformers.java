@@ -87,7 +87,8 @@ public final class QuadTransformers {
                     quad.position0(), quad.position1(), quad.position2(), quad.position3(),
                     quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3(),
                     quad.direction(),
-                    new BakedQuad.MaterialInfo(material.sprite(), material.layer(), material.itemRenderType(), material.tintIndex(), material.shade(), emissivity));
+                    new BakedQuad.MaterialInfo(material.sprite(), material.layer(), material.itemRenderType(), material.itemGlintRenderType(),
+                            material.itemGlintSpecialRenderType(), material.tintIndex(), material.shadeDirectionOverride(), emissivity));
         };
     }
 

@@ -180,6 +180,6 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
     /** {@code AnyFuel} needs the level's fuel values; out of world there is nothing to draw anyway. */
     private static ContextMap contextMap() {
         Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.level != null ? SlotDisplayContext.fromLevel(minecraft.level) : new ContextMap.Builder().create(SlotDisplayContext.CONTEXT);
+        return minecraft.level != null ? SlotDisplayContext.fromLevel(minecraft.level) : ContextMap.builder().buildAndValidate(SlotDisplayContext.CONTEXT);
     }
 }

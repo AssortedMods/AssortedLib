@@ -4,6 +4,7 @@ import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.platform.ForgeWorldGenHelper;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.biome.Biome;
 import net.neoforged.bus.api.IEventBus;
@@ -34,7 +35,7 @@ public class LibForgeWorldGen {
         private static final MapCodec<ForgeBiomeModifier> CODEC = MapCodec.unit(INSTANCE);
 
         @Override
-        public void modify(Holder<Biome> biome, Phase phase, ModifiableBiomeInfo.BiomeInfo.Builder builder) {
+        public void modify(RegistryAccess registries, Holder<Biome> biome, Phase phase, ModifiableBiomeInfo.BiomeInfo.Builder builder) {
             ForgeWorldGenHelper.modifyBiome(biome, phase, builder);
         }
 
