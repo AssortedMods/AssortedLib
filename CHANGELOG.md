@@ -19,6 +19,8 @@ Updated to Minecraft 26.3, for NeoForge and Fabric.
 - `BlockPosUtil` keeps the box shaped block searches `BlockPos` no longer has.
 - On NeoForge the blocks given to `registerFlammable` go in NeoForge's flammable data map, written
   by datagen, so a datapack can change their fire odds.
+- `HandWrittenData#advancement` reads an advancement a mod writes as json by hand back through
+  vanilla's codec, so a format change fails datagen instead of the server.
 
 ## 4.3.0
 

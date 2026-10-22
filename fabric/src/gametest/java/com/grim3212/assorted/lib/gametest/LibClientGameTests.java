@@ -3,6 +3,7 @@ package com.grim3212.assorted.lib.gametest;
 import com.grim3212.assorted.lib.client.util.TooltipHelper;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -26,6 +27,10 @@ public class LibClientGameTests implements FabricClientGameTest {
             tooltipLinesWrapToTheScreen();
             shortTooltipLinesAreLeftAlone();
         });
+
+        try (TestSingleplayerContext world = context.worldBuilder().create()) {
+            ManualClientTests.run(context);
+        }
     }
 
     /** A line too wide to draw is split into several that read as the one line again. */
