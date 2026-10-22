@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.util.ProblemReporter;
@@ -91,6 +92,13 @@ public final class TestSupport {
     public static ServerPlayer survivalPlayer(GameTestHelper helper, ItemStack held) {
         ServerPlayer player = survivalPlayer(helper);
         player.setItemInHand(InteractionHand.MAIN_HAND, held);
+        return player;
+    }
+
+    /** {@link #survivalPlayer(GameTestHelper, ItemStack)} who can be hurt, as a new player is immune to everything until its client says it has loaded. */
+    public static ServerPlayer mortalPlayer(GameTestHelper helper, ItemStack held) {
+        ServerPlayer player = survivalPlayer(helper, held);
+        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return player;
     }
 

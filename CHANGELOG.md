@@ -25,6 +25,10 @@ Updated to Minecraft 26.3, for NeoForge and Fabric.
   only says a recipe is missing when none of its recipes are there.
 - `ClientModelCheck` and `ManualCheck` are client gametest helpers. They find blocks and items that
   draw the missing texture, and manual pages or station slots that would draw nothing.
+- `CommonTests` registers four gametests every mod can share. They check that each recipe is made from
+  its own ingredients, each block drops something, each block entity reads back what it saved, and each
+  item is in a creative tab. `ClientChecks` runs the client checks from a Fabric client gametest, and
+  `TestSupport#mortalPlayer` gives a test player that can be hurt.
 
 ## 4.3.0
 
