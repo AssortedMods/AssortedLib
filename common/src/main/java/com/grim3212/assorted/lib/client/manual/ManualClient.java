@@ -3,6 +3,7 @@ package com.grim3212.assorted.lib.client.manual;
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.client.manual.screen.ManualScreen;
 import com.grim3212.assorted.lib.conditions.DisplayConditions;
+import com.grim3212.assorted.lib.crafting.SyncedRecipes;
 import com.grim3212.assorted.lib.config.LibClientConfig;
 import com.grim3212.assorted.lib.manual.ManualPageRef;
 import com.grim3212.assorted.lib.platform.ClientServices;
@@ -23,6 +24,8 @@ public final class ManualClient {
 
         ClientServices.CLIENT.addReloadListener(ManualLoader.ID, new ManualLoader());
         ClientServices.CLIENT.registerHudElement(ManualHud.ID, ManualHud::extract);
+        // Recipes arrive after the join refresh, and a recipe_exists page waits on them.
+        SyncedRecipes.addUpdateListener(ManualContent::refresh);
     }
 
     /** Both loaders call this when the server sends its data: on join, and on every {@code /reload}. */

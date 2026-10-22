@@ -2,6 +2,7 @@ package com.grim3212.assorted.lib.test;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
+import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
@@ -15,6 +16,9 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -27,13 +31,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-/** What a mod's blocks and items draw as on a real client, where a model file that exists can still fail to bake or name a missing texture. */
+/** What a mod's blocks, items and entities draw as on a real client, where a model file that exists can still fail to bake or name a missing texture. */
 public final class ClientModelCheck {
 
     private ClientModelCheck() {
     }
 
-    /** Every block state and item in the namespace that would draw the missing model or texture; call on the client thread. */
+    /** Every block state, item and entity in the namespace that would draw wrong or not at all; call on the client thread in a world. */
     public static List<String> problems(String namespace) {
         Minecraft client = Minecraft.getInstance();
         List<String> problems = new ArrayList<>();
@@ -71,6 +75,29 @@ public final class ClientModelCheck {
             client.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.GUI, client.level, null, 0);
             if (state.isEmpty() || isMissing(state.pickParticleMaterial(RandomSource.create(0L)))) {
                 problems.add(BuiltInRegistries.ITEM.getKey(item) + " draws the missing texture");
+            }
+        }
+
+        for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+            if (!namespace.equals(BuiltInRegistries.ENTITY_TYPE.getKey(type).getNamespace())) {
+                continue;
+            }
+            String name = BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
+            try {
+                Entity entity = type.create(client.level, EntitySpawnReason.LOAD);
+                if (entity == null) {
+                    continue;
+                }
+                // Never added to the level, so it is given an id of its own the way spawning would.
+                entity.setId(-1000 - BuiltInRegistries.ENTITY_TYPE.getId(type));
+                EntityRenderer<? super Entity, ?> renderer = client.getEntityRenderDispatcher().getRenderer(entity);
+                if (renderer == null) {
+                    problems.add(name + " has no renderer, which crashes the client when one comes into view");
+                } else {
+                    renderer.createRenderState(entity, 0.0F);
+                }
+            } catch (RuntimeException e) {
+                problems.add(name + " threw while being readied to draw: " + e);
             }
         }
 

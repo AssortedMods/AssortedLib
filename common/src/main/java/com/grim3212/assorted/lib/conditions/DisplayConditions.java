@@ -83,6 +83,7 @@ public final class DisplayConditions {
         register(id("all_of"), AllOf.CODEC);
         register(id("any_of"), AnyOf.CODEC);
         register(id("not"), Not.CODEC);
+        register(id("recipe_exists"), RecipeExists.CODEC);
     }
 
     private static Identifier id(String name) {

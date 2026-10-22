@@ -2,6 +2,7 @@ package com.grim3212.assorted.lib.data;
 
 import com.grim3212.assorted.lib.client.manual.ManualChapter;
 import com.grim3212.assorted.lib.conditions.DisplayCondition;
+import com.grim3212.assorted.lib.conditions.RecipeExists;
 import com.grim3212.assorted.lib.conditions.DisplayConditions;
 import com.grim3212.assorted.lib.conditions.LibParts;
 import com.grim3212.assorted.lib.conditions.PartToggles;
@@ -278,6 +279,15 @@ public abstract class LibManualProvider implements DataProvider {
                 ids[i] = recipeIdOf(results[i]);
             }
             return this.recipesById(page, ids);
+        }
+
+        /** {@link #recipes} for recipes another mod's ingredient turns on: the page is left out while none of them are loaded. */
+        public PageBuilder optionalRecipes(String page, ItemLike... results) {
+            List<ResourceKey<Recipe<?>>> keys = new ArrayList<>();
+            for (ItemLike result : results) {
+                keys.add(ResourceKey.create(Registries.RECIPE, recipeIdOf(result)));
+            }
+            return this.recipes(page, results).when(new RecipeExists(List.copyOf(keys)));
         }
 
         /** The same, for a recipe named by something other than its result. */

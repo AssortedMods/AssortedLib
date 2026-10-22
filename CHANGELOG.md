@@ -28,7 +28,12 @@ Updated to Minecraft 26.3, for NeoForge and Fabric.
 - `CommonTests` registers four gametests every mod can share. They check that each recipe is made from
   its own ingredients, each block drops something, each block entity reads back what it saved, and each
   item is in a creative tab. `ClientChecks` runs the client checks from a Fabric client gametest, and
-  `TestSupport#mortalPlayer` gives a test player that can be hurt.
+  `TestSupport#mortalPlayer` gives a test player that can be hurt. `ClientModelCheck` also readies every
+  entity's renderer, and `CommonTests#upgradesThatLoseTheirData` checks that storage upgrade recipes keep
+  what the upgraded item held.
+- The `assortedlib:recipe_exists` display condition hides a manual page until one of its recipes is
+  loaded, and `ChapterBuilder#optionalRecipes` adds a recipe page with it, for recipes another mod's
+  ingredient turns on. The manual checks its conditions again once recipes reach the client.
 
 ## 4.3.0
 
