@@ -1,26 +1,18 @@
 package com.grim3212.assorted.lib.gametest;
 
 import com.google.gson.JsonParser;
-import com.grim3212.assorted.lib.client.manual.ManualChapter;
-import com.grim3212.assorted.lib.client.manual.ManualContent;
-import com.grim3212.assorted.lib.client.manual.ManualPageEntry;
 import com.grim3212.assorted.lib.client.manual.ManualRecipeLayout;
-import com.grim3212.assorted.lib.manual.ManualSection;
-import com.grim3212.assorted.lib.client.manual.page.RecipePage;
 import com.grim3212.assorted.lib.client.manual.screen.ManualScreen;
 import com.grim3212.assorted.lib.client.manual.screen.ManualView;
-import com.grim3212.assorted.lib.crafting.SyncedRecipes;
+import com.grim3212.assorted.lib.test.ManualCheck;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 
 import java.lang.reflect.Field;
@@ -43,42 +35,14 @@ final class ManualClientTests {
         clicksFindTheirWayThroughTheBook(context);
     }
 
-    /** What would draw as "recipe missing" or "undrawable": an absent recipe, or a type with no layout. */
+    /** What would draw as "recipe missing" or "undrawable", or a station slot showing nothing. */
     private static void everyRecipePageCanBeDrawn(ClientGameTestContext context) {
         // Recipes reach the client a moment after the world opens.
-        context.waitFor(client -> SyncedRecipes.byKey(firstRecipe()) != null, 200);
-
-        context.runOnClient(client -> {
-            for (ManualSection section : ManualContent.get().sections()) {
-                for (ManualChapter chapter : ManualContent.get().chaptersOf(section.modId())) {
-                    for (ManualPageEntry entry : chapter.pages()) {
-                        if (!(entry.page() instanceof RecipePage page)) {
-                            continue;
-                        }
-                        for (ResourceKey<Recipe<?>> key : page.recipes()) {
-                            RecipeHolder<?> holder = SyncedRecipes.byKey(key);
-                            if (holder == null) {
-                                throw new AssertionError(chapter.section() + ":" + chapter.id() + " names recipe " + key.identifier() + ", which never reached the client");
-                            }
-                            if (ManualContent.get().layoutFor(holder.value()) == null) {
-                                throw new AssertionError("recipe " + key.identifier() + " has no manual layout for its type");
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    private static ResourceKey<Recipe<?>> firstRecipe() {
-        return ManualContent.get().sections().stream()
-                .flatMap(section -> ManualContent.get().chaptersOf(section.modId()).stream())
-                .flatMap(chapter -> chapter.pages().stream())
-                .map(ManualPageEntry::page)
-                .filter(RecipePage.class::isInstance)
-                .flatMap(page -> ((RecipePage) page).recipes().stream())
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("the manual has no recipe page to check"));
+        context.waitFor(client -> ManualCheck.recipesHaveSynced(), 200);
+        List<String> problems = context.computeOnClient(client -> ManualCheck.problems());
+        if (!problems.isEmpty()) {
+            throw new AssertionError("the manual has problems:\n  " + String.join("\n  ", problems));
+        }
     }
 
     /** A {@code #} tag can only be read once a world's tags are bound, which is after resources load. */

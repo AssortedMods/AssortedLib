@@ -1,6 +1,8 @@
 package com.grim3212.assorted.lib.gametest;
 
+import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.client.util.TooltipHelper;
+import com.grim3212.assorted.lib.test.ClientModelCheck;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -30,6 +32,10 @@ public class LibClientGameTests implements FabricClientGameTest {
 
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             ManualClientTests.run(context);
+            List<String> models = context.computeOnClient(client -> ClientModelCheck.problems(LibConstants.MOD_ID));
+            if (!models.isEmpty()) {
+                throw new AssertionError("Lib's own art does not draw:\n  " + String.join("\n  ", models));
+            }
         }
     }
 

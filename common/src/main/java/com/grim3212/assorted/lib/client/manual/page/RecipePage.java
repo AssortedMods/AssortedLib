@@ -59,7 +59,10 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
             return;
         }
 
-        ResourceKey<Recipe<?>> key = this.recipes.get(this.cycle(animationTick, this.recipes.size()));
+        // A recipe an optional mod adds is absent without it, and the page shows the rest rather than an error.
+        List<ResourceKey<Recipe<?>>> present = this.recipes.stream().filter(recipe -> SyncedRecipes.byKey(recipe) != null).toList();
+        List<ResourceKey<Recipe<?>>> shown = present.isEmpty() ? this.recipes : present;
+        ResourceKey<Recipe<?>> key = shown.get(this.cycle(animationTick, shown.size()));
         RecipeHolder<?> holder = SyncedRecipes.byKey(key);
         if (holder == null) {
             this.text.ifPresent(body -> view.text(body, 0));

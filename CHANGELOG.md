@@ -21,6 +21,10 @@ Updated to Minecraft 26.3, for NeoForge and Fabric.
   by datagen, so a datapack can change their fire odds.
 - `HandWrittenData#advancement` reads an advancement a mod writes as json by hand back through
   vanilla's codec, so a format change fails datagen instead of the server.
+- A manual recipe page skips the recipes that are not loaded, such as ones an optional mod adds, and
+  only says a recipe is missing when none of its recipes are there.
+- `ClientModelCheck` and `ManualCheck` are client gametest helpers. They find blocks and items that
+  draw the missing texture, and manual pages or station slots that would draw nothing.
 
 ## 4.3.0
 
