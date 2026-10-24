@@ -115,7 +115,8 @@ public final class MovedIds {
         JsonObject moved = new JsonObject();
         for (Map.Entry<String, JsonElement> entry : saved.getAsJsonObject().entrySet()) {
             Identifier id = Identifier.tryParse(entry.getKey());
-            if (id == null) {
+            // Only ids a mod moved or renamed criteria of are touched; Iris lets "DataVersion" parse as an id.
+            if (id == null || !moved(id.getNamespace()) && !CRITERIA.containsKey(id)) {
                 moved.add(entry.getKey(), entry.getValue());
                 continue;
             }

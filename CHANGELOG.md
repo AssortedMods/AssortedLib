@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.1
+
+- Fixed players getting kicked with Invalid player data when Iris is installed
+
 ## 5.0.0
 
 Updated to Minecraft 26.3, for NeoForge and Fabric.
