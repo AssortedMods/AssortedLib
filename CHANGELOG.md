@@ -1,5 +1,18 @@
 # Changelog
 
+## 5.0.2
+
+- Fixed sorting mods such as ClientSort and Inventory Profiles Next not sorting storage menus, like
+  the Assorted Chests ones. Every slot of a storage now shares one vanilla container, apart from
+  lock slots, which keep one of their own so sorting never moves the lock
+- Storage and lock slots can always be emptied, as vanilla slots can. ClientSort gave up on any
+  storage with an empty slot in it
+- Locked ender inventories accept items on the client, as vanilla ones do, so sorting mods use their
+  empty slots too
+- Fixed locked ender chest lids sometimes staying open
+- `StorageHandlerContainer#separate` gives other slots that sorting should leave alone, like
+  upgrades, a container of their own
+
 ## 5.0.1
 
 - Fixed players getting kicked with Invalid player data when Iris is installed

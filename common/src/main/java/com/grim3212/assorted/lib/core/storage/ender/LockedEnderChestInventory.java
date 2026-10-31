@@ -61,11 +61,16 @@ public class LockedEnderChestInventory extends LockedItemStackStorageHandler {
         return true;
     }
 
+    // Only the server counts openers and sends the lids the count, as vanilla chests do; counting on the
+    // client too, where one stand-in inventory lists every locked ender chest, could leave a lid open.
     @Override
     public void startOpen(Player player) {
-        if (!player.isSpectator()) {
+        if (!player.isSpectator() && !player.level().isClientSide()) {
             lockedEnderChests.forEach(x -> {
                 BaseStorageBlockEntity linked = x.get();
+                if (linked == null || linked.isRemoved()) {
+                    return;
+                }
                 if (linked.numPlayersUsing < 0) {
                     linked.numPlayersUsing = 0;
                 }
@@ -78,9 +83,12 @@ public class LockedEnderChestInventory extends LockedItemStackStorageHandler {
 
     @Override
     public void stopOpen(Player player) {
-        if (!player.isSpectator()) {
+        if (!player.isSpectator() && !player.level().isClientSide()) {
             lockedEnderChests.forEach(x -> {
                 BaseStorageBlockEntity linked = x.get();
+                if (linked == null || linked.isRemoved()) {
+                    return;
+                }
                 --linked.numPlayersUsing;
                 linked.onOpenOrClose();
             });
