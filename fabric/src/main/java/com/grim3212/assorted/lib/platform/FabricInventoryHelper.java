@@ -7,13 +7,11 @@ import com.grim3212.assorted.lib.core.inventory.IPlatformInventoryStorageHandler
 import com.grim3212.assorted.lib.inventory.FabricPlatformInventoryStorageHandlerSided;
 import com.grim3212.assorted.lib.inventory.FabricPlatformInventoryStorageHandlerUnsided;
 import com.grim3212.assorted.lib.inventory.FabricWrappedItemHandler;
-import com.grim3212.assorted.lib.inventory.FabricWrappedStorageHandler;
 import com.grim3212.assorted.lib.platform.services.IInventoryHelper;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.SlottedStorage;
 import net.minecraft.core.Direction;
-import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
@@ -83,10 +81,5 @@ public class FabricInventoryHelper implements IInventoryHelper {
     @Override
     public IPlatformInventoryStorageHandler createSidedStorageInventoryHandler(Function<Direction, IItemStorageHandler> handler) {
         return new FabricPlatformInventoryStorageHandlerSided(handler);
-    }
-
-    @Override
-    public Container wrapStorageHandler(IItemStorageHandler handler) {
-        return new FabricWrappedStorageHandler(handler);
     }
 }

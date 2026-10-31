@@ -3,7 +3,6 @@ package com.grim3212.assorted.lib.platform.services;
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
 import com.grim3212.assorted.lib.core.inventory.IPlatformInventoryStorageHandler;
 import net.minecraft.core.Direction;
-import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +24,4 @@ public interface IInventoryHelper {
     IPlatformInventoryStorageHandler createStorageInventoryHandler(IItemStorageHandler handler);
 
     IPlatformInventoryStorageHandler createSidedStorageInventoryHandler(Function<Direction, IItemStorageHandler> handler);
-
-    Container wrapStorageHandler(IItemStorageHandler handler);
 }

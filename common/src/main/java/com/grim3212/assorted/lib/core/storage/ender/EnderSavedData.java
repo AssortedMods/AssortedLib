@@ -45,17 +45,14 @@ public class EnderSavedData extends SavedData implements IEnderData {
         });
     }
 
+    // The client's stand-in, which only mirrors what the server sends. It accepts any item, as a vanilla
+    // client container does, since sorting mods skip the empty slots of one that refuses them.
     private static final EnderSavedData DUMMY_SAVE = new EnderSavedData() {
         private final LockedEnderChestInventory inv = new LockedEnderChestInventory(this, "", INVENTORY_SIZE) {
             @NotNull
             @Override
             public ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
                 return stack;
-            }
-
-            @Override
-            public boolean isItemValid(int slot, @NotNull ItemStack stack) {
-                return false;
             }
         };
 

@@ -1,8 +1,9 @@
 package com.grim3212.assorted.lib.core.inventory.slot;
 
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
+import com.grim3212.assorted.lib.core.inventory.impl.StorageHandlerContainer;
 import com.grim3212.assorted.lib.core.inventory.locking.LockedStorageHandler;
-import com.grim3212.assorted.lib.platform.Services;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -12,14 +13,20 @@ public class SlotStorageHandler extends Slot {
     private final IItemStorageHandler itemHandler;
 
     public SlotStorageHandler(IItemStorageHandler itemHandler, int slotIndex, int xPosition, int yPosition) {
-        super(Services.INVENTORY.wrapStorageHandler(itemHandler), slotIndex, xPosition, yPosition);
+        this(StorageHandlerContainer.of(itemHandler), itemHandler, slotIndex, xPosition, yPosition);
+    }
+
+    /** A slot over a given view of the handler, such as {@link StorageHandlerContainer#separate}. */
+    protected SlotStorageHandler(Container container, IItemStorageHandler itemHandler, int slotIndex, int xPosition, int yPosition) {
+        super(container, slotIndex, xPosition, yPosition);
         this.itemHandler = itemHandler;
     }
 
     @Override
     public boolean mayPlace(@NotNull ItemStack stack) {
+        // Like a vanilla slot, emptying it is always allowed; sorting mods check that before each move.
         if (stack.isEmpty())
-            return false;
+            return true;
         return itemHandler.isItemValid(getContainerSlot(), stack);
     }
 
