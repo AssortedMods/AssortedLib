@@ -22,10 +22,15 @@ public final class TooltipHelper {
 
     /**
      * Splits a tooltip line: a tooltip draws one line per {@link Component}, and NeoForge only
-     * splits one that runs off the screen.
+     * splits one that runs off the screen. Off the render thread the line comes back whole.
      */
     public static List<Component> wrap(Component line) {
         Minecraft minecraft = Minecraft.getInstance();
+        // The creative search builds tooltips on a worker thread, and measuring can bake glyphs, which only the render thread may do.
+        if (!minecraft.isSameThread()) {
+            return List.of(line);
+        }
+
         int width = Math.max(minecraft.getWindow().getGuiScaledWidth() / 2, MIN_WRAP_WIDTH);
         List<FormattedText> split = minecraft.font.getSplitter().splitLines(line, width, Style.EMPTY);
         if (split.size() <= 1) {
