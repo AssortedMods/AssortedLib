@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.3
+
+- Fixed the creative inventory search not working when a mod with item descriptions is installed
+
 ## 5.0.2
 
 - Fixed sorting mods such as ClientSort and Inventory Profiles Next not sorting storage menus, like

@@ -2,17 +2,23 @@ package com.grim3212.assorted.lib.gametest;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.client.util.TooltipHelper;
+import com.grim3212.assorted.lib.core.item.ItemDescription;
 import com.grim3212.assorted.lib.test.ClientModelCheck;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.TooltipFlag;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The client half of the library. Run with {@code ./gradlew :fabric:runClientGameTest}; it exits
@@ -21,9 +27,13 @@ import java.util.Optional;
 public class LibClientGameTests implements FabricClientGameTest {
 
     private static final String LONG_LINE = "A fragment of a powerful tool from an ancient civilization";
+    // Runes nothing else draws, so the font still has to bake their glyphs.
+    private static final String UNDRAWN_LINE = "ᚠᚢᚦᚨᚱᚲ ᚷᚹᚺᚾᛁᛃ ᛇᛈᛉᛊᛏᛒ ᛖᛗᛚᛜᛞᛟ";
 
     @Override
     public void runTest(ClientGameTestContext context) {
+        descriptionsBuildOffTheRenderThread();
+
         // No world: the font and the window are all any of this needs.
         context.runOnClient(client -> {
             tooltipLinesWrapToTheScreen();
@@ -60,6 +70,21 @@ public class LibClientGameTests implements FabricClientGameTest {
                 }
                 return Optional.empty();
             }, Style.EMPTY);
+        }
+    }
+
+    /** The creative search builds every tooltip on a worker thread, where the font can not bake glyphs. */
+    private static void descriptionsBuildOffTheRenderThread() {
+        ItemDescription description = new ItemDescription(Component.literal(UNDRAWN_LINE));
+        List<Component> lines = CompletableFuture.supplyAsync(() -> {
+            List<Component> built = new ArrayList<>();
+            description.addToTooltip(Item.TooltipContext.EMPTY, built::add, TooltipFlag.NORMAL, DataComponentMap.EMPTY);
+            return built;
+        }).join();
+
+        String text = String.join(" ", lines.stream().map(Component::getString).toList());
+        if (!text.equals(UNDRAWN_LINE)) {
+            throw new AssertionError("a description built off the render thread reads as \"" + text + "\"");
         }
     }
 
