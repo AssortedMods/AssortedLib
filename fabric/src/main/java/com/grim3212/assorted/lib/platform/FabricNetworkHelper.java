@@ -76,7 +76,9 @@ public class FabricNetworkHelper implements INetworkHelper {
         if (world instanceof ServerLevel serverLevel) {
             final Registration<MSG> registration = registrationFor(toSend);
             final LibPayload<MSG> payload = new LibPayload<>(registration.type(), toSend);
-            PlayerLookup.around(serverLevel, pos, 64.0D).forEach(p -> ServerPlayNetworking.send(p, payload));
+            PlayerLookup.around(serverLevel, pos, 64.0D).stream()
+                    .filter(p -> ServerPlayNetworking.canSend(p, registration.type()))
+                    .forEach(p -> ServerPlayNetworking.send(p, payload));
         }
     }
 
@@ -88,7 +90,10 @@ public class FabricNetworkHelper implements INetworkHelper {
     @Override
     public <MSG> void sendTo(Player player, MSG toSend) {
         final Registration<MSG> registration = registrationFor(toSend);
-        ServerPlayNetworking.send((ServerPlayer) player, new LibPayload<>(registration.type(), toSend));
+        // A player without the channel, such as a gametest's mock player, is skipped as NeoForge's side does.
+        if (ServerPlayNetworking.canSend((ServerPlayer) player, registration.type())) {
+            ServerPlayNetworking.send((ServerPlayer) player, new LibPayload<>(registration.type(), toSend));
+        }
     }
 
     @Override

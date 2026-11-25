@@ -48,7 +48,16 @@ public class ForgeNetworkHelper implements INetworkHelper {
     @Override
     public <MSG> void sendToNearby(Level world, BlockPos pos, MSG toSend) {
         if (world instanceof ServerLevel serverLevel) {
-            PacketDistributor.sendToPlayersNear(serverLevel, null, pos.getX(), pos.getY(), pos.getZ(), 64, payload(toSend));
+            // PacketDistributor.sendToPlayersNear throws on the first player whose connection lacks the
+            // channel ("may not be sent to the client"), such as a gametest's mock player, so the players
+            // in range are picked here, as vanilla's broadcast picks them, and checked one by one.
+            final LibPayload<MSG> payload = payload(toSend);
+            final double rangeSqr = 64.0D * 64.0D;
+            for (ServerPlayer player : serverLevel.players()) {
+                if (player.distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) < rangeSqr && player.connection.hasChannel(payload)) {
+                    PacketDistributor.sendToPlayer(player, payload);
+                }
+            }
         }
     }
 
@@ -59,7 +68,11 @@ public class ForgeNetworkHelper implements INetworkHelper {
 
     @Override
     public <MSG> void sendTo(Player player, MSG toSend) {
-        PacketDistributor.sendToPlayer((ServerPlayer) player, payload(toSend));
+        final LibPayload<MSG> payload = payload(toSend);
+        final ServerPlayer serverPlayer = (ServerPlayer) player;
+        if (serverPlayer.connection.hasChannel(payload)) {
+            PacketDistributor.sendToPlayer(serverPlayer, payload);
+        }
     }
 
     @Override

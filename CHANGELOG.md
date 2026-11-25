@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.0.4
+
+- Fixed a server error when a mod sent a packet to a player that cannot receive it, such as a fake
+  player from another mod
+
 ## 5.0.3
 
 - Fixed the creative inventory search not working when a mod with item descriptions is installed
