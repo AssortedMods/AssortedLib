@@ -1,26 +1,17 @@
 package com.grim3212.assorted.lib.test;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.BlockStateModelSet;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
-import net.minecraft.client.renderer.item.MissingItemModel;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
@@ -41,8 +32,8 @@ public final class ClientModelCheck {
     public static List<String> problems(String namespace) {
         Minecraft client = Minecraft.getInstance();
         List<String> problems = new ArrayList<>();
+        BakedModel missing = client.getModelManager().getMissingModel();
 
-        BlockStateModelSet models = client.getModelManager().getBlockStateModelSet();
         for (Block block : BuiltInRegistries.BLOCK) {
             if (!namespace.equals(BuiltInRegistries.BLOCK.getKey(block).getNamespace())) {
                 continue;
@@ -52,10 +43,10 @@ public final class ClientModelCheck {
                 if (state.getRenderShape() != RenderShape.MODEL) {
                     continue;
                 }
-                BlockStateModel model = models.get(state);
-                if (model == models.missingModel()) {
+                BakedModel model = client.getBlockRenderer().getBlockModelShaper().getBlockModel(state);
+                if (model == missing) {
                     problems.add(state + " has no model");
-                } else if (isMissing(model.particleMaterial()) || drawsMissingTexture(model)) {
+                } else if (isMissing(particle(model)) || drawsMissingTexture(model, state)) {
                     problems.add(state + " draws the missing texture");
                 }
             }
@@ -66,14 +57,11 @@ public final class ClientModelCheck {
                 continue;
             }
             ItemStack stack = new ItemStack(item);
-            Identifier modelId = stack.get(DataComponents.ITEM_MODEL);
-            if (modelId == null || client.getModelManager().getItemModel(modelId) instanceof MissingItemModel) {
+            // Resolves the stack's overrides, so an item drawn from its components is checked as it draws.
+            BakedModel model = client.getItemRenderer().getModel(stack, client.level, null, 0);
+            if (model == missing) {
                 problems.add(BuiltInRegistries.ITEM.getKey(item) + " has no item model");
-                continue;
-            }
-            ItemStackRenderState state = new ItemStackRenderState();
-            client.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.GUI, client.level, null, 0);
-            if (state.isEmpty() || isMissing(state.pickParticleMaterial(RandomSource.create(0L)))) {
+            } else if (isMissing(particle(model))) {
                 problems.add(BuiltInRegistries.ITEM.getKey(item) + " draws the missing texture");
             }
         }
@@ -84,17 +72,15 @@ public final class ClientModelCheck {
             }
             String name = BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
             try {
-                Entity entity = type.create(client.level, EntitySpawnReason.LOAD);
+                Entity entity = type.create(client.level);
                 if (entity == null) {
                     continue;
                 }
-                // Never added to the level, so it is given an id of its own the way spawning would.
-                entity.setId(-1000 - BuiltInRegistries.ENTITY_TYPE.getId(type));
-                EntityRenderer<? super Entity, ?> renderer = client.getEntityRenderDispatcher().getRenderer(entity);
+                EntityRenderer<? super Entity> renderer = client.getEntityRenderDispatcher().getRenderer(entity);
                 if (renderer == null) {
                     problems.add(name + " has no renderer, which crashes the client when one comes into view");
                 } else {
-                    renderer.createRenderState(entity, 0.0F);
+                    renderer.getTextureLocation(entity);
                 }
             } catch (RuntimeException e) {
                 problems.add(name + " threw while being readied to draw: " + e);
@@ -104,22 +90,24 @@ public final class ClientModelCheck {
         return problems;
     }
 
-    private static boolean drawsMissingTexture(BlockStateModel model) {
-        List<BlockStateModelPart> parts = new ArrayList<>();
-        model.collectParts(RandomSource.create(0L), parts);
-        // A null direction is the quads that are never culled.
-        List<Direction> sides = Stream.concat(Arrays.stream(Direction.values()), Stream.of((Direction) null)).toList();
-        return parts.stream().anyMatch(part -> sides.stream()
-                .flatMap(side -> part.getQuads(side).stream())
-                .map(BakedQuad::materialInfo)
-                .anyMatch(info -> isMissing(info.sprite())));
+    // NeoForge deprecates the vanilla overload for its ModelData one, which the vanilla jar this module builds against lacks.
+    @SuppressWarnings("deprecation")
+    private static TextureAtlasSprite particle(BakedModel model) {
+        return model.getParticleIcon();
     }
 
-    private static boolean isMissing(Material.Baked material) {
-        return material == null || isMissing(material.sprite());
+    // As above: NeoForge's getQuads overload takes ModelData and a RenderType, neither of which exists in the vanilla jar.
+    @SuppressWarnings("deprecation")
+    private static boolean drawsMissingTexture(BakedModel model, BlockState state) {
+        // A null direction is the quads that are never culled.
+        List<Direction> sides = Stream.concat(Arrays.stream(Direction.values()), Stream.of((Direction) null)).toList();
+        return sides.stream()
+                .flatMap(side -> model.getQuads(state, side, RandomSource.create(0L)).stream())
+                .map(BakedQuad::getSprite)
+                .anyMatch(ClientModelCheck::isMissing);
     }
 
     private static boolean isMissing(TextureAtlasSprite sprite) {
-        return MissingTextureAtlasSprite.getLocation().equals(sprite.contents().name());
+        return sprite == null || MissingTextureAtlasSprite.getLocation().equals(sprite.contents().name());
     }
 }

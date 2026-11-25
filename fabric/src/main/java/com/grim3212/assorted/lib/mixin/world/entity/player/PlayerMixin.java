@@ -6,7 +6,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,9 +18,7 @@ public class PlayerMixin {
             target = "Lnet/minecraft/world/entity/player/Player;getItemInHand(Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/item/ItemStack;",
             ordinal = 0),
             cancellable = true)
-    // interactOn gained a Vec3 hit location in 26.2. An @Inject handler must mirror the
-    // target's full parameter list, so it is taken here even though the event does not use it.
-    private void assortedlib_entityInteract(Entity entity, InteractionHand interactionHand, Vec3 hitLocation, CallbackInfoReturnable<InteractionResult> cir) {
+    private void assortedlib_entityInteract(Entity entity, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir) {
         final EntityInteractEvent event = new EntityInteractEvent((Player) (Object) this, interactionHand, entity);
         Services.EVENTS.handleEvents(event);
 

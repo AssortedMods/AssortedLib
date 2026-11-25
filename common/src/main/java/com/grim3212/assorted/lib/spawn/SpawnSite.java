@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.spawn;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.util.RandomSource;
 import org.jetbrains.annotations.Nullable;
@@ -14,9 +14,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface SpawnSite {
 
-    Codec<SpawnSite> CODEC = Identifier.CODEC.dispatch("type", SpawnSite::type, SpawnSites::codec);
+    Codec<SpawnSite> CODEC = ResourceLocation.CODEC.dispatch("type", SpawnSite::type, SpawnSites::codec);
 
-    Identifier type();
+    ResourceLocation type();
 
     /** False for a site that reads beyond the generating chunk, which a worldgen thread may not: no seeding for it. */
     default boolean seedsAtGeneration() {

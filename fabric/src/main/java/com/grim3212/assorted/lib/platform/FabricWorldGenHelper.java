@@ -8,8 +8,9 @@ import net.fabricmc.fabric.api.biome.v1.ModificationPhase;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
@@ -23,15 +24,15 @@ public class FabricWorldGenHelper implements IWorldGenHelper {
     private static final AtomicInteger REMOVALS = new AtomicInteger();
 
     @Override
-    public void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier placedFeatureIdentifier) {
-        BiomeModifications.addFeature(it -> PartToggles.isEnabled(placedFeatureIdentifier) && biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()), step, ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier));
+    public void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, ResourceLocation placedFeatureIdentifier) {
+        BiomeModifications.addFeature(it -> PartToggles.isEnabled(placedFeatureIdentifier) && biomePredicate.test(it.getBiomeKey().location(), it.getBiomeRegistryEntry()), step, ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier));
     }
 
     @Override
-    public void removeFeatureFromBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier placedFeatureIdentifier) {
+    public void removeFeatureFromBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, ResourceLocation placedFeatureIdentifier) {
         ResourceKey<PlacedFeature> key = ResourceKey.create(Registries.PLACED_FEATURE, placedFeatureIdentifier);
-        Identifier name = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "remove_" + REMOVALS.getAndIncrement() + "_" + placedFeatureIdentifier.getNamespace() + "_" + placedFeatureIdentifier.getPath().replace('/', '_'));
-        BiomeModifications.create(name).add(ModificationPhase.REMOVALS, it -> biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()), context -> context.getGenerationSettings().removeFeature(step, key));
+        ResourceLocation name = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "remove_" + REMOVALS.getAndIncrement() + "_" + placedFeatureIdentifier.getNamespace() + "_" + placedFeatureIdentifier.getPath().replace('/', '_'));
+        BiomeModifications.create(name).add(ModificationPhase.REMOVALS, it -> biomePredicate.test(it.getBiomeKey().location(), it.getBiomeRegistryEntry()), context -> context.getGenerationSettings().removeFeature(step, key));
     }
 
     /**
@@ -43,7 +44,7 @@ public class FabricWorldGenHelper implements IWorldGenHelper {
     public void addSpawnToBiomes(BiomePredicate biomePredicate, Supplier<? extends EntityType<?>> type, IntSupplier weight, int minCount, int maxCount) {
         EntityType<?> entityType = type.get();
         BiomeModifications.create(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)).add(ModificationPhase.ADDITIONS,
-                it -> PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)) && biomePredicate.test(it.getBiomeKey().identifier(), it.getBiomeHolder()),
-                context -> context.getMobSpawnSettings().addSpawn(entityType, weight.getAsInt(), minCount, maxCount));
+                it -> PartToggles.isEnabled(BuiltInRegistries.ENTITY_TYPE.getKey(entityType)) && biomePredicate.test(it.getBiomeKey().location(), it.getBiomeRegistryEntry()),
+                context -> context.getSpawnSettings().addSpawn(entityType.getCategory(), new MobSpawnSettings.SpawnerData(entityType, weight.getAsInt(), minCount, maxCount)));
     }
 }

@@ -41,7 +41,7 @@ public class TransformationUtils {
             if (json.isJsonPrimitive() && json.getAsJsonPrimitive().isString()) {
                 String transform = json.getAsString();
                 if (transform.equals("identity")) {
-                    return Transformation.IDENTITY;
+                    return Transformation.identity();
                 } else {
                     throw new JsonParseException("TRSR: unknown default string: " + transform);
                 }

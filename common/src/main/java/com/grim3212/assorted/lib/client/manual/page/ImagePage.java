@@ -5,9 +5,8 @@ import com.grim3212.assorted.lib.client.manual.ManualPageView;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 
@@ -17,11 +16,11 @@ import java.util.Optional;
  * @param image full texture path, such as {@code mymod:textures/gui/manual/kiln.png}
  * @param width the texture's own size, which cannot be asked for at this point
  */
-public record ImagePage(Optional<Component> title, Identifier image, int width, int height, Optional<Component> text) implements ManualPage {
+public record ImagePage(Optional<Component> title, ResourceLocation image, int width, int height, Optional<Component> text) implements ManualPage {
 
     public static final MapCodec<ImagePage> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             ManualTextCodecs.TRANSLATABLE.optionalFieldOf("title").forGetter(ImagePage::title),
-            Identifier.CODEC.fieldOf("image").forGetter(ImagePage::image),
+            ResourceLocation.CODEC.fieldOf("image").forGetter(ImagePage::image),
             Codec.INT.fieldOf("width").forGetter(ImagePage::width),
             Codec.INT.fieldOf("height").forGetter(ImagePage::height),
             ManualTextCodecs.TRANSLATABLE.optionalFieldOf("text").forGetter(ImagePage::text)
@@ -39,8 +38,8 @@ public record ImagePage(Optional<Component> title, Identifier image, int width, 
         int x = (view.width() - drawWidth) / 2;
 
         // The overload taking a destination and a source size scales; the shorter one crops.
-        view.graphics().blit(RenderPipelines.GUI_TEXTURED, this.image, view.absoluteX(x), view.absoluteY(0),
-                0.0F, 0.0F, drawWidth, drawHeight, this.width, this.height, this.width, this.height);
+        view.graphics().blit(this.image, view.absoluteX(x), view.absoluteY(0), drawWidth, drawHeight,
+                0.0F, 0.0F, this.width, this.height, this.width, this.height);
 
         this.text.ifPresent(body -> view.text(body, drawHeight + 6, view.height() - drawHeight - 6));
     }

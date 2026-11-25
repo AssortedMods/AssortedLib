@@ -15,8 +15,7 @@
   "c:is_cave": [
     "minecraft:deep_dark",
     "minecraft:dripstone_caves",
-    "minecraft:lush_caves",
-    "minecraft:sulfur_caves"
+    "minecraft:lush_caves"
   ],
   "c:is_cold": [
     "minecraft:cold_ocean",
@@ -82,8 +81,7 @@
     "minecraft:jungle",
     "minecraft:mangrove_swamp",
     "minecraft:old_growth_birch_forest",
-    "minecraft:old_growth_spruce_taiga",
-    "minecraft:pale_garden"
+    "minecraft:old_growth_spruce_taiga"
   ],
   "c:is_dense_vegetation/end": [],
   "c:is_dense_vegetation/nether": [],
@@ -93,8 +91,7 @@
     "minecraft:jungle",
     "minecraft:mangrove_swamp",
     "minecraft:old_growth_birch_forest",
-    "minecraft:old_growth_spruce_taiga",
-    "minecraft:pale_garden"
+    "minecraft:old_growth_spruce_taiga"
   ],
   "c:is_desert": [
     "minecraft:desert"
@@ -230,7 +227,6 @@
     "minecraft:mushroom_fields",
     "minecraft:old_growth_birch_forest",
     "minecraft:old_growth_spruce_taiga",
-    "minecraft:pale_garden",
     "minecraft:savanna_plateau",
     "minecraft:sparse_jungle",
     "minecraft:sunflower_plains",
@@ -284,8 +280,7 @@
   ],
   "c:is_spooky": [
     "minecraft:dark_forest",
-    "minecraft:deep_dark",
-    "minecraft:pale_garden"
+    "minecraft:deep_dark"
   ],
   "c:is_swamp": [
     "minecraft:mangrove_swamp",
@@ -301,8 +296,7 @@
   "c:is_underground": [
     "minecraft:deep_dark",
     "minecraft:dripstone_caves",
-    "minecraft:lush_caves",
-    "minecraft:sulfur_caves"
+    "minecraft:lush_caves"
   ],
   "c:is_void": [
     "minecraft:the_void"
@@ -316,7 +310,6 @@
     "minecraft:lush_caves",
     "minecraft:mangrove_swamp",
     "minecraft:sparse_jungle",
-    "minecraft:sulfur_caves",
     "minecraft:swamp"
   ],
   "c:is_wet/end": [],
@@ -329,7 +322,6 @@
     "minecraft:lush_caves",
     "minecraft:mangrove_swamp",
     "minecraft:sparse_jungle",
-    "minecraft:sulfur_caves",
     "minecraft:swamp"
   ]
 }

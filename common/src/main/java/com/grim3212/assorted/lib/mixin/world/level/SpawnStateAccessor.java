@@ -10,9 +10,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(NaturalSpawner.SpawnState.class)
 public interface SpawnStateAccessor {
 
-    @Invoker("canSpawnForCategoryGlobal")
-    boolean assortedlib_canSpawnForCategoryGlobal(MobCategory category);
-
-    @Invoker("canSpawnForCategoryLocal")
-    boolean assortedlib_canSpawnForCategoryLocal(MobCategory category, ChunkPos chunk);
+    @Invoker("canSpawnForCategory")
+    boolean assortedlib_canSpawnForCategory(MobCategory category, ChunkPos chunk);
 }

@@ -1,85 +1,79 @@
 package com.grim3212.assorted.lib.client.model;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.ItemOverrides;
+import net.minecraft.client.renderer.block.model.ItemTransforms;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
-import net.minecraft.data.AtlasIds;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 /**
- * A model with no quads or texture dependencies, as a {@link BlockStateModel} ({@link #BAKED}) or a
- * single {@link BlockStateModelPart} ({@link #PART}).
+ * A model with no quads or texture dependencies, as a {@link BakedModel} ({@link #BAKED}).
  */
 public class EmptyModel {
-    public static final BlockStateModel BAKED = new Baked();
-    public static final BlockStateModelPart PART = new Part();
-
-    private static Material.Baked missingMaterial;
+    public static final BakedModel BAKED = new Baked();
 
     private EmptyModel() {
     }
 
     /**
-     * The missing texture on the block atlas, wrapped as a baked material. Resolved lazily because
-     * there is no sprite to hand out until the atlases have been stitched.
+     * The missing texture on the block atlas. Looked up on each call because there is no sprite to
+     * hand out until the atlas has been stitched, and a reload stitches a new one.
      */
-    public static Material.Baked missingMaterial() {
-        if (missingMaterial == null) {
-            missingMaterial = new Material.Baked(Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS).missingSprite(), false);
-        }
-
-        return missingMaterial;
+    public static TextureAtlasSprite missingSprite() {
+        return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MissingTextureAtlasSprite.getLocation());
     }
 
-    private static class Baked implements BlockStateModel {
-        // Deprecated by NeoForge in favour of level/pos aware overloads that only exist in its
-        // patched jar; vanilla still declares these abstract, so they have to be implemented here.
-        @SuppressWarnings("deprecation")
+    private static class Baked implements BakedModel {
+        @SuppressWarnings("deprecation") // NeoForge deprecates this vanilla method for its own ModelData overload, which common cannot see
         @Override
-        public void collectParts(RandomSource random, List<BlockStateModelPart> output) {
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public Material.Baked particleMaterial() {
-            return missingMaterial();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public @BakedQuad.MaterialFlags int materialFlags() {
-            return 0;
-        }
-    }
-
-    private static class Part implements BlockStateModelPart {
-        @Override
-        public List<BakedQuad> getQuads(@Nullable Direction direction) {
+        public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource random) {
             return List.of();
         }
 
-        // Deprecated by NeoForge in favour of level/pos aware overloads that only exist in its
-        // patched jar; vanilla still declares these abstract, so they have to be implemented here.
-        @SuppressWarnings("deprecation")
         @Override
         public boolean useAmbientOcclusion() {
             return false;
         }
 
         @Override
-        public Material.Baked particleMaterial() {
-            return missingMaterial();
+        public boolean isGui3d() {
+            return false;
         }
 
         @Override
-        public @BakedQuad.MaterialFlags int materialFlags() {
-            return 0;
+        public boolean usesBlockLight() {
+            return false;
+        }
+
+        @Override
+        public boolean isCustomRenderer() {
+            return false;
+        }
+
+        @SuppressWarnings("deprecation") // NeoForge deprecates this vanilla method for its own ModelData overload, which common cannot see
+        @Override
+        public TextureAtlasSprite getParticleIcon() {
+            return missingSprite();
+        }
+
+        @SuppressWarnings("deprecation") // NeoForge deprecates this vanilla method for applyTransform, which common cannot see
+        @Override
+        public ItemTransforms getTransforms() {
+            return ItemTransforms.NO_TRANSFORMS;
+        }
+
+        @Override
+        public ItemOverrides getOverrides() {
+            return ItemOverrides.EMPTY;
         }
     }
 }

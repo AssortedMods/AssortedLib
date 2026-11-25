@@ -9,7 +9,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
@@ -34,8 +34,20 @@ public final class CrossLoaderData {
 
     public static final String NEOFORGE_CONDITIONS = "neoforge:conditions";
     public static final String FABRIC_CONDITIONS = "fabric:load_conditions";
-    public static final String NEOFORGE_INGREDIENT = "neoforge:ingredient_type";
+    /**
+     * NeoForge 21.1 names a custom ingredient's type under the plain {@code "type"} key, which recipes
+     * and loot entries use too, so an object is only taken for an ingredient when its type is one of
+     * {@link #INGREDIENT_TYPES}.
+     */
+    public static final String NEOFORGE_INGREDIENT = "type";
     public static final String FABRIC_INGREDIENT = "fabric:type";
+
+    /** The library's own custom ingredient, which reads the same fields on both loaders. */
+    public static final String STORED_FLUID_INGREDIENT = "assortedlib:stored_fluid_ingredient";
+
+    /** Every custom ingredient type NeoForge 21.1 registers, and the library's own. */
+    private static final List<String> INGREDIENT_TYPES = List.of("neoforge:compound", "neoforge:components", "neoforge:difference",
+            "neoforge:intersection", "neoforge:block_tag", STORED_FLUID_INGREDIENT);
 
     /** The directories whose files can carry either key; tags and assets cannot. */
     private static final List<String> CONDITIONAL_DIRECTORIES = List.of("recipe", "advancement", "loot_table", "enchantment", "worldgen");
@@ -93,7 +105,7 @@ public final class CrossLoaderData {
     public static List<String> mismatches(ResourceManager manager, String namespace) {
         List<String> problems = new ArrayList<>();
         for (String directory : CONDITIONAL_DIRECTORIES) {
-            Map<Identifier, Resource> resources = manager.listResources(directory, id -> id.getNamespace().equals(namespace) && id.getPath().endsWith(".json"));
+            Map<ResourceLocation, Resource> resources = manager.listResources(directory, id -> id.getNamespace().equals(namespace) && id.getPath().endsWith(".json"));
             resources.forEach((id, resource) -> {
                 try (Reader reader = resource.openAsReader()) {
                     JsonElement json = JsonParser.parseReader(reader);
@@ -131,7 +143,7 @@ public final class CrossLoaderData {
         if (object.has(NEOFORGE_CONDITIONS)) {
             object.add(FABRIC_CONDITIONS, conditions(GsonHelper.getAsJsonArray(object, NEOFORGE_CONDITIONS)));
         }
-        if (object.has(NEOFORGE_INGREDIENT)) {
+        if (isIngredient(object)) {
             addFabricIngredient(object);
         }
     }
@@ -147,7 +159,7 @@ public final class CrossLoaderData {
 
         JsonObject object = json.getAsJsonObject();
         object.remove(FABRIC_CONDITIONS);
-        if (object.has(NEOFORGE_INGREDIENT) && object.has(FABRIC_INGREDIENT)) {
+        if (isIngredient(object) && object.has(FABRIC_INGREDIENT)) {
             object.remove(FABRIC_INGREDIENT);
             // The list field Fabric's any/all read, next to NeoForge's "children".
             if (object.has("children")) {
@@ -155,6 +167,11 @@ public final class CrossLoaderData {
             }
         }
         object.entrySet().forEach(entry -> stripFabricKeys(entry.getValue()));
+    }
+
+    private static boolean isIngredient(JsonObject object) {
+        JsonElement type = object.get(NEOFORGE_INGREDIENT);
+        return type != null && type.isJsonPrimitive() && INGREDIENT_TYPES.contains(type.getAsString());
     }
 
     private static JsonArray conditions(JsonArray neoforge) {
@@ -167,10 +184,10 @@ public final class CrossLoaderData {
         String type = GsonHelper.getAsString(neoforge, "type");
         JsonObject fabric = new JsonObject();
         switch (type) {
-            case "neoforge:always" -> fabric.addProperty("condition", "fabric:true");
-            case "neoforge:never" -> fabric.addProperty("condition", "fabric:false");
+            case "neoforge:true" -> fabric.addProperty("condition", "fabric:true");
+            case "neoforge:false" -> fabric.addProperty("condition", "fabric:false");
             case "neoforge:and", "neoforge:or" -> {
-                fabric.addProperty("condition", "fabric:" + Identifier.parse(type).getPath());
+                fabric.addProperty("condition", "fabric:" + ResourceLocation.parse(type).getPath());
                 fabric.add("values", conditions(GsonHelper.getAsJsonArray(neoforge, "values")));
             }
             case "neoforge:not" -> {
@@ -181,16 +198,15 @@ public final class CrossLoaderData {
                 fabric.addProperty("condition", "fabric:all_mods_loaded");
                 fabric.add("values", single(neoforge.get("modid")));
             }
-            // Both loaders default "registry" to minecraft:item, so it is copied only when present.
-            case "neoforge:registered" -> {
+            // Fabric's registry defaults to minecraft:item, which is the only registry NeoForge's asks.
+            case "neoforge:item_exists" -> {
                 fabric.addProperty("condition", "fabric:registry_contains");
-                copyRegistry(neoforge, fabric);
-                fabric.add("values", single(neoforge.get("value")));
+                fabric.add("values", single(neoforge.get("item")));
             }
+            // An item tag on NeoForge 21.1, and Fabric's registry defaults to minecraft:item.
             case "neoforge:tag_empty" -> {
                 JsonObject populated = new JsonObject();
                 populated.addProperty("condition", "fabric:tags_populated");
-                copyRegistry(neoforge, populated);
                 populated.add("values", single(neoforge.get("tag")));
                 fabric.addProperty("condition", "fabric:not");
                 fabric.add("value", populated);
@@ -221,12 +237,6 @@ public final class CrossLoaderData {
         fabric.addProperty("condition", "fabric:tags_populated");
         fabric.addProperty("registry", registry);
         fabric.add("values", single(tag));
-    }
-
-    private static void copyRegistry(JsonObject from, JsonObject to) {
-        if (from.has("registry")) {
-            to.add("registry", from.get("registry").deepCopy());
-        }
     }
 
     private static JsonArray single(JsonElement value) {

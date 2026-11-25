@@ -9,11 +9,12 @@
     "world.block.BlockStateBaseMixin",
     "world.entity.EntityWorldlyBlockMixin",
     "world.entity.ExperienceOrbWorldlyBlockMixin",
+    "world.entity.FlyingMobWorldlyBlockMixin",
     "world.entity.LivingEntityWorldlyBlockMixin",
     "world.entity.animal.horse.AbstractHorseWorldlyBlockMixin",
     "world.entity.item.ItemEntityWorldlyBlockMixin",
     "world.entity.player.PlayerMixin",
-    "world.entity.vehicle.AbstractBoatWorldlyBlockMixin",
+    "world.entity.vehicle.BoatWorldlyBlockMixin",
     "world.inventory.AnvilMenuMixin",
     "world.item.BlockItemWorldlyBlockMixin",
     "world.item.ItemMixin",
@@ -31,10 +32,13 @@
     "world.level.lighting.LightEngineAccessor"
   ],
   "client": [
-    "client.multiplayer.ClientLevelWorldlyBlockMixin",
+    "client.model.BlockEntityRenderDataMixin",
+    "client.model.BlockModelDeserializerMixin",
+    "client.model.BlockModelSpecificationMixin",
+    "client.multiplayer.ClientPacketListenerRecipesMixin",
     "client.multiplayer.MultiPlayerGameModeWorldlyBlockMixin",
-    "client.render.LevelEventHandlerWorldlyBlockMixin",
-    "client.render.LightCoordsUtilMixin",
+    "client.render.LevelRendererLightColorMixin",
+    "client.render.LevelRendererWorldlyBlockMixin",
     "client.render.block.ModelBlockRendererWorldlyBlockMixin"
   ],
   "injectors": {

@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
@@ -26,7 +26,7 @@ public record WaterSite(Span depth, boolean underIce) implements SpawnSite {
     public static final WaterSite SURFACE = new WaterSite(new Span(0, 0), false);
 
     @Override
-    public Identifier type() {
+    public ResourceLocation type() {
         return SpawnSites.WATER;
     }
 
@@ -35,7 +35,7 @@ public record WaterSite(Span depth, boolean underIce) implements SpawnSite {
         // MOTION_BLOCKING counts fluid, so below it is the top of the water, or the ice over it.
         BlockPos top = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, column).below();
         if (this.underIce) {
-            while (top.getY() > level.getMinY() && level.getBlockState(top).is(BlockTags.ICE)) {
+            while (top.getY() > level.getMinBuildHeight() && level.getBlockState(top).is(BlockTags.ICE)) {
                 top = top.below();
             }
         }

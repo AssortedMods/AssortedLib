@@ -10,6 +10,7 @@ public class ShulkerSlotStorageHandler extends SlotStorageHandler {
         super(itemHandler, index, xPosition, yPosition);
     }
 
+    @SuppressWarnings("deprecation") // NeoForge deprecates Item#canFitInsideContainerItems for its stack aware overload, which common cannot see
     @Override
     public boolean mayPlace(ItemStack itemStack) {
         return itemStack.getItem().canFitInsideContainerItems();

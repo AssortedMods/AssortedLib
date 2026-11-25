@@ -5,6 +5,7 @@ import com.grim3212.assorted.lib.core.block.IBlockSoundType;
 import com.grim3212.assorted.lib.core.block.effects.IBlockLandingEffects;
 import com.grim3212.assorted.lib.mixin.entity.EntityAccessor;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -16,11 +17,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 @SuppressWarnings("InvalidInjectorMethodSignature")
 @Mixin(LivingEntity.class)
@@ -29,13 +27,10 @@ public abstract class LivingEntityWorldlyBlockMixin extends Entity {
         super(entityType, level);
     }
 
-    // 26.2 split LivingEntity.travel into travelInFluid / travelFallFlying / travelInAir, and the
-    // ground friction is no longer stored straight out of Block.getFriction() - it is fed into
-    // computeModifiedFriction(F, F) with the FRICTION_MODIFIER attribute, so there is no local to
-    // modify at that point any more. Redirecting the getFriction() call keeps the attribute pass
-    // and matches what the old INVOKE_ASSIGN capture did.
+    // The ground friction of a walk on land; travel reads Block#getFriction() once, for the block
+    // below that affects movement.
     @Redirect(
-            method = "travelInAir",
+            method = "travel",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getFriction()F")
     )
     private float assortedlib_rewriteFrictionValueForWorldlyBlocks(Block block) {
@@ -77,23 +72,24 @@ public abstract class LivingEntityWorldlyBlockMixin extends Entity {
         return current;
     }
 
-    @Inject(
+    /**
+     * Lets an {@link IBlockLandingEffects} block draw its own landing particles in place of vanilla's
+     * burst; the rest of the fall is handled as vanilla handles it.
+     */
+    @Redirect(
             method = "checkFallDamage",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/server/level/ServerLevel;sendParticles(Lnet/minecraft/core/particles/ParticleOptions;DDDIDDDD)I",
-                    shift = At.Shift.BEFORE
-            ),
-            locals = LocalCapture.CAPTURE_FAILHARD,
-            cancellable = true
+                    target = "Lnet/minecraft/server/level/ServerLevel;sendParticles(Lnet/minecraft/core/particles/ParticleOptions;DDDIDDDD)I"
+            )
     )
-    // 26.2 LVT of LivingEntity.checkFallDamage at the sendParticles call, in slot order:
-    // 6 ServerLevel level, 7 double power, 9 double x, 11 double y, 13 double z,
-    // 15 BlockPos entityPos, 16 double scale, 18 int particles.
-    protected void assortedlib_checkFallEffects(double ya, boolean onGround, BlockState onState, BlockPos pos, CallbackInfo ci, ServerLevel level, double power, double x, double y, double z, BlockPos entityPos, double scale, int particles) {
-        if (onState.getBlock() instanceof IBlockLandingEffects extraProps && extraProps.addLandingEffects(onState, level, pos, onState, (LivingEntity) (Object) this, particles)) {
-            super.checkFallDamage(ya, onGround, onState, pos);
-            ci.cancel();
+    private <T extends ParticleOptions> int assortedlib_checkFallEffects(final ServerLevel level, final T particle, final double x, final double y, final double z, final int count,
+                                                                         final double xOffset, final double yOffset, final double zOffset, final double speed,
+                                                                         final double ya, final boolean onGround, final BlockState onState, final BlockPos pos) {
+        if (onState.getBlock() instanceof IBlockLandingEffects extraProps && extraProps.addLandingEffects(onState, level, pos, onState, (LivingEntity) (Object) this, count)) {
+            return 0;
         }
+
+        return level.sendParticles(particle, x, y, z, count, xOffset, yOffset, zOffset, speed);
     }
 }

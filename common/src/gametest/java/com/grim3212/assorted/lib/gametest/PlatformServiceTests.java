@@ -13,7 +13,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
@@ -94,7 +95,7 @@ final class PlatformServiceTests {
     /** {@link ILoaderRegistry} is a straight view of a vanilla registry now, and must behave like one. */
     private static void registryRoundTrips(GameTestHelper helper) {
         ILoaderRegistry<Block> blocks = Services.PLATFORM.getRegistry(Registries.BLOCK);
-        Identifier stoneId = Identifier.withDefaultNamespace("stone");
+        ResourceLocation stoneId = ResourceLocation.withDefaultNamespace("stone");
 
         helper.assertTrue(blocks.getValue(stoneId).orElse(null) == Blocks.STONE,
                 "the block registry did not hand back the same Blocks.STONE instance");
@@ -103,7 +104,7 @@ final class PlatformServiceTests {
         helper.assertTrue(blocks.contains(Blocks.STONE), "the block registry does not contain Blocks.STONE");
 
         ILoaderRegistry<Item> items = Services.PLATFORM.getRegistry(Registries.ITEM);
-        helper.assertTrue(items.getValue(Identifier.withDefaultNamespace("stick")).orElse(null) == Items.STICK,
+        helper.assertTrue(items.getValue(ResourceLocation.withDefaultNamespace("stick")).orElse(null) == Items.STICK,
                 "the item registry did not hand back the same Items.STICK instance");
         helper.assertTrue(items.getValues().count() == BuiltInRegistries.ITEM.keySet().size(),
                 "the wrapped item registry and the vanilla one disagree on size");
@@ -112,7 +113,7 @@ final class PlatformServiceTests {
         // fluids each have a default (air, air, empty) that vanilla's Registry#getValue answers for an
         // id nobody registered; NeoForge used to pass that through, so a lookup of an absent optional
         // item quietly got air there and nothing on Fabric.
-        Identifier missing = Identifier.fromNamespaceAndPath("assortedlib", "not_a_real_entry");
+        ResourceLocation missing = ResourceLocation.fromNamespaceAndPath("assortedlib", "not_a_real_entry");
         helper.assertFalse(blocks.containsKey(missing), "the block registry claims to contain " + missing);
         helper.assertTrue(blocks.getValue(missing).isEmpty(), "the block registry answered " + missing + " with " + blocks.getValue(missing).orElse(null));
         helper.assertTrue(items.getValue(missing).isEmpty(), "the item registry answered " + missing + " with " + items.getValue(missing).orElse(null));
@@ -185,7 +186,7 @@ final class PlatformServiceTests {
         helper.assertTrue(Services.LEVEL_PROPERTIES.getSoundType(level, glass, null) == SoundType.GLASS, "glass sound type");
 
         helper.assertValueEqual(Services.LEVEL_PROPERTIES.getLightBlock(level, stone),
-                Blocks.STONE.defaultBlockState().getLightDampening(), "stone light dampening");
+                Blocks.STONE.defaultBlockState().getLightBlock(level, stone), "stone light dampening");
         helper.assertFalse(Services.LEVEL_PROPERTIES.propagatesSkylightDown(level, stone), "skylight passes through stone");
 
         helper.assertTrue(Services.LEVEL_PROPERTIES.shouldCheckWeakPower(level, stone, Direction.UP),
@@ -232,8 +233,8 @@ final class PlatformServiceTests {
      */
     private static void everyItemTagHasAName(GameTestHelper helper) {
         Language language = Language.getInstance();
-        List<String> missing = helper.getLevel().registryAccess().lookupOrThrow(Registries.ITEM).getTags()
-                .map(tag -> tag.key().location())
+        List<String> missing = helper.getLevel().registryAccess().registryOrThrow(Registries.ITEM).getTagNames()
+                .map(TagKey::location)
                 .filter(id -> !"minecraft".equals(id.getNamespace()))
                 .map(id -> "tag.item." + id.getNamespace() + "." + id.getPath().replace('/', '.'))
                 .filter(key -> !language.has(key))

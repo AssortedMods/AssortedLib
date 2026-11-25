@@ -3,25 +3,24 @@ package com.grim3212.assorted.lib.inventory;
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
 import com.grim3212.assorted.lib.core.inventory.IPlatformInventoryStorageHandler;
 import net.minecraft.core.Direction;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * {@code LazyOptional} is gone, see {@link ForgePlatformInventoryStorageHandlerSided}. The wrapper
- * is created eagerly and {@link #invalidate()} only drops the cached instance.
+ * See {@link ForgePlatformInventoryStorageHandlerSided}. The wrapper is created eagerly and
+ * {@link #invalidate()} only drops the cached instance.
  */
 public class ForgePlatformInventoryStorageHandlerUnsided implements IPlatformInventoryStorageHandler {
 
     private final IItemStorageHandler handler;
-    private ResourceHandler<ItemResource> itemHandler;
+    private IItemHandler itemHandler;
 
     public ForgePlatformInventoryStorageHandlerUnsided(IItemStorageHandler handler) {
         this.handler = handler;
         this.itemHandler = new ForgeItemStorageHandler(handler);
     }
 
-    public ResourceHandler<ItemResource> getCapability() {
+    public IItemHandler getCapability() {
         if (this.itemHandler == null) {
             this.itemHandler = new ForgeItemStorageHandler(this.handler);
         }

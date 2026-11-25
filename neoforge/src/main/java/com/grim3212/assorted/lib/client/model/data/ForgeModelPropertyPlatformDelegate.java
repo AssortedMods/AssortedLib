@@ -1,6 +1,6 @@
 package com.grim3212.assorted.lib.client.model.data;
 
-import net.neoforged.neoforge.model.data.ModelProperty;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 
 public class ForgeModelPropertyPlatformDelegate<T> implements IModelDataKey<T> {
 

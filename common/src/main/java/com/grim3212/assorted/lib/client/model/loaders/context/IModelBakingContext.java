@@ -1,24 +1,30 @@
 package com.grim3212.assorted.lib.client.model.loaders.context;
 
+import net.minecraft.client.renderer.block.model.ItemTransforms;
+import net.minecraft.client.resources.model.Material;
 import net.minecraft.client.resources.model.UnbakedModel;
-import net.minecraft.client.resources.model.cuboid.ItemTransforms;
-import net.minecraft.client.resources.model.sprite.Material;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 
 /**
- * The context in which the model is baked
+ * The context in which the model is baked: what the model json declared around its
+ * {@code loader} object, answered by each loader from its own baking context.
  */
 public interface IModelBakingContext {
 
     /**
-     * The unbaked model named {@code unbakedModel}, or null if not found; can be used to get a
-     * parent. The game tracks requested models and throws on a circular dependency.
+     * The unbaked model named {@code unbakedModel}, or the missing model if there is none; can be
+     * used to get a parent. List it in
+     * {@link com.grim3212.assorted.lib.client.model.loaders.IModelSpecification#getDependencies()}
+     * so its own parents are resolved.
      */
-    UnbakedModel getUnbakedModel(final Identifier unbakedModel);
+    UnbakedModel getUnbakedModel(final ResourceLocation unbakedModel);
 
-    /** A material from a supported super model or the context, or empty if not found. */
+    /**
+     * A texture from the json or its parents, or empty if not found. {@code name} may be given with
+     * or without its leading {@code #}.
+     */
     Optional<Material> getMaterial(final String name);
 
     /**
@@ -48,7 +54,4 @@ public interface IModelBakingContext {
      * @return The item transforms.
      */
     ItemTransforms getTransforms();
-
-    // No getItemOverrides any more: item variants are picked by data driven ItemModel types
-    // declared in the item's model json, not assembled by a model loader while baking.
 }

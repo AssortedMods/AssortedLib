@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.core.storage.barrel;
 
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.ItemInteractionResult;
 import com.grim3212.assorted.lib.core.inventory.INamed;
 import com.grim3212.assorted.lib.core.inventory.locking.ILockable;
 import com.grim3212.assorted.lib.core.inventory.locking.LockItems;
@@ -55,7 +57,7 @@ import org.jetbrains.annotations.Nullable;
 /** A barrel of a {@link StorageMaterial}, or with none the locked stand-in for a vanilla barrel, which unlocks back into one. */
 public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMaterial {
 
-    public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
+    public static final DirectionProperty FACING = BlockStateProperties.FACING;
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
 
     private final StorageMaterial material;
@@ -87,12 +89,15 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
         builder.add(FACING, OPEN);
     }
 
+    // NeoForge deprecates this in favour of its IBlockExtension overload, which defaults to
+    // calling it, so overriding this one is what answers pick block on both loaders.
+    @SuppressWarnings("deprecation")
     @Override
-    protected ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state, boolean includeData) {
+    public ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state) {
         if (this.getStorageMaterial() == null) {
             return StorageUtil.setCodeOnStack(StorageUtil.getCode(worldIn.getBlockEntity(pos)), new ItemStack(this));
         }
-        return super.getCloneItemStack(worldIn, pos, state, includeData);
+        return super.getCloneItemStack(worldIn, pos, state);
     }
 
     @Override
@@ -123,15 +128,21 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel worldIn, BlockPos pos, boolean movedByPiston) {
-        worldIn.updateNeighbourForOutputSignal(pos, this);
+    protected void onRemove(BlockState state, Level worldIn, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) {
+            if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storage) {
+                storage.onBlockRemoved(worldIn, pos, state);
+            }
+            worldIn.updateNeighbourForOutputSignal(pos, this);
+        }
+        super.onRemove(state, worldIn, pos, newState, movedByPiston);
     }
 
     @Override
-    protected InteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+    protected ItemInteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         if (this.canBeLocked(worldIn, pos) && LockItems.isLock(player.getItemInHand(handIn))) {
             if (BaseStorageBlock.tryPlaceLock(worldIn, pos, player, handIn))
-                return InteractionResult.SUCCESS;
+                return ItemInteractionResult.SUCCESS;
         }
 
         if (player.isShiftKeyDown() && StorageAccessUtil.canAccess(worldIn, pos, player)) {
@@ -146,7 +157,7 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
                             blockDropped.playerTouch(player);
                         }
                     }
-                    return InteractionResult.SUCCESS;
+                    return ItemInteractionResult.SUCCESS;
                 }
             }
         }
@@ -157,13 +168,11 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
                 if (provider != null) {
                     Services.PLATFORM.openMenu((ServerPlayer) player, provider);
                     player.awardStat(Stats.OPEN_BARREL);
-                    if (worldIn instanceof ServerLevel serverLevel) {
-                        PiglinAi.angerNearbyPiglins(serverLevel, player, true);
-                    }
+                    PiglinAi.angerNearbyPiglins(player, true);
                 }
             }
         }
-        return InteractionResult.SUCCESS;
+        return ItemInteractionResult.SUCCESS;
     }
 
     @Override
@@ -194,12 +203,12 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
     }
 
     @Override
-    protected int getAnalogOutputSignal(BlockState blockState, Level worldIn, BlockPos pos, Direction direction) {
+    protected int getAnalogOutputSignal(BlockState blockState, Level worldIn, BlockPos pos) {
         if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storageBlockEntity) {
             return StorageUtil.getRedstoneSignalFromContainer(storageBlockEntity.getItemStackStorageHandler());
         }
 
-        return super.getAnalogOutputSignal(blockState, worldIn, pos, direction);
+        return super.getAnalogOutputSignal(blockState, worldIn, pos);
     }
 
     @Override
@@ -207,6 +216,7 @@ public class LockedBarrelBlock extends Block implements EntityBlock, IStorageMat
         return state.setValue(FACING, rot.rotate(state.getValue(FACING)));
     }
 
+    @SuppressWarnings("deprecation") // NeoForge deprecates BlockState#rotate(Rotation) for its level aware overload; vanilla's own mirror calls this one
     @Override
     protected BlockState mirror(BlockState state, Mirror mirrorIn) {
         return state.rotate(mirrorIn.getRotation(state.getValue(FACING)));

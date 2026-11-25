@@ -12,14 +12,13 @@ import com.grim3212.assorted.lib.core.inventory.locking.StorageUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -34,8 +33,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
@@ -121,26 +118,30 @@ public abstract class BaseStorageBlockEntity extends BlockEntity implements Menu
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
 
-        if (this.selfInventory()) {
-            input.child("Inventory").ifPresent(this.storageHandler::deserialize);
+        if (this.selfInventory() && tag.contains("Inventory", Tag.TAG_COMPOUND)) {
+            this.storageHandler.deserialize(tag.getCompound("Inventory"), registries);
         }
 
-        this.customName = parseCustomNameSafe(input, "CustomName");
-        this.lockCode = StorageUtil.readLock(input);
+        this.customName = tag.contains("CustomName", Tag.TAG_STRING) ? parseCustomNameSafe(tag.getString("CustomName"), registries) : null;
+        this.lockCode = StorageUtil.readLock(tag);
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (this.selfInventory()) {
-            this.storageHandler.serialize(output.child("Inventory"));
+            CompoundTag inventory = new CompoundTag();
+            this.storageHandler.serialize(inventory, registries);
+            tag.put("Inventory", inventory);
         }
 
-        output.storeNullable("CustomName", ComponentSerialization.CODEC, this.customName);
-        StorageUtil.writeLock(output, this.lockCode);
+        if (this.customName != null) {
+            tag.putString("CustomName", Component.Serializer.toJson(this.customName, registries));
+        }
+        StorageUtil.writeLock(tag, this.lockCode);
     }
 
     @Override
@@ -158,23 +159,17 @@ public abstract class BaseStorageBlockEntity extends BlockEntity implements Menu
     }
 
     /**
-     * Drops the lock and the contents when the block is removed. It has to happen here: the block
-     * entity is already gone by {@code affectNeighborsAfterRemoval}.
+     * Drops the lock and the contents when the block is removed. Block entities have no removal
+     * hook here, so {@link BaseStorageBlock#onRemove} calls this while the block entity still
+     * exists, and only when the block itself changes.
      */
-    @Override
-    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-        super.preRemoveSideEffects(pos, state);
-
-        if (this.level == null) {
-            return;
-        }
-
+    public void onBlockRemoved(Level level, BlockPos pos, BlockState state) {
         if (this.shouldDropLock(pos, state)) {
-            Containers.dropItemStack(this.level, pos.getX(), pos.getY(), pos.getZ(), LockItems.createLock(this.lockCode));
+            Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), LockItems.createLock(this.lockCode));
         }
 
         if (this.shouldDropContents()) {
-            StorageUtil.dropContents(this.level, pos, this.getItemStackStorageHandler());
+            StorageUtil.dropContents(level, pos, this.getItemStackStorageHandler());
         }
     }
 
@@ -216,7 +211,7 @@ public abstract class BaseStorageBlockEntity extends BlockEntity implements Menu
     }
 
     @Override
-    protected void applyImplicitComponents(DataComponentGetter components) {
+    protected void applyImplicitComponents(BlockEntity.DataComponentInput components) {
         super.applyImplicitComponents(components);
         this.customName = components.get(DataComponents.CUSTOM_NAME);
         if (this.selfInventory()) {
@@ -229,7 +224,7 @@ public abstract class BaseStorageBlockEntity extends BlockEntity implements Menu
 
     /** {@code <namespace>.container.<path>} of this block's id, so each mod names the blocks it registered. */
     protected Component blockContainerName() {
-        Identifier id = BuiltInRegistries.BLOCK.getKey(this.getBlockState().getBlock());
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(this.getBlockState().getBlock());
         return Component.translatable(id.getNamespace() + ".container." + id.getPath());
     }
 

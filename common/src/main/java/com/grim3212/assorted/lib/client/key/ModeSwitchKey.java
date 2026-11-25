@@ -8,7 +8,7 @@ import com.grim3212.assorted.lib.platform.Services;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 
@@ -19,7 +19,7 @@ import net.minecraft.world.entity.player.Player;
 public final class ModeSwitchKey {
 
     // Its label is "key.category.assortedlib.general" in the lang file.
-    public static final Identifier CATEGORY = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "general");
+    public static final ResourceLocation CATEGORY = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "general");
 
     private static KeyMapping key;
     // Client only, so one cooldown per player.
@@ -33,7 +33,7 @@ public final class ModeSwitchKey {
         if (key != null) {
             return;
         }
-        key = ClientServices.KEYBINDS.createNew("key.assortedlib.switch_modes", ClientServices.KEYBINDS.getInGameKeyConflictContext(), InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, CATEGORY);
+        key = ClientServices.KEYBINDS.createNew("key.assortedlib.switch_modes", ClientServices.KEYBINDS.getInGameKeyConflictContext(), InputConstants.Type.KEYSYM, InputConstants.KEY_Z, CATEGORY);
         ClientServices.CLIENT.registerKeyMapping(key);
         ClientServices.CLIENT.registerClientTickStart(ModeSwitchKey::tick);
     }

@@ -13,7 +13,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModLoadingContext;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadHandler;
@@ -64,7 +63,7 @@ public class ForgeNetworkHelper implements INetworkHelper {
 
     @Override
     public <MSG> void sendToServer(MSG toSend) {
-        ClientPacketDistributor.sendToServer(payload(toSend));
+        PacketDistributor.sendToServer(payload(toSend));
     }
 
     @SuppressWarnings("unchecked")

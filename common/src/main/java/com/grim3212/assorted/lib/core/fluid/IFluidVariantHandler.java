@@ -1,7 +1,7 @@
 package com.grim3212.assorted.lib.core.fluid;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 
 import java.util.Optional;
@@ -45,13 +45,14 @@ public interface IFluidVariantHandler {
     int getTintColor(FluidInformation variant);
 
     /**
-     * The fluid's still texture, if it has one. Both loaders answer from the baked {@code FluidModel}
-     * the model manager holds per fluid state, which is where a fluid's textures live now. So this is
-     * client only, readable only once models have baked, and the component data a
+     * The fluid's still texture, if it has one. 1.21.1 has no vanilla home for a fluid's textures, so
+     * each loader answers from the one place it keeps them: NeoForge from the fluid type's
+     * {@code IClientFluidTypeExtensions}, Fabric from its {@code FluidRenderHandlerRegistry} (through
+     * {@code FluidVariantRendering}). Either way this is client only, and the component data a
      * {@link FluidInformation} carries does not change the answer.
      */
-    Optional<Identifier> getStillTexture(FluidInformation variant);
+    Optional<ResourceLocation> getStillTexture(FluidInformation variant);
 
     /** The fluid's flowing texture, if it has one; same source as {@link #getStillTexture}. */
-    Optional<Identifier> getFlowingTexture(FluidInformation variant);
+    Optional<ResourceLocation> getFlowingTexture(FluidInformation variant);
 }

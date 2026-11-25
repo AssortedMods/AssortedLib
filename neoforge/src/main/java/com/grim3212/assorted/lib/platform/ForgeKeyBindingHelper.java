@@ -7,18 +7,10 @@ import com.grim3212.assorted.lib.client.key.PlatformKeyConflictContextForgeDeleg
 import com.grim3212.assorted.lib.platform.services.IKeyBindingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class ForgeKeyBindingHelper implements IKeyBindingHelper {
-
-    // A key mapping's group is a KeyMapping.Category: a record around an Identifier whose label is
-    // derived from that id as "key.category.<namespace>.<path>". Cached so the same id always yields
-    // the same category instance, which is what ForgeClientHelper deduplicates registration on.
-    private static final Map<Identifier, KeyMapping.Category> CATEGORIES = new ConcurrentHashMap<>();
 
     @Override
     public IKeyConflictHelper getGuiKeyConflictContext() {
@@ -32,7 +24,7 @@ public class ForgeKeyBindingHelper implements IKeyBindingHelper {
 
     @Override
     public KeyMapping createNew(
-            final String translationKey, final IKeyConflictHelper keyConflictContext, final InputConstants.Type inputType, final int key, final Identifier category) {
+            final String translationKey, final IKeyConflictHelper keyConflictContext, final InputConstants.Type inputType, final int key, final ResourceLocation category) {
         return new KeyMapping(
                 translationKey,
                 new PlatformKeyConflictContextForgeDelegate(keyConflictContext),
@@ -49,7 +41,7 @@ public class ForgeKeyBindingHelper implements IKeyBindingHelper {
             final KeyModifier keyModifier,
             final InputConstants.Type inputType,
             final int key,
-            final Identifier category) {
+            final ResourceLocation category) {
         return new KeyMapping(
                 translationKey,
                 new PlatformKeyConflictContextForgeDelegate(keyConflictContext),
@@ -71,12 +63,11 @@ public class ForgeKeyBindingHelper implements IKeyBindingHelper {
     }
 
     /**
-     * The category for a category id. Categories are not registered here; every mapping carries its
-     * own, and {@link ForgeClientHelper} registers the distinct ones it sees when
-     * {@code RegisterKeyMappingsEvent} fires.
+     * A key mapping's category is its label's translation key, {@code key.category.<namespace>.<path>};
+     * the controls screen groups mappings by that string.
      */
-    public static KeyMapping.Category getCategory(final Identifier category) {
-        return CATEGORIES.computeIfAbsent(category, KeyMapping.Category::new);
+    public static String getCategory(final ResourceLocation category) {
+        return "key.category." + category.getNamespace() + "." + category.getPath();
     }
 
     private static net.neoforged.neoforge.client.settings.KeyModifier makePlatformSpecific(final KeyModifier keyModifier) {

@@ -12,8 +12,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.animal.cow.Cow;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -77,15 +77,15 @@ final class EventTests {
      */
     private static void entityInteractResultStopsVanilla(GameTestHelper helper) {
         registerProbes();
-        Cow cow = helper.spawn(EntityTypes.COW, WORK);
+        Cow cow = helper.spawn(EntityType.COW, WORK);
 
         ServerPlayer player = survivalPlayer(helper, new ItemStack(Items.BUCKET));
-        player.interactOn(cow, InteractionHand.MAIN_HAND, Vec3.ZERO);
+        player.interactOn(cow, InteractionHand.MAIN_HAND);
         helper.assertTrue(player.getItemInHand(InteractionHand.MAIN_HAND).is(Items.MILK_BUCKET),
                 "the control bucket was not milked, so the interaction never reached vanilla");
 
         player.setItemInHand(InteractionHand.MAIN_HAND, probe(Items.BUCKET));
-        InteractionResult result = player.interactOn(cow, InteractionHand.MAIN_HAND, Vec3.ZERO);
+        InteractionResult result = player.interactOn(cow, InteractionHand.MAIN_HAND);
         helper.assertTrue(result.consumesAction(), "the handler's SUCCESS came back from the interaction as " + result);
         helper.assertTrue(player.getItemInHand(InteractionHand.MAIN_HAND).is(Items.BUCKET),
                 "the cow was milked after a handler had taken the interaction");

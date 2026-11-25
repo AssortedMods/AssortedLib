@@ -13,8 +13,8 @@
     "main": [
       "com.grim3212.assorted.lib.gametest.LibFabricGameTests"
     ],
-    "fabric-client-gametest": [
-      "com.grim3212.assorted.lib.gametest.LibClientGameTests"
+    "fabric-gametest": [
+      "com.grim3212.assorted.lib.gametest.LibFabricGameTests"
     ]
   },
   "depends": {

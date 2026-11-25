@@ -22,7 +22,6 @@ public class Services {
     public static final IIngredientHelper INGREDIENTS = load(IIngredientHelper.class);
     public static final IWorldGenHelper WORLD_GEN = load(IWorldGenHelper.class);
     public static final IInventoryHelper INVENTORY = load(IInventoryHelper.class);
-    public static final IRecipeSyncHelper RECIPE_SYNC = load(IRecipeSyncHelper.class);
 
     public static <T> T load(Class<T> clazz) {
 

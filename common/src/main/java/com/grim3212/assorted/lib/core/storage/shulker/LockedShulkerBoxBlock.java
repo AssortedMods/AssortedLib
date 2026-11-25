@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.core.storage.shulker;
 
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.ItemInteractionResult;
 import com.grim3212.assorted.lib.core.inventory.locking.LockItems;
 import com.grim3212.assorted.lib.core.storage.BaseStorageBlock;
 import com.grim3212.assorted.lib.core.block.IBlockMapColor;
@@ -61,14 +63,14 @@ import java.util.List;
 /** A shulker box of a {@link StorageMaterial}, or with none the locked stand-in for a vanilla one, which unlocks back into it. */
 public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorageMaterial, IBlockMapColor {
 
-    public static final EnumProperty<Direction> FACING = DirectionalBlock.FACING;
+    public static final DirectionProperty FACING = DirectionalBlock.FACING;
     private static final BlockBehaviour.StatePredicate CLOSED = (state, level, pos) -> !(level.getBlockEntity(pos) instanceof LockedShulkerBoxBlockEntity shulker) || shulker.isClosed();
 
     private final StorageMaterial material;
     private final StorageTypes<LockedShulkerBoxBlockEntity, LockedMaterialContainer> types;
 
     public LockedShulkerBoxBlock(@Nullable StorageMaterial material, StorageTypes<LockedShulkerBoxBlockEntity, LockedMaterialContainer> types, Block.Properties props) {
-        super(props.dynamicShape().noOcclusion().isSuffocating(CLOSED).pushReaction(PushReaction.POPPED));
+        super(props.dynamicShape().noOcclusion().isSuffocating(CLOSED).pushReaction(PushReaction.DESTROY));
         this.material = material;
         this.types = types;
         this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.UP));
@@ -112,7 +114,7 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
         BlockState state = level.getBlockState(pos);
         if (state.getBlock() instanceof LockedShulkerBoxBlock && level.getBlockEntity(pos) instanceof LockedShulkerBoxBlockEntity shulkerBE) {
             DyeColor color = shulkerBE.getColor();
-            level.setBlock(pos, (color == null ? Blocks.SHULKER_BOX : Blocks.DYED_SHULKER_BOX.pick(color)).defaultBlockState().setValue(ShulkerBoxBlock.FACING, state.getValue(LockedShulkerBoxBlock.FACING)), 3);
+            level.setBlock(pos, ShulkerBoxBlock.getBlockByColor(color).defaultBlockState().setValue(ShulkerBoxBlock.FACING, state.getValue(LockedShulkerBoxBlock.FACING)), 3);
             if (level.getBlockEntity(pos) instanceof ShulkerBoxBlockEntity newShulkerBE) {
                 for (int i = 0; i < shulkerBE.getItemStackStorageHandler().getSlots(); i++) {
                     newShulkerBE.setItem(i, shulkerBE.getItemStackStorageHandler().getStackInSlot(i).copy());
@@ -124,10 +126,10 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
     }
 
     @Override
-    protected InteractionResult useItemOn(ItemStack heldStack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected ItemInteractionResult useItemOn(ItemStack heldStack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (this.canBeLocked(level, pos) && LockItems.isLock(player.getItemInHand(hand))) {
             if (BaseStorageBlock.tryPlaceLock(level, pos, player, hand))
-                return InteractionResult.SUCCESS;
+                return ItemInteractionResult.SUCCESS;
         }
 
         if (player.isShiftKeyDown() && StorageAccessUtil.canAccess(level, pos, player)) {
@@ -146,7 +148,7 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
                                 blockDropped.playerTouch(player);
                             }
                         }
-                        return InteractionResult.SUCCESS;
+                        return ItemInteractionResult.SUCCESS;
                     }
                 }
             }
@@ -160,15 +162,13 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
                     if (inamedcontainerprovider != null) {
                         Services.PLATFORM.openMenu((ServerPlayer) player, inamedcontainerprovider);
                         player.awardStat(Stats.OPEN_SHULKER_BOX);
-                        if (level instanceof ServerLevel serverLevel) {
-                            PiglinAi.angerNearbyPiglins(serverLevel, player, true);
-                        }
+                        PiglinAi.angerNearbyPiglins(player, true);
                     }
                 }
             }
-            return InteractionResult.CONSUME;
+            return ItemInteractionResult.CONSUME;
         }
-        return InteractionResult.PASS;
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
 
     @Override
@@ -201,6 +201,7 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
         return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
     }
 
+    @SuppressWarnings("deprecation") // NeoForge deprecates BlockState#rotate(Rotation) for its level aware overload; vanilla's own mirror calls this one
     @Override
     protected BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
@@ -230,7 +231,7 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
         if (shulker.getAnimationStatus() != AnimationStatus.CLOSED) {
             return true;
         } else {
-            AABB aabb = Shulker.getProgressDeltaAabb(1.0F, state.getValue(FACING), 0.0F, 0.5F, Vec3.atBottomCenterOf(pos)).deflate(1.0E-6D);
+            AABB aabb = Shulker.getProgressDeltaAabb(1.0F, state.getValue(FACING), 0.0F, 0.5F).move(pos).deflate(1.0E-6D);
             return level.noCollision(aabb);
         }
     }
@@ -241,13 +242,22 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel worldIn, BlockPos pos, boolean movedByPiston) {
-        worldIn.updateNeighbourForOutputSignal(pos, this);
+    protected void onRemove(BlockState state, Level worldIn, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) {
+            if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storage) {
+                storage.onBlockRemoved(worldIn, pos, state);
+            }
+            worldIn.updateNeighbourForOutputSignal(pos, this);
+        }
+        super.onRemove(state, worldIn, pos, newState, movedByPiston);
     }
 
+    // NeoForge deprecates this in favour of its IBlockExtension overload, which defaults to
+    // calling it, so overriding this one is what answers pick block on both loaders.
+    @SuppressWarnings("deprecation")
     @Override
-    protected ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state, boolean includeData) {
-        ItemStack itemstack = super.getCloneItemStack(worldIn, pos, state, includeData);
+    public ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state) {
+        ItemStack itemstack = super.getCloneItemStack(worldIn, pos, state);
         worldIn.getBlockEntity(pos, this.types.blockEntity().get()).ifPresent((shulkerBE) -> {
             itemstack.applyComponents(shulkerBE.collectComponents());
             NBTHelper.putInt(itemstack, "Color", shulkerBE.colorToSave());
@@ -312,12 +322,12 @@ public class LockedShulkerBoxBlock extends Block implements EntityBlock, IStorag
     }
 
     @Override
-    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof BaseStorageBlockEntity storageBlockEntity) {
             return StorageUtil.getRedstoneSignalFromContainer(storageBlockEntity.getItemStackStorageHandler());
         }
 
-        return super.getAnalogOutputSignal(state, level, pos, direction);
+        return super.getAnalogOutputSignal(state, level, pos);
     }
 
     @Override

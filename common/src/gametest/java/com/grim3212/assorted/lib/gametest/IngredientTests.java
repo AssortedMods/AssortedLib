@@ -6,7 +6,6 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -36,8 +35,8 @@ final class IngredientTests {
         helper.assertTrue(either.test(new ItemStack(Items.STONE)), "an OR ingredient rejected its second branch");
         helper.assertFalse(either.test(new ItemStack(Items.DIRT)), "an OR ingredient accepted an item in neither branch");
 
-        // A single element OR has to stay usable: an Ingredient may not be empty in 26.2, and both
-        // helpers special-case the one-argument call rather than wrapping it.
+        // A single element OR has to stay usable: both helpers special-case the one-argument call
+        // rather than wrapping it.
         Ingredient single = Services.INGREDIENTS.or(Ingredient.of(Items.STICK));
         helper.assertTrue(single.test(new ItemStack(Items.STICK)), "a single branch OR rejected its own item");
         helper.assertFalse(single.test(new ItemStack(Items.STONE)), "a single branch OR accepted a foreign item");
@@ -63,7 +62,7 @@ final class IngredientTests {
     /**
      * A fluid ingredient matches a container by what is inside it, and draws the containers holding
      * that fluid rather than the bare items it matches. Both loaders ask the custom ingredient for
-     * its own {@code display()}, so the same statement holds on each. AssortedTools covers the half
+     * its own items ({@code Ingredient#getItems()}), so the same statement holds on each. AssortedTools covers the half
      * that only a modded container shows: one whose fluid lives in components.
      */
     private static void fluidIngredientShowsFilledContainers(GameTestHelper helper) {
@@ -73,7 +72,7 @@ final class IngredientTests {
         helper.assertFalse(water.test(new ItemStack(Items.BUCKET)), "a water fluid ingredient accepted an empty bucket");
         helper.assertFalse(water.test(new ItemStack(Items.LAVA_BUCKET)), "a water fluid ingredient accepted a lava bucket");
 
-        List<ItemStack> shown = water.display().resolveForStacks(SlotDisplayContext.fromLevel(helper.getLevel()));
+        List<ItemStack> shown = List.of(water.getItems());
         helper.assertFalse(shown.isEmpty(), "a fluid ingredient draws nothing at all");
         helper.assertTrue(shown.stream().anyMatch(stack -> stack.is(Items.WATER_BUCKET)),
                 "a water fluid ingredient draws " + shown + ", with no water bucket among them");

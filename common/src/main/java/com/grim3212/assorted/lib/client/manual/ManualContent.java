@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.manual.ManualLinks;
 import com.grim3212.assorted.lib.manual.ManualPageRef;
 import com.grim3212.assorted.lib.manual.ManualRegistry;
 import com.grim3212.assorted.lib.manual.ManualSection;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import org.jetbrains.annotations.Nullable;
@@ -27,14 +27,14 @@ public final class ManualContent {
     private final ManualBookStyle style;
     private final Map<String, ManualSection> sections;
     private final Map<String, List<ManualChapter>> chapters;
-    private final Map<Identifier, ManualRecipeLayout> layouts;
+    private final Map<ResourceLocation, ManualRecipeLayout> layouts;
     private final ManualLinks.Loaded links;
 
     /** Conditions already applied; see {@link #resolveConditions()}. */
     private volatile Map<String, List<ManualChapter>> resolved = Map.of();
 
     ManualContent(ManualBookStyle style, Map<String, ManualSection> sections,
-                  Map<String, List<ManualChapter>> chapters, Map<Identifier, ManualRecipeLayout> layouts,
+                  Map<String, List<ManualChapter>> chapters, Map<ResourceLocation, ManualRecipeLayout> layouts,
                   ManualLinks.Loaded links) {
         this.style = style;
         this.sections = sections;
@@ -71,6 +71,7 @@ public final class ManualContent {
 
     /** Re-applies the conditions of whatever is loaded now. */
     public static void refresh() {
+        ManualRecipeLayout.Extra.clearDecoded();
         current.resolveConditions();
     }
 
@@ -133,11 +134,11 @@ public final class ManualContent {
     @Nullable
     public ManualRecipeLayout layoutFor(Recipe<?> recipe) {
         ManualRecipeLayout layout = this.layout(recipe.getType());
-        return layout != null ? layout : this.layouts.get(Identifier.withDefaultNamespace("crafting"));
+        return layout != null ? layout : this.layouts.get(ResourceLocation.withDefaultNamespace("crafting"));
     }
 
     /** {@code RecipeType} carries no id of its own; the registry is the only place it is written. */
-    private static Identifier typeId(RecipeType<?> type) {
+    private static ResourceLocation typeId(RecipeType<?> type) {
         return net.minecraft.core.registries.BuiltInRegistries.RECIPE_TYPE.getKey(type);
     }
 
@@ -154,7 +155,7 @@ public final class ManualContent {
         ManualBookStyle style = ManualBookStyle.DEFAULT;
         final Map<String, ManualSection> sections = new LinkedHashMap<>();
         final Map<String, List<ManualChapter>> chapters = new LinkedHashMap<>();
-        final Map<Identifier, ManualRecipeLayout> layouts = new LinkedHashMap<>();
+        final Map<ResourceLocation, ManualRecipeLayout> layouts = new LinkedHashMap<>();
         final List<ManualLinks.Group> links = new ArrayList<>();
 
         void addChapter(ManualChapter chapter) {

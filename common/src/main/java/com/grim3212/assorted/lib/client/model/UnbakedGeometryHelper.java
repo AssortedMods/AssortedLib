@@ -1,23 +1,19 @@
 package com.grim3212.assorted.lib.client.model;
 
 import com.grim3212.assorted.lib.client.model.loaders.context.IModelBakingContext;
-import com.mojang.math.Quadrant;
-import net.minecraft.client.renderer.block.dispatch.ModelState;
+import net.minecraft.Util;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BlockElement;
+import net.minecraft.client.renderer.block.model.BlockElementFace;
+import net.minecraft.client.renderer.block.model.BlockFaceUV;
+import net.minecraft.client.renderer.block.model.FaceBakery;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.ModelBaker;
-import net.minecraft.client.resources.model.ModelDebugName;
-import net.minecraft.client.resources.model.cuboid.CuboidFace;
-import net.minecraft.client.resources.model.cuboid.CuboidModelElement;
-import net.minecraft.client.resources.model.cuboid.FaceBakery;
-import net.minecraft.client.resources.model.cuboid.ItemModelGenerator;
-import net.minecraft.client.resources.model.cuboid.UnbakedCuboidGeometry;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.sprite.Material;
-import net.minecraft.client.resources.model.sprite.TextureSlots;
+import net.minecraft.client.resources.model.Material;
+import net.minecraft.client.resources.model.ModelState;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.Util;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -26,27 +22,30 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("resource")
 public class UnbakedGeometryHelper {
 
+    private static final FaceBakery FACE_BAKERY = new FaceBakery();
+
     private UnbakedGeometryHelper() {
         throw new IllegalStateException("Can not instantiate an instance of: UnbakedGeometryHelper. This is a utility class");
     }
 
-    // createUnbakedItemElements (the extruded "builtin/generated" item shape as elements) has no
-    // replacement: ItemModelGenerator's element code is private and bakes straight to quads. A
-    // model that wants that shape parents onto ItemModelGenerator.GENERATED_ITEM_MODEL_ID.
+    // There is no createUnbakedItemElements (the extruded "builtin/generated" item shape as
+    // elements): ItemModelGenerator#processFrames is private in vanilla and common code cannot
+    // widen it. A model that wants that shape parents onto minecraft:item/generated.
 
     /**
-     * Creates {@linkplain CuboidModelElement cuboid elements} covering only the opaque pixels of
-     * the sprite, so a flat item texture becomes a mask instead of a full quad. Only the mask: the
-     * extruded edge elements are not obtainable (see the TODO above).
+     * Creates {@linkplain BlockElement block elements} covering only the opaque pixels of the
+     * sprite, so a flat item texture becomes a mask instead of a full quad. Only the mask: the
+     * extruded edge elements are not obtainable (see above).
      */
-    public static List<CuboidModelElement> createUnbakedItemMaskElements(int layerIndex, TextureAtlasSprite sprite) {
-        var elements = new ArrayList<CuboidModelElement>();
+    public static List<BlockElement> createUnbakedItemMaskElements(int layerIndex, TextureAtlasSprite sprite) {
+        var elements = new ArrayList<BlockElement>();
 
         int width = sprite.contents().width(), height = sprite.contents().height();
         var bits = new BitSet(width * height);
@@ -86,14 +85,15 @@ public class UnbakedGeometryHelper {
                             bits.clear(i + j * width);
 
                     // Create element
-                    int finalX = x, finalY = y, finalYEnd = yEnd, finalXStart = xStart;
-                    elements.add(new CuboidModelElement(
-                            new Vector3f(16 * finalXStart / (float) width, 16 - 16 * finalYEnd / (float) height, 7.5F),
-                            new Vector3f(16 * finalX / (float) width, 16 - 16 * finalY / (float) height, 8.5F),
+                    elements.add(new BlockElement(
+                            new Vector3f(16 * xStart / (float) width, 16 - 16 * yEnd / (float) height, 7.5F),
+                            new Vector3f(16 * x / (float) width, 16 - 16 * y / (float) height, 8.5F),
                             Util.make(new HashMap<>(), map -> {
                                 for (Direction direction : Direction.values())
-                                    map.put(direction, new CuboidFace(null, layerIndex, "layer" + layerIndex, null, Quadrant.R0));
-                            })
+                                    map.put(direction, new BlockElementFace(null, layerIndex, "#layer" + layerIndex, new BlockFaceUV(null, 0)));
+                            }),
+                            null,
+                            true
                     ));
 
                     // Reset xStart
@@ -105,38 +105,46 @@ public class UnbakedGeometryHelper {
     }
 
     /**
-     * Turns a single {@link CuboidFace} into a {@link BakedQuad}.
+     * Turns a single {@link BlockElementFace} into a {@link BakedQuad}.
      */
-    public static BakedQuad bakeElementFace(ModelBaker baker, CuboidModelElement element, CuboidFace face, Material.Baked material, Direction direction, ModelState state) {
-        return FaceBakery.bakeQuad(baker, element.from(), element.to(), face, material, direction, state, element.rotation(), element.shadeDirectionOverride(), element.lightEmission());
+    public static BakedQuad bakeElementFace(BlockElement element, BlockElementFace face, TextureAtlasSprite sprite, Direction direction, ModelState state) {
+        return FACE_BAKERY.bakeQuad(element.from, element.to, face, sprite, direction, state, element.rotation, element.shade);
     }
 
     /**
-     * Bakes a list of {@linkplain CuboidModelElement cuboid elements} and feeds the baked quads to a
-     * {@linkplain IModelBuilder model builder}.
+     * Bakes a list of {@linkplain BlockElement block elements} and feeds the baked quads to a
+     * {@linkplain IModelBuilder model builder}. Each face's texture is resolved through
+     * {@code owner}, as a {@code #slot} reference or a texture path.
      */
-    public static void bakeElements(ModelBaker baker, IModelBuilder<?> builder, List<CuboidModelElement> elements, TextureSlots textures, ModelState modelState, ModelDebugName name) {
-        for (CuboidModelElement element : elements) {
-            for (Map.Entry<Direction, CuboidFace> entry : element.faces().entrySet()) {
+    public static void bakeElements(IModelBuilder<?> builder, List<BlockElement> elements, IModelBakingContext owner, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState) {
+        for (BlockElement element : elements) {
+            for (Map.Entry<Direction, BlockElementFace> entry : element.faces.entrySet()) {
                 var side = entry.getKey();
                 var face = entry.getValue();
-                var material = baker.materials().resolveSlot(textures, face.texture(), name);
-                var quad = bakeElementFace(baker, element, face, material, side, modelState);
+                Material material = resolveDirtyMaterial(face.texture(), owner);
+                var sprite = spriteGetter.apply(material != null ? material : missingMaterial());
+                var quad = bakeElementFace(element, face, sprite, side, modelState);
                 if (face.cullForDirection() == null)
                     builder.addUnculledFace(quad);
                 else
-                    builder.addCulledFace(Direction.rotate(modelState.transformation().getMatrix(), face.cullForDirection()), quad);
+                    builder.addCulledFace(Direction.rotate(modelState.getRotation().getMatrix(), face.cullForDirection()), quad);
             }
         }
     }
 
     /**
-     * Bakes a list of {@linkplain CuboidModelElement cuboid elements} and returns the list of baked quads.
+     * Bakes a list of {@linkplain BlockElement block elements} and returns the list of baked quads.
      */
-    public static List<BakedQuad> bakeElements(ModelBaker baker, List<CuboidModelElement> elements, TextureSlots textures, ModelState modelState, ModelDebugName name) {
+    public static List<BakedQuad> bakeElements(List<BlockElement> elements, IModelBakingContext owner, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState) {
         if (elements.isEmpty())
             return List.of();
-        return UnbakedCuboidGeometry.bake(elements, textures, baker, modelState, name).getAll();
+        var list = new ArrayList<BakedQuad>();
+        bakeElements(IModelBuilder.collecting(list), elements, owner, spriteGetter, modelState);
+        return list;
+    }
+
+    private static Material missingMaterial() {
+        return new Material(InventoryMenu.BLOCK_ATLAS, MissingTextureAtlasSprite.getLocation());
     }
 
     /**
@@ -149,16 +157,18 @@ public class UnbakedGeometryHelper {
             Pattern.compile("(?:.*[\\\\/]assets[\\\\/](?<namespace>[a-z_-]+)[\\\\/]textures[\\\\/])?(?<path>[a-z_\\\\/-]+)\\.png");
 
     /**
-     * Resolves a material that may name a filesystem path instead of a proper {@link Identifier}.
-     * The atlas is not part of a {@link Material}; the baking {@code MaterialBaker} decides it.
+     * Resolves a material that may name a filesystem path instead of a proper {@link ResourceLocation}.
+     * A path is always taken to be on {@link InventoryMenu#BLOCK_ATLAS}; a {@code #slot}
+     * reference is looked up in {@code owner}, and is null if it names nothing.
      */
+    @Nullable
     public static Material resolveDirtyMaterial(@Nullable String tex, IModelBakingContext owner) {
         if (tex == null)
-            return new Material(MissingTextureAtlasSprite.getLocation());
+            return missingMaterial();
         if (tex.startsWith("#"))
             return owner.getMaterial(tex).orElse(null);
 
-        // Attempt to convert a common (windows/linux/mac) filesystem path to a Identifier.
+        // Attempt to convert a common (windows/linux/mac) filesystem path to a ResourceLocation.
         // This makes no promises, if it doesn't work, too bad, fix your mtl file.
         Matcher match = FILESYSTEM_PATH_TO_RESLOC.matcher(tex);
         if (match.matches()) {
@@ -167,6 +177,6 @@ public class UnbakedGeometryHelper {
             tex = namespace != null ? namespace + ":" + path : path;
         }
 
-        return new Material(Identifier.parse(tex));
+        return new Material(InventoryMenu.BLOCK_ATLAS, ResourceLocation.parse(tex));
     }
 }

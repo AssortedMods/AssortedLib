@@ -7,12 +7,13 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
 import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
-import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -20,7 +21,6 @@ import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
-import java.util.stream.Stream;
 
 public class FabricFluidIngredient extends LibFluidIngredient implements CustomIngredient {
 
@@ -42,20 +42,14 @@ public class FabricFluidIngredient extends LibFluidIngredient implements CustomI
         return new FabricFluidIngredient(itemTag, fluidTag, amount);
     }
 
-    @Override
-    public boolean requiresTesting() {
-        return false;
-    }
-
     /**
-     * The items this ingredient may ever match, for the recipe book display and the ingredient
-     * index. The contained fluid is checked per stack in {@link #test(ItemStack)} and drawn by
-     * {@code display()}, which is inherited from {@link LibFluidIngredient} - a superclass method
-     * wins over the interface default, so both loaders draw the filled containers the same way.
+     * The contained fluid is read off each stack's components, so an item match alone is never
+     * enough: {@link #test(ItemStack)} has to run. {@code getMatchingStacks()} is inherited from
+     * {@link LibFluidIngredient} and lists the filled containers, which is what recipe viewers draw.
      */
     @Override
-    public Stream<Holder<Item>> items() {
-        return getMatchingStacks().stream().map(ItemStack::typeHolder).distinct();
+    public boolean requiresTesting() {
+        return true;
     }
 
     @Override
@@ -78,11 +72,16 @@ public class FabricFluidIngredient extends LibFluidIngredient implements CustomI
         ).apply(instance, Serializer::create));
 
         private static final StreamCodec<RegistryFriendlyByteBuf, FabricFluidIngredient> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.optional(TagKey.streamCodec(Registries.ITEM)), ingredient -> Optional.ofNullable(ingredient.getItemTag()),
-                TagKey.streamCodec(Registries.FLUID), LibFluidIngredient::getFluidTag,
+                ByteBufCodecs.optional(tagStreamCodec(Registries.ITEM)), ingredient -> Optional.ofNullable(ingredient.getItemTag()),
+                tagStreamCodec(Registries.FLUID), LibFluidIngredient::getFluidTag,
                 ByteBufCodecs.VAR_LONG, LibFluidIngredient::getAmount,
                 (itemTag, fluidTag, amount) -> new FabricFluidIngredient(itemTag.orElse(null), fluidTag, amount)
         );
+
+        /** A tag key on the wire is its id; the registry is implied by the field. */
+        private static <T> StreamCodec<RegistryFriendlyByteBuf, TagKey<T>> tagStreamCodec(final ResourceKey<? extends Registry<T>> registry) {
+            return ResourceLocation.STREAM_CODEC.<RegistryFriendlyByteBuf>cast().map(id -> TagKey.create(registry, id), TagKey::location);
+        }
 
         private static FabricFluidIngredient create(final Optional<TagKey<Item>> itemTag, final TagKey<Fluid> fluidTag, final long amount) {
             return new FabricFluidIngredient(itemTag.orElse(null), fluidTag, amount);
@@ -94,17 +93,17 @@ public class FabricFluidIngredient extends LibFluidIngredient implements CustomI
         }
 
         @Override
-        public Identifier getIdentifier() {
+        public ResourceLocation getIdentifier() {
             return super.getIdentifier();
         }
 
         @Override
-        public MapCodec<FabricFluidIngredient> getCodec() {
+        public MapCodec<FabricFluidIngredient> getCodec(boolean allowEmpty) {
             return CODEC;
         }
 
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, FabricFluidIngredient> getStreamCodec() {
+        public StreamCodec<RegistryFriendlyByteBuf, FabricFluidIngredient> getPacketCodec() {
             return STREAM_CODEC;
         }
     }

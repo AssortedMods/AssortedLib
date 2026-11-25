@@ -3,8 +3,10 @@ package com.grim3212.assorted.lib.mixin.world.level;
 import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.random.Weighted;
-import net.minecraft.util.random.WeightedList;
+import net.minecraft.core.Holder;
+import net.minecraft.util.random.WeightedRandomList;
+import net.minecraft.world.level.biome.Biome;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.StructureManager;
@@ -27,13 +29,13 @@ import java.util.List;
 public abstract class NaturalSpawnerMixin {
 
     @Inject(method = "mobsAt", at = @At("RETURN"), cancellable = true)
-    private static void assortedlib_addStructureSpawns(ServerLevel level, StructureManager structureManager, ChunkGenerator generator, MobCategory category, BlockPos pos,
-                                                       CallbackInfoReturnable<WeightedList<MobSpawnSettings.SpawnerData>> cir) {
-        List<Weighted<MobSpawnSettings.SpawnerData>> added = StructureSpawns.at(structureManager, category, pos);
+    private static void assortedlib_addStructureSpawns(ServerLevel level, StructureManager structureManager, ChunkGenerator generator, MobCategory category, BlockPos pos, @Nullable Holder<Biome> biome,
+                                                       CallbackInfoReturnable<WeightedRandomList<MobSpawnSettings.SpawnerData>> cir) {
+        List<MobSpawnSettings.SpawnerData> added = StructureSpawns.at(structureManager, category, pos);
         if (!added.isEmpty()) {
-            List<Weighted<MobSpawnSettings.SpawnerData>> spawns = new ArrayList<>(cir.getReturnValue().unwrap());
+            List<MobSpawnSettings.SpawnerData> spawns = new ArrayList<>(cir.getReturnValue().unwrap());
             spawns.addAll(added);
-            cir.setReturnValue(WeightedList.of(spawns));
+            cir.setReturnValue(WeightedRandomList.create(spawns));
         }
     }
 }

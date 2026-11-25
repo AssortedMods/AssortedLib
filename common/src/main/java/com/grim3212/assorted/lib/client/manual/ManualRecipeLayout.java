@@ -3,16 +3,19 @@ package com.grim3212.assorted.lib.client.manual;
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.manual.ManualSlot;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.RegistryOps;
-import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.crafting.Ingredient;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @param cornerRadius    rounds the region's corners off; 0 leaves it square
  * @param shapelessMarker absent puts the mark in the region's top right corner
  */
-public record ManualRecipeLayout(Identifier texture, int textureWidth, int textureHeight,
+public record ManualRecipeLayout(ResourceLocation texture, int textureWidth, int textureHeight,
                                  int u, int v, int width, int height,
                                  int columns, List<Position> inputs, Position result, List<Extra> extras,
                                  int cornerRadius, Optional<Position> shapelessMarker) {
@@ -46,7 +49,7 @@ public record ManualRecipeLayout(Identifier texture, int textureWidth, int textu
     public static final int SLOT = 18;
 
     public static final Codec<ManualRecipeLayout> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Identifier.CODEC.fieldOf("texture").forGetter(ManualRecipeLayout::texture),
+            ResourceLocation.CODEC.fieldOf("texture").forGetter(ManualRecipeLayout::texture),
             Codec.INT.optionalFieldOf("texture_width", 256).forGetter(ManualRecipeLayout::textureWidth),
             Codec.INT.optionalFieldOf("texture_height", 256).forGetter(ManualRecipeLayout::textureHeight),
             Codec.INT.fieldOf("u").forGetter(ManualRecipeLayout::u),
@@ -86,9 +89,10 @@ public record ManualRecipeLayout(Identifier texture, int textureWidth, int textu
     }
 
     /**
-     * A slot belonging to the station rather than the recipe, filled from a vanilla
-     * {@link SlotDisplay}: {@code minecraft:any_fuel} or {@code minecraft:tag} (a {@code #} tag) both
-     * cycle and are marked as a choice.
+     * A slot belonging to the station rather than the recipe. Its {@code display} names what fills
+     * it by {@code type}: {@code minecraft:item} with an {@code item} id, {@code minecraft:tag} with
+     * a {@code #} {@code tag}, or {@code minecraft:any_fuel}. The last two cycle and are marked as a
+     * choice.
      *
      * @param tooltip a translation key added to the slot's tooltip, given the slot's own item name
      *                as {@code %s}. A slot the recipe does not explain itself needs one - the block
@@ -107,24 +111,44 @@ public record ManualRecipeLayout(Identifier texture, int textureWidth, int textu
         /** Each bad display is reported once, not every frame it is drawn. */
         private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
 
-        /** Decoded when drawn, as a tag display needs the world's tags, which resources load before. */
-        public ManualSlot slot() {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.level == null) {
-                return ManualSlot.of(SlotDisplay.Empty.INSTANCE, this.count);
-            }
+        /**
+         * Decoded slots, kept until the server next sends its data: an ingredient resolves its tag
+         * once, and the fuel list tests every item.
+         */
+        private static final Map<Extra, ManualSlot> DECODED = new ConcurrentHashMap<>();
 
-            SlotDisplay display = decode(this.display, minecraft.level.registryAccess())
-                    .orElse(SlotDisplay.Empty.INSTANCE);
-            return ManualSlot.of(display, this.count);
+        /** Called when the world's tags or fuels may have changed. */
+        public static void clearDecoded() {
+            DECODED.clear();
         }
 
-        private static <T> Optional<SlotDisplay> decode(Dynamic<T> display, HolderLookup.Provider registries) {
-            return SlotDisplay.CODEC.parse(RegistryOps.create(display.getOps(), registries), display.getValue()).resultOrPartial(error -> {
+        /** Decoded when first drawn, as a tag needs the world's tags, which resources load before. */
+        public ManualSlot slot() {
+            if (Minecraft.getInstance().level == null) {
+                return ManualSlot.EMPTY;
+            }
+
+            return DECODED.computeIfAbsent(this, extra -> extra.decodeReported());
+        }
+
+        private ManualSlot decodeReported() {
+            return decode(this.display, this.count).resultOrPartial(error -> {
                 if (REPORTED.add(error)) {
                     LibConstants.LOG.error("Failed to read a manual recipe layout's display: {}", error);
                 }
-            });
+            }).orElse(ManualSlot.EMPTY);
+        }
+
+        private static DataResult<ManualSlot> decode(Dynamic<?> display, int count) {
+            String type = display.get("type").asString("");
+            return switch (type) {
+                case "minecraft:any_fuel" -> DataResult.success(ManualSlot.anyFuel(count));
+                case "minecraft:item" -> display.get("item").read(BuiltInRegistries.ITEM.byNameCodec())
+                        .map(item -> ManualSlot.of(Ingredient.of(item), count));
+                case "minecraft:tag" -> display.get("tag").read(TagKey.hashedCodec(Registries.ITEM))
+                        .map(tag -> ManualSlot.of(Ingredient.of(tag), count));
+                default -> DataResult.error(() -> "Unknown display type '" + type + "'");
+            };
         }
     }
 }

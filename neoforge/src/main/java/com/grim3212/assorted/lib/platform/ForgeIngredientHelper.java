@@ -18,9 +18,8 @@ import org.jetbrains.annotations.Nullable;
 public class ForgeIngredientHelper implements IIngredientHelper {
 
     /**
-     * Custom ingredients are no longer recipe serializers registered through {@code CraftingHelper};
-     * an {@link net.neoforged.neoforge.common.crafting.IngredientType} lives in its own registry.
-     * This is called from the {@code RegisterEvent} for that registry, while it is still open.
+     * An {@link net.neoforged.neoforge.common.crafting.IngredientType} lives in its own registry. This is
+     * called from the {@code RegisterEvent} for that registry, while it is still open.
      */
     @Override
     public void register() {
@@ -46,8 +45,7 @@ public class ForgeIngredientHelper implements IIngredientHelper {
 
     @Override
     public Ingredient nbt(ItemStack item) {
-        // StrictNBTIngredient is gone with the tag it matched on; the component based equivalent
-        // takes the whole stack and, with strict set, requires an exact component match.
+        // Takes the whole stack and, with strict set, requires an exact component match.
         return DataComponentIngredient.of(true, item.copy());
     }
 
@@ -56,11 +54,11 @@ public class ForgeIngredientHelper implements IIngredientHelper {
         return ForgeFluidIngredient.of(itemTagKey, fluidTagKey, amount).toVanilla();
     }
 
-    // An Ingredient may not be empty in 26.2 - vanilla spells "none" as Optional<Ingredient> - so a
-    // zero length and()/or() is rejected here rather than building something vanilla refuses later.
+    // NeoForge's intersection refuses an empty list, and an empty or() would quietly be
+    // Ingredient.EMPTY, which matches nothing; a zero length and()/or() is a mistake either way.
     private static void requireNotEmpty(Ingredient... ingredients) {
         if (ingredients.length == 0) {
-            throw new IllegalArgumentException("Cannot combine zero ingredients; an Ingredient can no longer be empty");
+            throw new IllegalArgumentException("Cannot combine zero ingredients");
         }
     }
 }

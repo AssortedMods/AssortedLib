@@ -6,21 +6,14 @@ import com.grim3212.assorted.lib.platform.services.IKeyBindingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 public class FabricKeyBindingHelper implements IKeyBindingHelper {
-
-    // KeyMapping.Category is a record around an Identifier that has to be registered once
-    // (registering the same id twice throws) and derives its label itself, as
-    // Component.translatable(id.toLanguageKey("key.category")). Cached so a repeated id reuses the
-    // category rather than throwing.
-    private static final Map<Identifier, KeyMapping.Category> CATEGORIES = new ConcurrentHashMap<>();
 
     @Override
     public IKeyConflictHelper getGuiKeyConflictContext() {
@@ -34,7 +27,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
 
     @Override
     public KeyMapping createNew(
-            final String translationKey, final IKeyConflictHelper keyConflictContext, final InputConstants.Type inputType, final int key, final Identifier category) {
+            final String translationKey, final IKeyConflictHelper keyConflictContext, final InputConstants.Type inputType, final int key, final ResourceLocation category) {
         return new KeyMapping(
                 translationKey,
                 inputType,
@@ -50,7 +43,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
             final KeyModifier keyModifier,
             final InputConstants.Type inputType,
             final int key,
-            final Identifier category) {
+            final ResourceLocation category) {
         return new ModifiedKeyMapping(translationKey, inputType, key, category(category), keyConflictContext, keyModifier);
     }
 
@@ -72,8 +65,12 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
         return true;
     }
 
-    private static KeyMapping.Category category(final Identifier category) {
-        return CATEGORIES.computeIfAbsent(category, KeyMapping.Category::register);
+    /**
+     * A key mapping's category is its translation key, {@code key.category.<namespace>.<path>}. Fabric's
+     * {@code KeyBindingHelper#registerKeyBinding} adds it to vanilla's sort order when the mapping is registered.
+     */
+    private static String category(final ResourceLocation category) {
+        return category.toLanguageKey("key.category");
     }
 
     private static final class FabricGuiKeyConflictHelper implements IKeyConflictHelper {
@@ -85,8 +82,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
 
         @Override
         public boolean isActive() {
-            // The current screen moved off Minecraft and onto its Gui in 26.x.
-            return Minecraft.getInstance().gui.screen() != null;
+            return Minecraft.getInstance().screen != null;
         }
 
         @Override
@@ -121,7 +117,7 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
                 final String translationKey,
                 final InputConstants.Type inputType,
                 final int key,
-                final KeyMapping.Category category,
+                final String category,
                 final IKeyConflictHelper context,
                 final KeyModifier keyModifier) {
             super(translationKey,
@@ -138,16 +134,12 @@ public class FabricKeyBindingHelper implements IKeyBindingHelper {
         }
 
         private boolean isKeyModifierActive() {
-            // Screen's static modifier helpers are gone; the keyboard state is read directly.
+            // Screen's helpers read the live keyboard, and treat Command as control on macOS.
             return switch (keyModifier) {
-                case CONTROL -> isModifierDown(InputConstants.KEY_LCONTROL, InputConstants.KEY_RCONTROL);
-                case SHIFT -> isModifierDown(InputConstants.KEY_LSHIFT, InputConstants.KEY_RSHIFT);
-                case ALT -> isModifierDown(InputConstants.KEY_LALT, InputConstants.KEY_RALT);
+                case CONTROL -> Screen.hasControlDown();
+                case SHIFT -> Screen.hasShiftDown();
+                case ALT -> Screen.hasAltDown();
             };
-        }
-
-        private static boolean isModifierDown(final int left, final int right) {
-            return InputConstants.isKeyDown(left) || InputConstants.isKeyDown(right);
         }
 
         @Override

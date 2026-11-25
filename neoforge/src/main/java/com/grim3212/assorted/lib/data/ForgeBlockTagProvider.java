@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.data;
 
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
@@ -10,8 +11,8 @@ public class ForgeBlockTagProvider extends BlockTagsProvider {
 
     private final LibBlockTagProvider commonBlocks;
 
-    public ForgeBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider, String modId, LibBlockTagProvider commonBlocks) {
-        super(output, lookupProvider, modId);
+    public ForgeBlockTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider, String modId, ExistingFileHelper existingFileHelper, LibBlockTagProvider commonBlocks) {
+        super(output, lookupProvider, modId, existingFileHelper);
         this.commonBlocks = commonBlocks;
     }
 

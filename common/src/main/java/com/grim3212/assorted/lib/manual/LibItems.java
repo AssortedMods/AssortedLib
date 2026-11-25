@@ -6,7 +6,7 @@ import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.registry.IRegistryObject;
 import com.grim3212.assorted.lib.registry.RegistryProvider;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -24,12 +24,10 @@ public class LibItems {
 
     /** Vanilla's tab rather than one of the library's own, for a single item. */
     private static final ResourceKey<CreativeModeTab> TOOLS_AND_UTILITIES =
-            ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.withDefaultNamespace("tools_and_utilities"));
+            ResourceKey.create(Registries.CREATIVE_MODE_TAB, ResourceLocation.withDefaultNamespace("tools_and_utilities"));
 
     private static <T extends Item> IRegistryObject<T> register(final String name, final Function<Item.Properties, ? extends T> factory) {
-        // Since 1.21.2 an item needs its id before construction, so properties are built here.
-        final ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, name));
-        return ITEMS.register(name, () -> factory.apply(new Item.Properties().setId(key)));
+        return ITEMS.register(name, () -> factory.apply(new Item.Properties()));
     }
 
     public static void init() {

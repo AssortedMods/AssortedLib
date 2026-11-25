@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.client.storage;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -7,17 +9,22 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.RenderType;
 
-/** The single chest Lib's locked chests are drawn with, a padlock in place of the handle while locked. */
-public class ChestModel extends Model<StorageModelState> {
+/**
+ * The single chest Lib's locked chests are drawn with, a padlock in place of the handle while
+ * locked. Pose it with {@link #setupAnim(StorageModelState)} before each draw.
+ */
+public class ChestModel extends Model {
 
+    private final ModelPart root;
     private final ModelPart lid;
     private final ModelPart lock;
     private final ModelPart unlocked;
 
     public ChestModel(ModelPart root) {
-        super(root, RenderTypes::entityCutoutCull);
+        super(RenderType::entityCutout);
+        this.root = root;
         this.lid = root.getChild("main").getChild("lid");
         this.lock = root.getChild("lock");
         this.unlocked = root.getChild("unlocked");
@@ -33,10 +40,11 @@ public class ChestModel extends Model<StorageModelState> {
         return LayerDefinition.create(meshdefinition, 64, 64);
     }
 
-    @Override
-    public void setupAnim(StorageModelState state) {
-        super.setupAnim(state);
+    public ModelPart root() {
+        return this.root;
+    }
 
+    public void setupAnim(StorageModelState state) {
         float xRot = (float) Math.toRadians(state.doorAngle() / -1.0F);
         this.lid.xRot = xRot;
         this.lock.xRot = xRot;
@@ -44,5 +52,10 @@ public class ChestModel extends Model<StorageModelState> {
 
         this.unlocked.visible = state.renderHandle();
         this.lock.visible = !state.renderHandle();
+    }
+
+    @Override
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int packedLight, int packedOverlay, int color) {
+        this.root.render(poseStack, buffer, packedLight, packedOverlay, color);
     }
 }

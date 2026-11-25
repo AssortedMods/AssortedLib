@@ -2,7 +2,6 @@ package com.grim3212.assorted.lib.data;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.tags.TagAppender;
 import net.minecraft.data.tags.VanillaItemTagsProvider;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -15,13 +14,9 @@ import java.util.function.Function;
 
 public abstract class LibItemTagProvider extends VanillaItemTagsProvider {
 
-    /**
-     * The block tag lookup is no longer accepted by the vanilla item tag provider - block to item
-     * tag copying lives on the loader providers now - but it is kept on this constructor so the
-     * loader side providers can keep handing their block tag contents getter through unchanged.
-     */
+    /** {@code blockTags} is the block tag provider's {@code contentsGetter()}, which {@code copier} copies from. */
     public LibItemTagProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, CompletableFuture<TagLookup<Block>> blockTags) {
-        super(output, lookup);
+        super(output, lookup, blockTags);
     }
 
     @Override

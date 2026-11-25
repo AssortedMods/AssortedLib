@@ -14,17 +14,17 @@ import net.minecraft.tags.StructureTags;
 import com.grim3212.assorted.lib.spawn.WaterSite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import com.grim3212.assorted.lib.test.TestSupport;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.phys.AABB;
 
 import java.util.List;
@@ -45,14 +45,14 @@ final class SpawnerTests {
     }
 
     /** {@code data/assortedlib/spawn_habit/test_sheep.json}, at a chance of 0 so the live spawner never acts on it. */
-    private static final Identifier TEST_SHEEP = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "test_sheep");
+    private static final ResourceLocation TEST_SHEEP = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "test_sheep");
     /** Ticks seen, by level, from the spawner {@link #install()} adds. */
     private static final Map<ResourceKey<Level>, AtomicInteger> TICKS = new ConcurrentHashMap<>();
 
     static void install() {
-        Services.WORLD_GEN.addCustomSpawner(Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "test_counter"), level -> {
+        Services.WORLD_GEN.addCustomSpawner(ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "test_counter"), level -> {
             AtomicInteger ticks = TICKS.computeIfAbsent(level.dimension(), key -> new AtomicInteger());
-            return (serverLevel, spawnEnemies) -> ticks.incrementAndGet();
+            return (serverLevel, spawnEnemies, spawnFriendlies) -> ticks.incrementAndGet();
         });
     }
 
@@ -70,11 +70,11 @@ final class SpawnerTests {
     /** Vanilla's GameTestServer sets spawn_mobs off, which gates custom spawners; Fabric's runner does not. */
     private static void customSpawnerIsTickedByItsLevel(GameTestHelper helper) {
         AtomicInteger ticks = TICKS.get(helper.getLevel().dimension());
-        helper.assertTrue(ticks != null, "no spawner was made for " + helper.getLevel().dimension().identifier());
+        helper.assertTrue(ticks != null, "no spawner was made for " + helper.getLevel().dimension().location());
         GameRules rules = helper.getLevel().getGameRules();
-        boolean spawning = rules.get(GameRules.SPAWN_MOBS);
-        rules.set(GameRules.SPAWN_MOBS, true, helper.getLevel().getServer());
-        helper.runBeforeTestEnd(() -> rules.set(GameRules.SPAWN_MOBS, spawning, helper.getLevel().getServer()));
+        boolean spawning = rules.getBoolean(GameRules.RULE_DOMOBSPAWNING);
+        rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(true, helper.getLevel().getServer());
+        TestSupport.whenTestEnds(helper, () -> rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(spawning, helper.getLevel().getServer()));
         int before = ticks.get();
         helper.succeedWhen(() -> helper.assertTrue(ticks.get() > before, "the level has not ticked the added spawner"));
     }
@@ -83,7 +83,7 @@ final class SpawnerTests {
     private static void spawnHabitLoadsFromJson(GameTestHelper helper) {
         SpawnHabit habit = SpawnHabits.get(TEST_SHEEP);
         helper.assertTrue(habit != null, "the test sheep habit did not load; loaded: " + SpawnHabits.all().keySet());
-        helper.assertValueEqual(habit.entity(), EntityTypes.SHEEP, "entity");
+        helper.assertValueEqual(habit.entity(), EntityType.SHEEP, "entity");
         helper.assertValueEqual(habit.interval(), 40, "interval");
         helper.assertValueEqual(habit.chance(), 0.0D, "chance");
         helper.assertValueEqual(habit.site().type(), SpawnSites.LAND, "site type");
@@ -136,8 +136,8 @@ final class SpawnerTests {
         }
         ServerLevel level = helper.getLevel();
         BlockPos column = helper.absolutePos(new BlockPos(4, 2, 4));
-        SpawnHabit capped = SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).onLand().distance(0, 48).group(2, 2).mobCap().build();
-        SpawnHabit free = SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).onLand().distance(0, 48).group(2, 2).build();
+        SpawnHabit capped = SpawnHabitBuilder.of(() -> EntityType.SHEEP).onLand().distance(0, 48).group(2, 2).mobCap().build();
+        SpawnHabit free = SpawnHabitBuilder.of(() -> EntityType.SHEEP).onLand().distance(0, 48).group(2, 2).build();
         helper.succeedWhen(() -> {
             helper.assertTrue(level.getChunkSource().getLastSpawnState() != null, "the level has not computed a spawn state yet");
             helper.assertValueEqual(capped.spawnPackAt(level, column, level.getRandom()), 0, "sheep set down against a full creature cap");
@@ -153,10 +153,10 @@ final class SpawnerTests {
             helper.setBlock(pos, Blocks.GRASS_BLOCK);
         }
         ServerLevel level = helper.getLevel();
-        ChunkPos chunk = ChunkPos.containing(helper.absolutePos(new BlockPos(4, 2, 4)));
-        AABB whole = new AABB(chunk.getMinBlockX(), level.getMinY(), chunk.getMinBlockZ(), chunk.getMaxBlockX() + 1, level.getMaxY(), chunk.getMaxBlockZ() + 1);
-        SpawnHabit never = SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).onLand().distance(0, 48).tries(64).seed(0.0D).build();
-        SpawnHabit always = SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).onLand().distance(0, 48).tries(64).seed(1.0D).build();
+        ChunkPos chunk = new ChunkPos(helper.absolutePos(new BlockPos(4, 2, 4)));
+        AABB whole = new AABB(chunk.getMinBlockX(), level.getMinBuildHeight(), chunk.getMinBlockZ(), chunk.getMaxBlockX() + 1, level.getMaxBuildHeight(), chunk.getMaxBlockZ() + 1);
+        SpawnHabit never = SpawnHabitBuilder.of(() -> EntityType.SHEEP).onLand().distance(0, 48).tries(64).seed(0.0D).build();
+        SpawnHabit always = SpawnHabitBuilder.of(() -> EntityType.SHEEP).onLand().distance(0, 48).tries(64).seed(1.0D).build();
         helper.succeedWhen(() -> {
             helper.assertValueEqual(never.seedChunk(level, chunk, level.getRandom()), 0, "sheep seeded at odds of 0");
             int seeded = always.seedChunk(level, chunk, level.getRandom());
@@ -203,9 +203,9 @@ final class SpawnerTests {
         // Beside the column, not on it: a player blocks building, so one standing in the spot would refuse both habits.
         BlockPos stand = column.offset(2, 0, 2);
         ServerPlayer player = TestSupport.survivalPlayer(helper);
-        player.snapTo(stand.getX() + 0.5D, stand.getY(), stand.getZ() + 0.5D, 0.0F, 0.0F);
+        player.moveTo(stand.getX() + 0.5D, stand.getY(), stand.getZ() + 0.5D, 0.0F, 0.0F);
 
-        SpawnHabit guarded = SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).distance(24, 48)
+        SpawnHabit guarded = SpawnHabitBuilder.of(() -> EntityType.SHEEP).distance(24, 48)
                 .at(new ColumnSite(Optional.of(column.getY()), Optional.of(column.getY()), false)).tries(1).build();
         helper.succeedWhen(() -> {
             helper.assertValueEqual(guarded.spawnPackAt(level, column, level.getRandom()), 0, "a sheep was set down on top of a player");
@@ -217,7 +217,7 @@ final class SpawnerTests {
 
     /** A habit pinned to one block, so the only spot it may use is the one the test built. */
     private static SpawnHabit atExactly(BlockPos pos) {
-        return SpawnHabitBuilder.of(() -> EntityTypes.SHEEP).distance(0, 48)
+        return SpawnHabitBuilder.of(() -> EntityType.SHEEP).distance(0, 48)
                 .at(new ColumnSite(Optional.of(pos.getY()), Optional.of(pos.getY()), false)).tries(1).build();
     }
 

@@ -10,13 +10,11 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
@@ -88,7 +86,9 @@ public class LibFluidIngredient {
      * Every container stack this ingredient accepts: one that already holds the fluid, because a
      * vanilla filled bucket is its own item, and one filled with it, because a container that keeps
      * its contents in components has no filled form until something fills it. Both are needed - the
-     * item list and what a recipe viewer draws are built from this.
+     * item list and what a recipe viewer draws are built from this, so each loader's ingredient hands
+     * these stacks back as its items ({@code ICustomIngredient#getItems} / {@code CustomIngredient#getMatchingStacks})
+     * and a container that holds its fluid in components is drawn full.
      */
     public List<ItemStack> getMatchingStacks() {
         if (this.itemStacks == null) {
@@ -122,36 +122,24 @@ public class LibFluidIngredient {
         }
     }
 
-    /**
-     * What a recipe viewer draws for this ingredient: the containers it accepts, each still holding
-     * its fluid. The display an ingredient gets by default is built from the items it matches, and an
-     * item alone cannot say what is inside it - so a container that holds its fluid in components
-     * would be drawn empty, which is the one thing this ingredient does not accept.
-     */
-    public SlotDisplay display() {
-        return new SlotDisplay.Composite(getMatchingStacks().stream()
-                .<SlotDisplay>map(stack -> new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(stack)))
-                .toList());
-    }
-
     public void invalidate() {
         this.itemStacks = null;
     }
 
     public static abstract class Serializer<T extends LibFluidIngredient> {
 
-        public Identifier getIdentifier() {
-            return Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "stored_fluid_ingredient");
+        public ResourceLocation getIdentifier() {
+            return ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "stored_fluid_ingredient");
         }
 
         public T read(JsonObject json) {
             TagKey<Item> itemTag = null;
             if (json.has("item")) {
-                Identifier itemLocation = Identifier.parse(GsonHelper.getAsString(json, "item"));
+                ResourceLocation itemLocation = ResourceLocation.parse(GsonHelper.getAsString(json, "item"));
                 itemTag = TagKey.create(Registries.ITEM, itemLocation);
             }
 
-            Identifier fluidLocation = Identifier.parse(GsonHelper.getAsString(json, "fluid"));
+            ResourceLocation fluidLocation = ResourceLocation.parse(GsonHelper.getAsString(json, "fluid"));
             TagKey<Fluid> fluidTag = TagKey.create(Registries.FLUID, fluidLocation);
 
             long amount = Services.FLUIDS.getBucketAmount();
@@ -179,9 +167,9 @@ public class LibFluidIngredient {
             TagKey<Item> itemTag = null;
 
             if (hasItemTag) {
-                itemTag = TagKey.create(Registries.ITEM, buf.readIdentifier());
+                itemTag = TagKey.create(Registries.ITEM, buf.readResourceLocation());
             }
-            TagKey<Fluid> fluidTag = TagKey.create(Registries.FLUID, buf.readIdentifier());
+            TagKey<Fluid> fluidTag = TagKey.create(Registries.FLUID, buf.readResourceLocation());
             long amount = buf.readLong();
             return create(itemTag, fluidTag, amount);
         }
@@ -189,11 +177,11 @@ public class LibFluidIngredient {
         public void write(FriendlyByteBuf buf, T ingredient) {
             if (ingredient.itemTag != null) {
                 buf.writeBoolean(true);
-                buf.writeIdentifier(ingredient.itemTag.location());
+                buf.writeResourceLocation(ingredient.itemTag.location());
             } else {
                 buf.writeBoolean(false);
             }
-            buf.writeIdentifier(ingredient.fluidTag.location());
+            buf.writeResourceLocation(ingredient.fluidTag.location());
             buf.writeLong(ingredient.amount);
         }
 

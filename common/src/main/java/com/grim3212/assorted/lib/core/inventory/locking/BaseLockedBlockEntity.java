@@ -5,13 +5,12 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.Containers;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 
 /** A block entity that holds nothing but a lock, for a block such as a door that has no inventory. */
 public class BaseLockedBlockEntity extends BlockEntity implements ILockable {
@@ -43,28 +42,27 @@ public class BaseLockedBlockEntity extends BlockEntity implements ILockable {
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        this.lockCode = StorageUtil.readLock(input);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        this.lockCode = StorageUtil.readLock(tag);
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
-        StorageUtil.writeLock(output, this.lockCode);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        StorageUtil.writeLock(tag, this.lockCode);
     }
 
     /**
-     * The two halves of a door share one lock, so only the upper half drops it. This used to live in
-     * the block's {@code onRemove}, which no longer sees the block entity.
+     * Drops the lock as the block is removed. Block entities have no removal hook here, so the
+     * block calls this from its {@code onRemove}, before {@code super.onRemove} removes the block
+     * entity, and only when the block itself changes. The two halves of a door share one lock, so
+     * only the upper half drops it.
      */
-    @Override
-    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-        super.preRemoveSideEffects(pos, state);
-
-        boolean lowerHalf = state.getValueOrElse(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER) == DoubleBlockHalf.LOWER;
-        if (this.level != null && this.isLocked() && !lowerHalf) {
-            Containers.dropItemStack(this.level, pos.getX(), pos.getY(), pos.getZ(), LockItems.createLock(this.lockCode));
+    public void onBlockRemoved(Level level, BlockPos pos, BlockState state) {
+        boolean lowerHalf = state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF) && state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.LOWER;
+        if (this.isLocked() && !lowerHalf) {
+            Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), LockItems.createLock(this.lockCode));
         }
     }
 

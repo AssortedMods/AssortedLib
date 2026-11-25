@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.conditions;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.core.conditions.LibConditionProvider;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
@@ -13,7 +13,7 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
  */
 public class ForgeConditionProvider implements LibConditionProvider {
 
-    private static final Identifier UNREGISTERED = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "unregistered_condition");
+    private static final ResourceLocation UNREGISTERED = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "unregistered_condition");
 
     public final ICondition condition;
 
@@ -26,8 +26,8 @@ public class ForgeConditionProvider implements LibConditionProvider {
     }
 
     @Override
-    public Identifier getName() {
-        final Identifier name = NeoForgeRegistries.CONDITION_SERIALIZERS.getKey(this.condition.codec());
+    public ResourceLocation getName() {
+        final ResourceLocation name = NeoForgeRegistries.CONDITION_SERIALIZERS.getKey(this.condition.codec());
         return name != null ? name : UNREGISTERED;
     }
 }

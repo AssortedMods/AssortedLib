@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -28,7 +28,7 @@ public record ColumnSite(Optional<Integer> minY, Optional<Integer> maxY, boolean
     public static final ColumnSite UNDERGROUND = new ColumnSite(Optional.empty(), Optional.empty(), true);
 
     @Override
-    public Identifier type() {
+    public ResourceLocation type() {
         return SpawnSites.COLUMN;
     }
 
@@ -37,7 +37,7 @@ public record ColumnSite(Optional<Integer> minY, Optional<Integer> maxY, boolean
         // The block above the surface; the surface itself is one down, and a cave spot is below that.
         int top = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column).getY();
         int max = Math.min(this.maxY.orElse(top), this.belowSurface ? top - 2 : top);
-        int min = Math.max(this.minY.orElse(level.getMinY()), level.getMinY());
+        int min = Math.max(this.minY.orElse(level.getMinBuildHeight()), level.getMinBuildHeight());
         if (max < min) {
             return null;
         }

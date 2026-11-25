@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.data;
 
+import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.Codec;
 import com.grim3212.assorted.lib.client.manual.ManualChapter;
 import com.grim3212.assorted.lib.conditions.DisplayCondition;
 import com.grim3212.assorted.lib.conditions.RecipeExists;
@@ -23,7 +25,7 @@ import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
@@ -103,7 +105,7 @@ public abstract class LibManualProvider implements DataProvider {
     }
 
     /** As above, drawing the first of {@code icons} that is registered: a shared section names every mod's. */
-    protected void section(int sortOrder, Identifier... icons) {
+    protected void section(int sortOrder, ResourceLocation... icons) {
         this.section = new ManualSection.Definition(sortOrder, List.of(icons));
     }
 
@@ -118,6 +120,11 @@ public abstract class LibManualProvider implements DataProvider {
         return chapter;
     }
 
+    /** The manual's files hold nothing from a datapack registry, so they encode without a registry lookup. */
+    private static <T> CompletableFuture<?> save(CachedOutput cache, Codec<T> codec, T value, Path path) {
+        return DataProvider.saveStable(cache, codec.encodeStart(JsonOps.INSTANCE, value).getOrThrow(), path);
+    }
+
     @Override
     public final CompletableFuture<?> run(CachedOutput cache) {
         this.addChapters();
@@ -125,15 +132,15 @@ public abstract class LibManualProvider implements DataProvider {
 
         List<CompletableFuture<?>> writes = new ArrayList<>();
         if (this.section != null) {
-            writes.add(DataProvider.saveStable(cache, ManualSection.Definition.CODEC, this.section,
+            writes.add(save(cache, ManualSection.Definition.CODEC, this.section,
                     this.root.resolve("section.json")));
         }
-        writes.add(DataProvider.saveStable(cache, ManualLinks.Group.FILE_CODEC, this.groups(),
+        writes.add(save(cache, ManualLinks.Group.FILE_CODEC, this.groups(),
                 this.linksRoot.resolve("links.json")));
 
         for (ChapterBuilder chapter : this.chapters) {
-            writes.add(DataProvider.saveStable(cache, ManualChapter.Definition.CODEC, chapter.build(),
-                    this.chapterPath.json(Identifier.fromNamespaceAndPath(this.manualNamespace, chapter.id))));
+            writes.add(save(cache, ManualChapter.Definition.CODEC, chapter.build(),
+                    this.chapterPath.json(ResourceLocation.fromNamespaceAndPath(this.manualNamespace, chapter.id))));
         }
 
         return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));
@@ -165,8 +172,8 @@ public abstract class LibManualProvider implements DataProvider {
      * to something that is not registered at all.
      */
     private void verify() {
-        Set<Identifier> blocks = new LinkedHashSet<>();
-        Set<Identifier> items = new LinkedHashSet<>();
+        Set<ResourceLocation> blocks = new LinkedHashSet<>();
+        Set<ResourceLocation> items = new LinkedHashSet<>();
         List<String> problems = new ArrayList<>();
 
         for (ChapterBuilder chapter : this.chapters) {
@@ -175,12 +182,12 @@ public abstract class LibManualProvider implements DataProvider {
                 if (!pageIds.add(page.id)) {
                     problems.add("chapter " + chapter.id + " has two pages called " + page.id);
                 }
-                for (Identifier id : page.blocks) {
+                for (ResourceLocation id : page.blocks) {
                     if (!blocks.add(id)) {
                         problems.add("block " + id + " is opened by more than one page");
                     }
                 }
-                for (Identifier id : page.items) {
+                for (ResourceLocation id : page.items) {
                     if (!items.add(id)) {
                         problems.add("item " + id + " is opened by more than one page");
                     }
@@ -189,17 +196,17 @@ public abstract class LibManualProvider implements DataProvider {
         }
 
         // A block's item shares its id, so listing the block covers the item that places it.
-        Set<Identifier> covered = new LinkedHashSet<>(items);
+        Set<ResourceLocation> covered = new LinkedHashSet<>(items);
         covered.addAll(blocks);
 
         BuiltInRegistries.BLOCK.registryKeySet().stream()
-                .map(ResourceKey::identifier)
+                .map(ResourceKey::location)
                 .filter(id -> id.getNamespace().equals(this.modId))
                 .filter(id -> !blocks.contains(id))
                 .forEach(id -> problems.add("block " + id + " opens no page"));
 
         BuiltInRegistries.ITEM.registryKeySet().stream()
-                .map(ResourceKey::identifier)
+                .map(ResourceKey::location)
                 .filter(id -> id.getNamespace().equals(this.modId))
                 .filter(id -> !covered.contains(id))
                 .forEach(id -> problems.add("item " + id + " opens no page"));
@@ -253,7 +260,7 @@ public abstract class LibManualProvider implements DataProvider {
          * @param image full texture path, such as {@code mymod:textures/gui/manual/kiln.png}
          * @param width the texture's own size, which cannot be asked for at this point
          */
-        public PageBuilder image(String page, Identifier image, int width, int height) {
+        public PageBuilder image(String page, ResourceLocation image, int width, int height) {
             return this.add(page, interval ->
                     new ImagePage(this.title(page), image, width, height, Optional.of(this.body(page))));
         }
@@ -274,7 +281,7 @@ public abstract class LibManualProvider implements DataProvider {
          * {@link #recipesById} instead.
          */
         public PageBuilder recipes(String page, ItemLike... results) {
-            Identifier[] ids = new Identifier[results.length];
+            ResourceLocation[] ids = new ResourceLocation[results.length];
             for (int i = 0; i < results.length; i++) {
                 ids[i] = recipeIdOf(results[i]);
             }
@@ -291,9 +298,9 @@ public abstract class LibManualProvider implements DataProvider {
         }
 
         /** The same, for a recipe named by something other than its result. */
-        public PageBuilder recipesById(String page, Identifier... recipes) {
+        public PageBuilder recipesById(String page, ResourceLocation... recipes) {
             List<ResourceKey<Recipe<?>>> keys = new ArrayList<>();
-            for (Identifier recipe : recipes) {
+            for (ResourceLocation recipe : recipes) {
                 keys.add(ResourceKey.create(Registries.RECIPE, recipe));
             }
             return this.add(page, interval ->
@@ -337,9 +344,9 @@ public abstract class LibManualProvider implements DataProvider {
 
         private final String id;
         private final IntFunction<ManualPage> build;
-        private final List<Identifier> blocks = new ArrayList<>();
-        private final List<Identifier> items = new ArrayList<>();
-        private final List<Identifier> entities = new ArrayList<>();
+        private final List<ResourceLocation> blocks = new ArrayList<>();
+        private final List<ResourceLocation> items = new ArrayList<>();
+        private final List<ResourceLocation> entities = new ArrayList<>();
         private final List<DisplayCondition> conditions = new ArrayList<>();
         private int interval = DEFAULT_INTERVAL;
 
@@ -393,7 +400,7 @@ public abstract class LibManualProvider implements DataProvider {
         }
 
         /** For a block with no item of its own, which cannot be named as an {@link ItemLike}. */
-        public PageBuilder opensBlocks(Identifier... ids) {
+        public PageBuilder opensBlocks(ResourceLocation... ids) {
             this.blocks.addAll(List.of(ids));
             return this;
         }
@@ -403,23 +410,23 @@ public abstract class LibManualProvider implements DataProvider {
          * shape rather than listed: a new material joins its page without a line being added here.
          * Two pages matching the same item is an error, so a narrower family excludes the wider one.
          */
-        public PageBuilder opensEveryItem(Predicate<Identifier> match) {
+        public PageBuilder opensEveryItem(Predicate<ResourceLocation> match) {
             this.items.addAll(matching(BuiltInRegistries.ITEM.registryKeySet(), match));
             return this;
         }
 
         /** As {@link #opensEveryItem}, for this mod's blocks. */
-        public PageBuilder opensEveryBlock(Predicate<Identifier> match) {
+        public PageBuilder opensEveryBlock(Predicate<ResourceLocation> match) {
             this.blocks.addAll(matching(BuiltInRegistries.BLOCK.registryKeySet(), match));
             return this;
         }
 
-        private List<Identifier> matching(Set<? extends ResourceKey<?>> keys, Predicate<Identifier> match) {
+        private List<ResourceLocation> matching(Set<? extends ResourceKey<?>> keys, Predicate<ResourceLocation> match) {
             return keys.stream()
-                    .map(ResourceKey::identifier)
+                    .map(ResourceKey::location)
                     .filter(id -> id.getNamespace().equals(modId))
                     .filter(match)
-                    .sorted(Comparator.comparing(Identifier::getPath))
+                    .sorted(Comparator.comparing(ResourceLocation::getPath))
                     .toList();
         }
 
@@ -433,12 +440,12 @@ public abstract class LibManualProvider implements DataProvider {
     }
 
     /** A recipe of this mod's, for the ids {@link ChapterBuilder#recipesById} takes. */
-    protected Identifier recipeId(String path) {
-        return Identifier.fromNamespaceAndPath(this.modId, path);
+    protected ResourceLocation recipeId(String path) {
+        return ResourceLocation.fromNamespaceAndPath(this.modId, path);
     }
 
     /** The recipe that makes {@code result}, for a page that mixes those with named variants. */
-    protected Identifier recipeId(ItemLike result) {
+    protected ResourceLocation recipeId(ItemLike result) {
         return recipeIdOf(result);
     }
 
@@ -446,7 +453,7 @@ public abstract class LibManualProvider implements DataProvider {
      * The id of the recipe that makes {@code result}, which is the result's own. A block with no
      * item cannot name one, and would otherwise quietly ask for {@code minecraft:air}.
      */
-    private static Identifier recipeIdOf(ItemLike result) {
+    private static ResourceLocation recipeIdOf(ItemLike result) {
         Item item = result.asItem();
         if (item == Items.AIR) {
             throw new IllegalArgumentException(result + " has no item, so no recipe can be named after it");
@@ -470,11 +477,11 @@ public abstract class LibManualProvider implements DataProvider {
         return new DisplayConditions.ModLoaded(modId);
     }
 
-    public static DisplayCondition itemExists(Identifier item) {
+    public static DisplayCondition itemExists(ResourceLocation item) {
         return new DisplayConditions.ItemExists(item);
     }
 
-    public static DisplayCondition blockExists(Identifier block) {
+    public static DisplayCondition blockExists(ResourceLocation block) {
         return new DisplayConditions.BlockExists(block);
     }
 

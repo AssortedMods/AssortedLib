@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.core.storage.hopper;
 
+import com.grim3212.assorted.lib.core.storage.BaseStorageBlockEntity;
+import net.minecraft.world.ItemInteractionResult;
 import com.grim3212.assorted.lib.core.inventory.locking.LockItems;
 import com.grim3212.assorted.lib.core.storage.BaseStorageBlock;
 import com.grim3212.assorted.lib.core.inventory.INamed;
@@ -23,7 +25,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -64,12 +65,15 @@ public class LockedHopperBlock extends HopperBlock implements IStorageMaterial {
         return this.types;
     }
 
+    // NeoForge deprecates this in favour of its IBlockExtension overload, which defaults to
+    // calling it, so overriding this one is what answers pick block on both loaders.
+    @SuppressWarnings("deprecation")
     @Override
-    protected ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state, boolean includeData) {
+    public ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state) {
         if (this.getStorageMaterial() == null) {
             return StorageUtil.setCodeOnStack(StorageUtil.getCode(worldIn.getBlockEntity(pos)), new ItemStack(this));
         }
-        return super.getCloneItemStack(worldIn, pos, state, includeData);
+        return super.getCloneItemStack(worldIn, pos, state);
     }
 
     @Override
@@ -103,15 +107,21 @@ public class LockedHopperBlock extends HopperBlock implements IStorageMaterial {
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel worldIn, BlockPos pos, boolean movedByPiston) {
-        worldIn.updateNeighbourForOutputSignal(pos, this);
+    protected void onRemove(BlockState state, Level worldIn, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) {
+            if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storage) {
+                storage.onBlockRemoved(worldIn, pos, state);
+            }
+            worldIn.updateNeighbourForOutputSignal(pos, this);
+        }
+        super.onRemove(state, worldIn, pos, newState, movedByPiston);
     }
 
     @Override
-    protected InteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+    protected ItemInteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         if (this.canBeLocked(worldIn, pos) && LockItems.isLock(player.getItemInHand(handIn))) {
             if (BaseStorageBlock.tryPlaceLock(worldIn, pos, player, handIn))
-                return InteractionResult.SUCCESS;
+                return ItemInteractionResult.SUCCESS;
         }
 
         if (player.isShiftKeyDown() && StorageAccessUtil.canAccess(worldIn, pos, player)) {
@@ -130,7 +140,7 @@ public class LockedHopperBlock extends HopperBlock implements IStorageMaterial {
                                 blockDropped.playerTouch(player);
                             }
                         }
-                        return InteractionResult.SUCCESS;
+                        return ItemInteractionResult.SUCCESS;
                     }
                 }
             }
@@ -145,7 +155,7 @@ public class LockedHopperBlock extends HopperBlock implements IStorageMaterial {
                 }
             }
         }
-        return InteractionResult.SUCCESS;
+        return ItemInteractionResult.SUCCESS;
     }
 
     @Override
@@ -196,7 +206,7 @@ public class LockedHopperBlock extends HopperBlock implements IStorageMaterial {
     }
 
     @Override
-    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean flag) {
+    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
         BlockEntity blockentity = level.getBlockEntity(pos);
         if (blockentity instanceof LockedHopperBlockEntity) {
             LockedHopperBlockEntity.entityInside(level, pos, state, entity, (LockedHopperBlockEntity) blockentity);

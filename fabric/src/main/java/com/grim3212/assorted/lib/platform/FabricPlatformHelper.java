@@ -3,27 +3,28 @@ package com.grim3212.assorted.lib.platform;
 import com.grim3212.assorted.lib.conditions.PartToggles;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
-import net.minecraft.world.item.component.TooltipProvider;
+import com.grim3212.assorted.lib.core.item.IStackTooltipProvider;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.fabricmc.fabric.api.registry.CompostingChanceRegistry;
+import net.fabricmc.fabric.api.registry.FuelRegistry;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.core.component.DataComponentType;
-import net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry;
 import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
 import com.grim3212.assorted.lib.core.inventory.MenuData;
 import com.grim3212.assorted.lib.dist.Dist;
 import com.grim3212.assorted.lib.platform.services.IPlatformHelper;
 import com.grim3212.assorted.lib.registry.ILoaderRegistry;
-import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
-import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
-import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
-import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
-import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -32,7 +33,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -119,19 +120,19 @@ public class FabricPlatformHelper implements IPlatformHelper {
 
     @Override
     public void modifyCreativeTab(ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks) {
-        CreativeModeTabEvents.modifyOutputEvent(key).register(output -> {
-            output.acceptAll(PartToggles.visible(displayStacks.get()));
+        ItemGroupEvents.modifyEntriesEvent(key).register(entries -> {
+            entries.acceptAll(PartToggles.visible(displayStacks.get()));
         });
     }
 
     @Override
-    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+    public void registerCreativeTab(ResourceLocation id, Supplier<CreativeModeTab> tab) {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id, tab.get());
     }
 
     // Fabric registries stay open through every mod's initializer, so this can register at once.
     @Override
-    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+    public void registerDataComponentType(ResourceLocation id, Supplier<? extends DataComponentType<?>> type) {
         Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, id, type.get());
     }
 
@@ -141,8 +142,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public <T extends TooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type) {
-        ItemComponentTooltipProviderRegistry.addFirst(type.get());
+    public <T extends IStackTooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type) {
+        // Fabric's tooltip event is raised by a client mixin only, so there is nothing to hook on a dedicated server.
+        if (this.isPhysicalClient()) {
+            FabricComponentTooltips.show(type.get());
+        }
     }
 
     @Override
@@ -156,7 +160,7 @@ public class FabricPlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public @Nullable SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
+    public @Nullable SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData groupData) {
         return mob.finalizeSpawn(level, difficulty, reason, groupData);
     }
 
@@ -166,18 +170,39 @@ public class FabricPlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public void addReloadListener(Identifier identifier, PreparableReloadListener reloadListener) {
-        ResourceLoader.get(PackType.SERVER_DATA).registerReloadListener(identifier, reloadListener);
+    public void addReloadListener(ResourceLocation identifier, PreparableReloadListener reloadListener) {
+        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new FabricIdentifiedReloadListener(identifier, reloadListener));
+    }
+
+    @Override
+    public void registerFuel(Supplier<? extends ItemLike> item, int burnTime) {
+        FuelRegistry.INSTANCE.add(item.get(), burnTime);
+    }
+
+    @Override
+    public void registerCompostable(Supplier<? extends ItemLike> item, float chance) {
+        CompostingChanceRegistry.INSTANCE.add(item.get(), chance);
+    }
+
+    @Override
+    public int getFuelTime(ItemStack stack, @Nullable RecipeType<?> recipeType) {
+        if (stack.isEmpty()) {
+            return 0;
+        }
+        Integer time = FuelRegistry.INSTANCE.get(stack.getItem());
+        return time == null ? 0 : time;
     }
 
     @Override
     public <T extends BlockEntity> BlockEntityType<T> createBlockEntityType(BiFunction<BlockPos, BlockState, T> builder, Block... blocks) {
-        return FabricBlockEntityTypeBuilder.create(builder::apply, blocks).build();
+        // The data fixer type is null for a modded block entity, as vanilla's own lookup answers for any
+        // type it has no schema for.
+        return BlockEntityType.Builder.<T>of(builder::apply, blocks).build(null);
     }
 
     @Override
     public <T extends AbstractContainerMenu, D> MenuType<T> createMenuType(MenuFactory<T, D> factory, StreamCodec<? super RegistryFriendlyByteBuf, D> codec) {
-        MenuType<T> type = new ExtendedMenuType<>(factory::create, codec);
+        MenuType<T> type = new ExtendedScreenHandlerType<>(factory::create, codec);
         MenuData.register(type, factory, codec);
         return type;
     }
@@ -187,8 +212,8 @@ public class FabricPlatformHelper implements IPlatformHelper {
         return new MenuType<>(factory::create, FeatureFlags.VANILLA_SET);
     }
 
-    /** Fabric writes the data with the codec its {@link ExtendedMenuType} carries. */
-    private record DataMenuProvider<D>(IMenuDataProvider<D> provider) implements ExtendedMenuProvider<D> {
+    /** Fabric writes the data with the codec its {@link ExtendedScreenHandlerType} carries. */
+    private record DataMenuProvider<D>(IMenuDataProvider<D> provider) implements ExtendedScreenHandlerFactory<D> {
         @Override
         public D getScreenOpeningData(ServerPlayer player) {
             return provider.getMenuData(player);

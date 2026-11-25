@@ -1,16 +1,19 @@
 package com.grim3212.assorted.lib.client.model.loaders;
 
 import com.grim3212.assorted.lib.client.model.IModelBuilder;
+import com.grim3212.assorted.lib.client.model.RenderTypeGroup;
 import com.grim3212.assorted.lib.client.model.loaders.context.IModelBakingContext;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.renderer.block.dispatch.ModelState;
-import net.minecraft.client.renderer.block.dispatch.SingleVariant;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.ItemOverrides;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.Material;
 import net.minecraft.client.resources.model.ModelBaker;
-import net.minecraft.client.resources.model.ModelDebugName;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.sprite.Material;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.resources.model.ModelState;
+
+import java.util.function.Function;
 
 /**
  * Base class for implementations of {@link IModelSpecification} which do not wish to handle model creation themselves,
@@ -19,21 +22,16 @@ import net.minecraft.resources.Identifier;
 public abstract class SimpleModelSpecification<T extends SimpleModelSpecification<T>> implements IModelSpecification<T> {
 
     @Override
-    public BlockStateModel bake(IModelBakingContext context, ModelBaker baker, ModelState modelState, Identifier modelLocation) {
-        ModelDebugName debugName = modelLocation::toString;
+    public BakedModel bake(IModelBakingContext context, ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState, ItemOverrides overrides) {
+        Material particle = context.getMaterial("particle").orElseGet(() -> new Material(InventoryMenu.BLOCK_ATLAS, MissingTextureAtlasSprite.getLocation()));
 
-        Material particle = context.getMaterial("particle").orElse(null);
-        Material.Baked bakedParticle = particle != null ? baker.materials().get(particle, debugName) : baker.materials().reportMissingReference("particle", debugName);
+        IModelBuilder<?> builder = IModelBuilder.of(context.useAmbientOcclusion(), context.useBlockLight(), context.isGui3d(), context.getTransforms(), overrides,
+                spriteGetter.apply(particle), RenderTypeGroup.EMPTY);
 
-        IModelBuilder<?> builder = IModelBuilder.of(context.useAmbientOcclusion(), bakedParticle);
+        addQuads(context, builder, baker, spriteGetter, modelState);
 
-        addQuads(context, builder, baker, modelState, modelLocation);
-
-        // A specification produces a single part; SingleVariant is the vanilla BlockStateModel that
-        // wraps exactly one part and is what the dispatcher hands to the renderer.
-        BlockStateModelPart part = builder.build();
-        return new SingleVariant(part);
+        return builder.build();
     }
 
-    protected abstract void addQuads(IModelBakingContext owner, IModelBuilder<?> modelBuilder, ModelBaker baker, ModelState modelTransform, Identifier modelLocation);
+    protected abstract void addQuads(IModelBakingContext owner, IModelBuilder<?> modelBuilder, ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelTransform);
 }

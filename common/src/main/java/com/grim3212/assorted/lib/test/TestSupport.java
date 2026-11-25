@@ -3,23 +3,27 @@ package com.grim3212.assorted.lib.test;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.grim3212.assorted.lib.mixin.test.TestHelperAccessor;
+import com.grim3212.assorted.lib.mixin.server.ServerPlayerAccessor;
 import com.grim3212.assorted.lib.platform.Services;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestInfo;
+import net.minecraft.gametest.framework.GameTestListener;
+import net.minecraft.gametest.framework.GameTestRunner;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -27,8 +31,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
-import net.minecraft.world.item.component.TooltipProvider;
+import com.grim3212.assorted.lib.core.item.IStackTooltipProvider;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -36,7 +39,6 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -81,11 +83,34 @@ public final class TestSupport {
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection);
         level.getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-        helper.runBeforeTestEnd(() -> level.getServer().getPlayerList().remove(player));
+        whenTestEnds(helper, () -> level.getServer().getPlayerList().remove(player));
 
         player.setGameMode(GameType.SURVIVAL);
         helper.assertFalse(player.isCreative(), "the test player is in creative, which changes every path under test");
         return player;
+    }
+
+    /** Runs {@code action} once the test has passed or failed; 1.21.1's helper has no hook of its own for it. */
+    public static void whenTestEnds(GameTestHelper helper, Runnable action) {
+        ((TestHelperAccessor) helper).assortedlib_getTestInfo().addListener(new GameTestListener() {
+            @Override
+            public void testStructureLoaded(GameTestInfo info) {
+            }
+
+            @Override
+            public void testPassed(GameTestInfo info, GameTestRunner runner) {
+                action.run();
+            }
+
+            @Override
+            public void testFailed(GameTestInfo info, GameTestRunner runner) {
+                action.run();
+            }
+
+            @Override
+            public void testAddedForRerun(GameTestInfo original, GameTestInfo rerun, GameTestRunner runner) {
+            }
+        });
     }
 
     /** {@link #survivalPlayer(GameTestHelper)} holding {@code held} in the main hand. */
@@ -95,10 +120,10 @@ public final class TestSupport {
         return player;
     }
 
-    /** {@link #survivalPlayer(GameTestHelper, ItemStack)} who can be hurt, as a new player is immune to everything until its client says it has loaded. */
+    /** {@link #survivalPlayer(GameTestHelper, ItemStack)} who can be hurt, as a new player is immune to most damage for its first three seconds. */
     public static ServerPlayer mortalPlayer(GameTestHelper helper, ItemStack held) {
         ServerPlayer player = survivalPlayer(helper, held);
-        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        ((ServerPlayerAccessor) player).assortedlib_setSpawnInvulnerableTime(0);
         return player;
     }
 
@@ -118,14 +143,14 @@ public final class TestSupport {
     /** Stands {@code entity} on top of {@code rel}, within reach of anything nearby. */
     public static <T extends Entity> T stand(GameTestHelper helper, T entity, BlockPos rel) {
         Vec3 on = helper.absoluteVec(Vec3.atBottomCenterOf(rel.above()));
-        entity.snapTo(on.x, on.y, on.z, 0.0F, 0.0F);
+        entity.moveTo(on.x, on.y, on.z, 0.0F, 0.0F);
         return entity;
     }
 
     /** Puts {@code entity} at a spot in the air inside the test box, looking at the given pitch. */
     public static <T extends Entity> T hover(GameTestHelper helper, T entity, Vec3 relative, float xRot) {
         Vec3 at = helper.absoluteVec(relative);
-        entity.snapTo(at.x, at.y, at.z, 0.0F, xRot);
+        entity.moveTo(at.x, at.y, at.z, 0.0F, xRot);
         return entity;
     }
 
@@ -154,14 +179,17 @@ public final class TestSupport {
     }
 
     /** The lines one component adds to a stack's tooltip, in order. */
-    public static <T extends TooltipProvider> List<Component> tooltipLines(GameTestHelper helper, ItemStack stack, DataComponentType<T> type) {
+    public static <T extends IStackTooltipProvider> List<Component> tooltipLines(GameTestHelper helper, ItemStack stack, DataComponentType<T> type) {
         List<Component> lines = new ArrayList<>();
-        stack.addToTooltip(type, Item.TooltipContext.of(helper.getLevel()), TooltipDisplay.DEFAULT, lines::add, TooltipFlag.NORMAL);
+        T value = stack.get(type);
+        if (value != null) {
+            value.addToTooltip(Item.TooltipContext.of(helper.getLevel()), lines::add, TooltipFlag.NORMAL, stack);
+        }
         return lines;
     }
 
     /** The translation keys of the lines one component adds to a stack's tooltip, in order. */
-    public static <T extends TooltipProvider> List<String> tooltipKeys(GameTestHelper helper, ItemStack stack, DataComponentType<T> type) {
+    public static <T extends IStackTooltipProvider> List<String> tooltipKeys(GameTestHelper helper, ItemStack stack, DataComponentType<T> type) {
         return tooltipLines(helper, stack, type).stream().map(TestSupport::tooltipKey).toList();
     }
 
@@ -184,18 +212,15 @@ public final class TestSupport {
     }
 
     /**
-     * Saves a block entity through a collecting problem reporter and fails the test if anything was
-     * refused. A codec that rejects the value it is handed - {@code ItemStack.CODEC} on an empty
-     * stack, say - only logs "Serialization errors" in game and writes nothing, so a test has to
-     * read the report.
+     * Saves a block entity and fails the test if the save threw. {@code ItemStack#save} throws on an
+     * empty stack rather than writing it, and in game that exception takes the chunk save with it.
      */
     public static CompoundTag saveWithoutProblems(GameTestHelper helper, BlockEntity blockEntity, String what) {
-        ProblemReporter.Collector problems = new ProblemReporter.Collector();
-        TagValueOutput output = TagValueOutput.createWithContext(problems, helper.getLevel().registryAccess());
-        blockEntity.saveWithFullMetadata(output);
-
-        helper.assertTrue(problems.isEmpty(), what + " reported serialization errors: " + problems.getReport());
-        return output.buildResult();
+        try {
+            return blockEntity.saveWithFullMetadata(helper.getLevel().registryAccess());
+        } catch (RuntimeException e) {
+            throw new GameTestAssertException(what + " could not be saved: " + e);
+        }
     }
 
     /**
@@ -204,7 +229,9 @@ public final class TestSupport {
      */
     public static <T extends BlockEntity> T afterReload(GameTestHelper helper, BlockPos rel, Class<T> type) {
         ServerLevel level = helper.getLevel();
-        CompoundTag saved = helper.getBlockEntity(rel, type).saveWithFullMetadata(level.registryAccess());
+        BlockEntity original = helper.getBlockEntity(rel);
+        helper.assertTrue(type.isInstance(original), "the block entity at " + rel + " is not a " + type.getSimpleName());
+        CompoundTag saved = original.saveWithFullMetadata(level.registryAccess());
         BlockEntity reloaded = BlockEntity.loadStatic(helper.absolutePos(rel), helper.getBlockState(rel), saved, level.registryAccess());
         helper.assertTrue(type.isInstance(reloaded),
                 "a " + type.getSimpleName() + " did not come back from a save and load round trip");
@@ -216,9 +243,9 @@ public final class TestSupport {
      * so a recipe dropped by a failing load condition fails here.
      */
     public static ItemStack craft(GameTestHelper helper, CraftingInput input, String what) {
-        Optional<RecipeHolder<CraftingRecipe>> found = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
+        Optional<RecipeHolder<CraftingRecipe>> found = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
         helper.assertTrue(found.isPresent(), "no crafting recipe matched " + what);
-        return found.get().value().assemble(input);
+        return found.get().value().assemble(input, helper.getLevel().registryAccess());
     }
 
     /** Every variant object in a blockstate json: each "variants" entry and each multipart "apply". */
@@ -266,7 +293,7 @@ public final class TestSupport {
                 }
             }
         } catch (IOException e) {
-            throw helper.assertionException("could not read fabric.mod.json: " + e);
+            throw new GameTestAssertException("could not read fabric.mod.json: " + e);
         }
 
         // Not a Fabric run, so there is nothing here to get wrong.

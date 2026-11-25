@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.LibConstants;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * How the book is drawn, from {@code assets/assortedlib/manual/book.json}. Every field is optional
@@ -12,19 +12,19 @@ import net.minecraft.resources.Identifier;
  * <p>
  * Only the left page's box is given; the right page's is it reflected through {@link #width()}.
  */
-public record ManualBookStyle(Identifier texture, int textureWidth, int textureHeight, int width, int height,
+public record ManualBookStyle(ResourceLocation texture, int textureWidth, int textureHeight, int width, int height,
                               int titleY, int contentX, int contentY, int contentWidth, int contentHeight,
                               int footerY, int controlsY, int entryHeight, Colors colors) {
 
     public static final ManualBookStyle DEFAULT = new ManualBookStyle(
-            Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "textures/gui/manual.png"), 512, 256,
+            ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "textures/gui/manual.png"), 512, 256,
             384, 236,
             14, 15, 30, 152, 176,
             216, 222, 14,
             Colors.DEFAULT);
 
     public static final Codec<ManualBookStyle> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Identifier.CODEC.optionalFieldOf("texture", DEFAULT.texture).forGetter(ManualBookStyle::texture),
+            ResourceLocation.CODEC.optionalFieldOf("texture", DEFAULT.texture).forGetter(ManualBookStyle::texture),
             Codec.INT.optionalFieldOf("texture_width", DEFAULT.textureWidth).forGetter(ManualBookStyle::textureWidth),
             Codec.INT.optionalFieldOf("texture_height", DEFAULT.textureHeight).forGetter(ManualBookStyle::textureHeight),
             Codec.INT.optionalFieldOf("width", DEFAULT.width).forGetter(ManualBookStyle::width),

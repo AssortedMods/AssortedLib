@@ -1,80 +1,74 @@
 package com.grim3212.assorted.lib.platform;
 
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Maps;
 import com.grim3212.assorted.lib.client.events.ClientTickHandler;
 import com.grim3212.assorted.lib.client.events.HudElementHandler;
 import com.grim3212.assorted.lib.client.events.LevelSubmitHandler;
 import com.grim3212.assorted.lib.client.model.loader.ForgePlatformModelLoaderPlatformDelegate;
-import com.grim3212.assorted.lib.client.model.loader.ForgeBakedModelDelegate;
-import com.grim3212.assorted.lib.client.model.loaders.IModelSpecification;
-import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationHolder;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationLoader;
-import com.grim3212.assorted.lib.client.model.loaders.context.ResolvedModelBakingContext;
 import com.grim3212.assorted.lib.client.render.ISpecialModelRendererRegistry;
 import com.grim3212.assorted.lib.client.screen.LibScreenFactory;
 import com.grim3212.assorted.lib.platform.services.IClientHelper;
-import com.mojang.serialization.MapCodec;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.block.BlockColor;
 import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.color.block.BlockTintSource;
-import net.minecraft.client.color.item.ItemTintSource;
+import net.minecraft.client.color.item.ItemColor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SpriteSet;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
-import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.ModelState;
-import net.minecraft.client.renderer.block.dispatch.SingleVariant;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.item.ItemModel;
-import net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperty;
+import net.minecraft.client.renderer.item.ClampedItemPropertyFunction;
+import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelBaker;
-import net.minecraft.client.resources.model.ResolvedModel;
-import net.minecraft.client.resources.model.SimpleModelWrapper;
-import net.minecraft.client.resources.model.sprite.TextureSlots;
-import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.client.resources.model.ModelState;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleType;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModLoadingContext;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
-import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
-import net.neoforged.neoforge.client.event.RegisterConditionalItemModelPropertyEvent;
-import net.neoforged.neoforge.client.event.RegisterItemModelsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
-import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -84,17 +78,13 @@ public class ForgeClientHelper implements IClientHelper {
 
     private static final Map<String, Registrations> registrationsMap = Maps.newConcurrentMap();
 
-    // Key mapping categories are shared state on one event instance, so a category may only be
-    // registered once no matter how many mods asked for it.
-    private static final Set<Identifier> registeredCategories = Collections.synchronizedSet(new HashSet<>());
-
     @Override
     public <T extends AbstractContainerMenu, S extends Screen & MenuAccess<T>> void registerScreen(Supplier<MenuType<? extends T>> menuType, LibScreenFactory<T, S> factory) {
         getRegistration().menuTypes.put(menuType::get, factory);
     }
 
     @Override
-    public void addReloadListener(Identifier identifier, PreparableReloadListener reloadListener) {
+    public void addReloadListener(ResourceLocation identifier, PreparableReloadListener reloadListener) {
         getRegistration().clientReloadListeners.put(identifier, reloadListener);
     }
 
@@ -104,7 +94,7 @@ public class ForgeClientHelper implements IClientHelper {
     }
 
     @Override
-    public <E extends BlockEntity, S extends BlockEntityRenderState> void registerBlockEntityRenderer(Supplier<? extends BlockEntityType<? extends E>> entityType, BlockEntityRendererProvider<E, S> entityRendererFactory) {
+    public <E extends BlockEntity> void registerBlockEntityRenderer(Supplier<? extends BlockEntityType<? extends E>> entityType, BlockEntityRendererProvider<E> entityRendererFactory) {
         getRegistration().blockEntityRenderers.put((Supplier<BlockEntityType<?>>) (Supplier<? extends BlockEntityType<?>>) entityType, entityRendererFactory);
     }
 
@@ -119,13 +109,18 @@ public class ForgeClientHelper implements IClientHelper {
     }
 
     @Override
-    public void registerBlockColor(BlockTintSource color, Supplier<List<Block>> blocks) {
+    public void registerBlockColor(BlockColor color, Supplier<List<Block>> blocks) {
         getRegistration().blockColors.put(color, blocks);
     }
 
+    /** NeoForge takes a block's layer from the {@code "render_type"} in its model json. */
     @Override
-    public void registerItemTintSource(Identifier id, MapCodec<? extends ItemTintSource> source) {
-        getRegistration().itemTintSources.put(id, source);
+    public void registerBlockRenderType(RenderType renderType, Supplier<List<Block>> blocks) {
+    }
+
+    @Override
+    public void registerItemColor(ItemColor color, Supplier<List<? extends ItemLike>> items) {
+        getRegistration().itemColors.put(color, items);
     }
 
     @Override
@@ -134,34 +129,25 @@ public class ForgeClientHelper implements IClientHelper {
     }
 
     @Override
-    public void registerModelLoader(Identifier name, IModelSpecificationLoader<?> modelLoader) {
+    public void registerModelLoader(ResourceLocation name, IModelSpecificationLoader<?> modelLoader) {
         getRegistration().modelLoaders.put(name, modelLoader);
     }
 
     @Override
-    public void registerItemModelType(Identifier id, MapCodec<? extends ItemModel.Unbaked> codec) {
-        getRegistration().itemModelTypes.put(id, codec);
+    public void registerItemProperty(Supplier<? extends Item> item, ResourceLocation id, ClampedItemPropertyFunction property) {
+        getRegistration().itemProperties.add(Pair.of(item, Pair.of(id, property)));
     }
 
+    /**
+     * A model json backed by a specification bakes through its NeoForge geometry, which already
+     * wraps the result in the data aware delegate, so every model bakes the same way. The json may
+     * only have been loaded on demand just now, so its parents are resolved first; the bakery only
+     * does that for the models it knew of up front.
+     */
     @Override
-    public void registerConditionalItemModelProperty(Identifier id, MapCodec<? extends ConditionalItemModelProperty> codec) {
-        getRegistration().conditionalItemModelProperties.put(id, codec);
-    }
-
-    @Override
-    public BlockStateModel bakeSpecificationModel(ModelBaker baker, Identifier modelLocation, ModelState modelState) {
-        ResolvedModel resolved = baker.getModel(modelLocation);
-        if (resolved.wrapped() instanceof IModelSpecificationHolder holder) {
-            IModelSpecification<?> specification = holder.getModelSpecification();
-            TextureSlots slots = resolved.getTopTextureSlots();
-            ResolvedModelBakingContext context = new ResolvedModelBakingContext(baker, resolved, slots);
-
-            return new ForgeBakedModelDelegate(specification.bake(context, baker, modelState, modelLocation));
-        }
-
-        // Not a specification model, so there is nothing dynamic to preserve - bake it the way a
-        // vanilla variant would.
-        return new SingleVariant(SimpleModelWrapper.bake(baker, modelLocation, modelState));
+    public BakedModel bakeSpecificationModel(ModelBaker baker, ResourceLocation modelLocation, ModelState modelState) {
+        baker.getModel(modelLocation).resolveParents(baker::getModel);
+        return ClientServices.MODELS.adaptToPlatform(baker.bake(modelLocation, modelState, baker.getModelTextureGetter()));
     }
 
     @Override
@@ -171,7 +157,6 @@ public class ForgeClientHelper implements IClientHelper {
 
     @Override
     public void registerClientTickStart(ClientTickHandler handler) {
-        // TickEvent.ClientTickEvent with a phase became two separate events.
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Pre event) -> handler.handle(Minecraft.getInstance()));
     }
 
@@ -181,13 +166,21 @@ public class ForgeClientHelper implements IClientHelper {
     }
 
     @Override
-    public void registerHudElement(Identifier id, HudElementHandler element) {
+    public void registerHudElement(ResourceLocation id, HudElementHandler element) {
         getRegistration().hudElements.put(id, element);
     }
 
+    /**
+     * Drawn after block entities, with the pose stack the level renderer drew them with, which
+     * starts at the camera. Vanilla flushes the shared buffer source later in the frame.
+     */
     @Override
     public void registerLevelSubmit(LevelSubmitHandler handler) {
-        NeoForge.EVENT_BUS.addListener((SubmitCustomGeometryEvent event) -> handler.submit(event.getPoseStack(), event.getSubmitNodeCollector(), event.getLevelRenderState().cameraRenderState));
+        NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> {
+            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES && event.getPoseStack() != null) {
+                handler.render(event.getPoseStack(), Minecraft.getInstance().renderBuffers().bufferSource(), event.getCamera(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
+            }
+        });
     }
 
     @Override
@@ -208,33 +201,33 @@ public class ForgeClientHelper implements IClientHelper {
         } else {
             Registrations newRegistration = new Registrations();
             registrationsMap.put(modId, newRegistration);
-            // FMLJavaModLoadingContext is gone; every container hands out its own event bus.
             container.getEventBus().register(newRegistration);
             return newRegistration;
         }
     }
 
     public static class Registrations {
-        private final Map<Supplier<BlockEntityType<?>>, BlockEntityRendererProvider<?, ?>> blockEntityRenderers = new HashMap<>();
+        private final Map<Supplier<BlockEntityType<?>>, BlockEntityRendererProvider<?>> blockEntityRenderers = new HashMap<>();
         private final Map<Supplier<EntityType<?>>, EntityRendererProvider<?>> entityRenderers = new HashMap<>();
         private final Map<ModelLayerLocation, Supplier<LayerDefinition>> entityLayers = new HashMap<>();
-        private final Map<BlockTintSource, Supplier<List<Block>>> blockColors = new HashMap<>();
-        private final Map<Identifier, MapCodec<? extends ItemTintSource>> itemTintSources = new HashMap<>();
+        private final Map<BlockColor, Supplier<List<Block>>> blockColors = new HashMap<>();
+        private final Map<ItemColor, Supplier<List<? extends ItemLike>>> itemColors = new HashMap<>();
+        private final List<Pair<Supplier<? extends Item>, Pair<ResourceLocation, ClampedItemPropertyFunction>>> itemProperties = new ArrayList<>();
         private final List<KeyMapping> keyMappings = new ArrayList<>();
         private final List<Consumer<ISpecialModelRendererRegistry>> specialModelRendererInitializers = Collections.synchronizedList(new ArrayList<>());
-        private final Map<Identifier, PreparableReloadListener> clientReloadListeners = new HashMap<>();
-        private final Map<Identifier, IModelSpecificationLoader<?>> modelLoaders = new HashMap<>();
-        private final Map<Identifier, MapCodec<? extends ItemModel.Unbaked>> itemModelTypes = new HashMap<>();
-        private final Map<Identifier, MapCodec<? extends ConditionalItemModelProperty>> conditionalItemModelProperties = new HashMap<>();
+        private final Map<Supplier<? extends Item>, Supplier<? extends BlockEntityWithoutLevelRenderer>> itemRenderers = new HashMap<>();
+        private final Map<ResourceLocation, PreparableReloadListener> clientReloadListeners = new HashMap<>();
+        private final Map<ResourceLocation, IModelSpecificationLoader<?>> modelLoaders = new HashMap<>();
         private final Map<Supplier<ParticleType<?>>, Function<SpriteSet, ParticleProvider<?>>> particleProviders = new HashMap<>();
         private final Map<Supplier<MenuType<?>>, LibScreenFactory<?, ?>> menuTypes = new HashMap<>();
-        private final Map<Identifier, HudElementHandler> hudElements = new HashMap<>();
+        private final Map<ResourceLocation, HudElementHandler> hudElements = new HashMap<>();
+        private boolean itemRenderersCollected;
 
         @SubscribeEvent
         @SuppressWarnings("unchecked")
         public void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
-            for (Map.Entry<Supplier<BlockEntityType<?>>, BlockEntityRendererProvider<?, ?>> entry : blockEntityRenderers.entrySet()) {
-                event.registerBlockEntityRenderer(entry.getKey().get(), (BlockEntityRendererProvider<BlockEntity, BlockEntityRenderState>) entry.getValue());
+            for (Map.Entry<Supplier<BlockEntityType<?>>, BlockEntityRendererProvider<?>> entry : blockEntityRenderers.entrySet()) {
+                event.registerBlockEntityRenderer(entry.getKey().get(), (BlockEntityRendererProvider<BlockEntity>) entry.getValue());
             }
 
             for (Map.Entry<Supplier<EntityType<?>>, EntityRendererProvider<?>> entry : entityRenderers.entrySet()) {
@@ -250,25 +243,31 @@ public class ForgeClientHelper implements IClientHelper {
         }
 
         @SubscribeEvent
-        public void registerBlockColors(final RegisterColorHandlersEvent.BlockTintSources event) {
-            // A block's tints are an ordered list of sources now, so each source is registered on its
-            // own for the blocks it was given.
-            for (Map.Entry<BlockTintSource, Supplier<List<Block>>> entry : blockColors.entrySet()) {
-                event.register(List.of(entry.getKey()), entry.getValue().get().toArray(Block[]::new));
+        public void registerBlockColors(final RegisterColorHandlersEvent.Block event) {
+            for (Map.Entry<BlockColor, Supplier<List<Block>>> entry : blockColors.entrySet()) {
+                event.register(entry.getKey(), entry.getValue().get().toArray(Block[]::new));
             }
         }
 
         @SubscribeEvent
-        public void registerItemTintSources(final RegisterColorHandlersEvent.ItemTintSources event) {
-            for (Map.Entry<Identifier, MapCodec<? extends ItemTintSource>> entry : itemTintSources.entrySet()) {
-                event.register(entry.getKey(), entry.getValue());
+        public void registerItemColors(final RegisterColorHandlersEvent.Item event) {
+            for (Map.Entry<ItemColor, Supplier<List<? extends ItemLike>>> entry : itemColors.entrySet()) {
+                event.register(entry.getKey(), entry.getValue().get().toArray(ItemLike[]::new));
             }
+        }
+
+        /**
+         * Item properties live in a plain static map that is only read while rendering, so they are
+         * put in on the main thread once registries are frozen.
+         */
+        @SubscribeEvent
+        public void registerItemProperties(final FMLClientSetupEvent event) {
+            event.enqueueWork(() -> itemProperties.forEach(entry -> ItemProperties.register(entry.getFirst().get(), entry.getSecond().getFirst(), entry.getSecond().getSecond())));
         }
 
         @SubscribeEvent
         @SuppressWarnings("rawtypes")
         public void registerMenuScreens(final RegisterMenuScreensEvent event) {
-            // Screens are registered from their own event now rather than from client setup.
             for (Map.Entry<Supplier<MenuType<?>>, LibScreenFactory<?, ?>> entry : menuTypes.entrySet()) {
                 this.registerMenu(event, entry.getKey()::get, (LibScreenFactory) entry.getValue());
             }
@@ -278,54 +277,65 @@ public class ForgeClientHelper implements IClientHelper {
             event.register(menuType.get(), factory::create);
         }
 
+        /**
+         * Each renderer is made the first time NeoForge asks an item for it, and is reloaded with
+         * the resources from then on, so it can bake its model layers as vanilla's own one does.
+         */
+        private synchronized Map<Supplier<? extends Item>, Supplier<? extends BlockEntityWithoutLevelRenderer>> itemRenderers() {
+            if (!this.itemRenderersCollected) {
+                this.itemRenderersCollected = true;
+                final ISpecialModelRendererRegistry register = (item, renderer) -> this.itemRenderers.put(item, Suppliers.memoize(renderer::get));
+                specialModelRendererInitializers.forEach(callback -> callback.accept(register));
+            }
+            return this.itemRenderers;
+        }
+
         @SubscribeEvent
-        public void registerSpecialModelRenderers(final RegisterSpecialModelRendererEvent event) {
-            final ISpecialModelRendererRegistry register = event::register;
-            specialModelRendererInitializers.forEach(callback -> callback.accept(register));
+        public void registerClientExtensions(final RegisterClientExtensionsEvent event) {
+            for (Map.Entry<Supplier<? extends Item>, Supplier<? extends BlockEntityWithoutLevelRenderer>> entry : itemRenderers().entrySet()) {
+                final Supplier<? extends BlockEntityWithoutLevelRenderer> renderer = entry.getValue();
+                event.registerItem(new IClientItemExtensions() {
+                    @Override
+                    public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                        return renderer.get();
+                    }
+                }, entry.getKey().get());
+            }
         }
 
         @SubscribeEvent
         public void registerKeyMapping(final RegisterKeyMappingsEvent event) {
             for (KeyMapping key : keyMappings) {
-                if (registeredCategories.add(key.getCategory().id())) {
-                    event.registerCategory(key.getCategory());
-                }
                 event.register(key);
             }
         }
 
         @SubscribeEvent
-        public void registerClientReloadListeners(final AddClientReloadListenersEvent event) {
-            for (Map.Entry<Identifier, PreparableReloadListener> entry : clientReloadListeners.entrySet()) {
-                event.addListener(entry.getKey(), entry.getValue());
+        public void registerClientReloadListeners(final RegisterClientReloadListenersEvent event) {
+            for (PreparableReloadListener listener : clientReloadListeners.values()) {
+                event.registerReloadListener(listener);
+            }
+
+            for (IModelSpecificationLoader<?> modelLoader : modelLoaders.values()) {
+                event.registerReloadListener(modelLoader);
+            }
+
+            for (Supplier<? extends BlockEntityWithoutLevelRenderer> renderer : itemRenderers().values()) {
+                event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> renderer.get().onResourceManagerReload(resourceManager));
             }
         }
 
         @SubscribeEvent
-        public void registerItemModelTypes(final RegisterItemModelsEvent event) {
-            for (Map.Entry<Identifier, MapCodec<? extends ItemModel.Unbaked>> entry : itemModelTypes.entrySet()) {
-                event.register(entry.getKey(), entry.getValue());
-            }
-        }
-
-        @SubscribeEvent
-        public void registerConditionalItemModelProperties(final RegisterConditionalItemModelPropertyEvent event) {
-            for (Map.Entry<Identifier, MapCodec<? extends ConditionalItemModelProperty>> entry : conditionalItemModelProperties.entrySet()) {
-                event.register(entry.getKey(), entry.getValue());
-            }
-        }
-
-        @SubscribeEvent
-        public void registerModelLoaders(final ModelEvent.RegisterLoaders event) {
-            for (Map.Entry<Identifier, IModelSpecificationLoader<?>> entry : modelLoaders.entrySet()) {
+        public void registerModelLoaders(final ModelEvent.RegisterGeometryLoaders event) {
+            for (Map.Entry<ResourceLocation, IModelSpecificationLoader<?>> entry : modelLoaders.entrySet()) {
                 event.register(entry.getKey(), new ForgePlatformModelLoaderPlatformDelegate<>(entry.getValue()));
             }
         }
 
         @SubscribeEvent
         public void registerHudElements(final RegisterGuiLayersEvent event) {
-            for (Map.Entry<Identifier, HudElementHandler> entry : hudElements.entrySet()) {
-                event.registerAbove(VanillaGuiLayers.CROSSHAIR, entry.getKey(), entry.getValue()::extract);
+            for (Map.Entry<ResourceLocation, HudElementHandler> entry : hudElements.entrySet()) {
+                event.registerAbove(VanillaGuiLayers.CROSSHAIR, entry.getKey(), entry.getValue()::render);
             }
         }
 

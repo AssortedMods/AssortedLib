@@ -6,7 +6,7 @@ import org.joml.Matrix4f;
 
 /**
  * World-space geometry laid out like a blit, not GUI drawing. As with {@link FluidCuboidUtils}, the
- * {@link VertexConsumer} comes from {@code SubmitNodeCollector#submitCustomGeometry}.
+ * {@link VertexConsumer} comes from the caller's {@code MultiBufferSource}.
  */
 public class RenderHelper {
 

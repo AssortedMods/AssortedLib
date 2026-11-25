@@ -4,15 +4,16 @@ import com.grim3212.assorted.lib.core.fluid.FluidInformation;
 import com.grim3212.assorted.lib.platform.services.IClientFluidHelper;
 import net.fabricmc.fabric.api.transfer.v1.client.fluid.FluidVariantRendering;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.FluidModel;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.Fluid;
 
 /**
- * Fluid textures are no longer answered by the transfer API: {@code FluidVariantRendering#getSprite(s)}
- * is gone, and a fluid's still/flowing/overlay materials now live in a baked {@link FluidModel} that the
- * model manager holds per fluid state. Only the tint is still a variant level question.
+ * Every answer comes from Fabric's {@link FluidVariantRendering}, which asks a fluid's registered
+ * {@code FluidVariantRenderHandler} and falls back to its {@code FluidRenderHandler}, so our fluids
+ * and foreign ones read the same source. The still sprite is index 0, the flowing one index 1.
  */
 public class FabricClientFluidHelper implements IClientFluidHelper {
 
@@ -23,30 +24,34 @@ public class FabricClientFluidHelper implements IClientFluidHelper {
 
     @Override
     public TextureAtlasSprite getSprite(FluidInformation fluid) {
-        return model(fluid.fluid()).stillMaterial().sprite();
+        return sprite(fluid.fluid(), 0);
     }
 
     @Override
-    public Identifier getFlowingFluidTexture(final FluidInformation fluidInformation) {
+    public ResourceLocation getFlowingFluidTexture(final FluidInformation fluidInformation) {
         return getFlowingFluidTexture(fluidInformation.fluid());
     }
 
     @Override
-    public Identifier getFlowingFluidTexture(final Fluid fluid) {
-        return model(fluid).flowingMaterial().sprite().contents().name();
+    public ResourceLocation getFlowingFluidTexture(final Fluid fluid) {
+        return sprite(fluid, 1).contents().name();
     }
 
     @Override
-    public Identifier getStillFluidTexture(final FluidInformation fluidInformation) {
+    public ResourceLocation getStillFluidTexture(final FluidInformation fluidInformation) {
         return getStillFluidTexture(fluidInformation.fluid());
     }
 
     @Override
-    public Identifier getStillFluidTexture(final Fluid fluid) {
-        return model(fluid).stillMaterial().sprite().contents().name();
+    public ResourceLocation getStillFluidTexture(final Fluid fluid) {
+        return sprite(fluid, 0).contents().name();
     }
 
-    private static FluidModel model(final Fluid fluid) {
-        return Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.defaultFluidState());
+    private static TextureAtlasSprite sprite(final Fluid fluid, final int index) {
+        final TextureAtlasSprite[] sprites = FluidVariantRendering.getSprites(FabricFluidManager.makeVariant(new FluidInformation(fluid, 1)));
+        if (sprites == null || sprites.length <= index || sprites[index] == null) {
+            return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MissingTextureAtlasSprite.getLocation());
+        }
+        return sprites[index];
     }
 }

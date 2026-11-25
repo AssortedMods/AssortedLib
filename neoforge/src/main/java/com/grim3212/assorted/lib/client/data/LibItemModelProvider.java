@@ -2,22 +2,15 @@ package com.grim3212.assorted.lib.client.data;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.manual.LibItems;
-import net.minecraft.client.data.models.BlockModelGenerators;
-import net.minecraft.client.data.models.ItemModelGenerators;
-import net.minecraft.client.data.models.ModelProvider;
-import net.minecraft.client.data.models.model.ModelTemplates;
-import net.minecraft.core.Holder;
 import net.minecraft.data.PackOutput;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
-
-import java.util.stream.Stream;
+import net.neoforged.neoforge.client.model.generators.ItemModelProvider;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 
 /** The library registers no blocks, so this only has the manual to model. */
-public class LibItemModelProvider extends ModelProvider {
+public class LibItemModelProvider extends ItemModelProvider {
 
-    public LibItemModelProvider(PackOutput output) {
-        super(output, LibConstants.MOD_ID);
+    public LibItemModelProvider(PackOutput output, ExistingFileHelper existingFileHelper) {
+        super(output, LibConstants.MOD_ID, existingFileHelper);
     }
 
     @Override
@@ -26,12 +19,7 @@ public class LibItemModelProvider extends ModelProvider {
     }
 
     @Override
-    protected Stream<? extends Holder<Block>> getKnownBlocks() {
-        return Stream.empty();
-    }
-
-    @Override
-    protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
-        itemModels.generateFlatItem(LibItems.INSTRUCTION_MANUAL.get(), ModelTemplates.FLAT_ITEM);
+    protected void registerModels() {
+        this.basicItem(LibItems.INSTRUCTION_MANUAL.get());
     }
 }

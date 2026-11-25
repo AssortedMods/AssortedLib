@@ -12,12 +12,15 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.EntityHitResult;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import com.grim3212.assorted.lib.core.block.IBlockSoundType;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.SoundType;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MultiPlayerGameMode.class)
@@ -27,13 +30,28 @@ public abstract class MultiPlayerGameModeWorldlyBlockMixin {
     @Final
     private Minecraft minecraft;
 
+    /** The hit sound while mining. */
+    @ModifyVariable(
+            method = "continueDestroyBlock",
+            at = @At(
+                    value = "INVOKE_ASSIGN",
+                    target = "Lnet/minecraft/world/level/block/state/BlockState;getSoundType()Lnet/minecraft/world/level/block/SoundType;"
+            ),
+            ordinal = 0
+    )
+    private SoundType assortedlib_injectGetBlockStateSoundType(final SoundType current, final BlockPos pos, final Direction direction) {
+        final BlockState blockState = this.minecraft.level.getBlockState(pos);
+        if (blockState.getBlock() instanceof IBlockSoundType extraProperties) {
+            return extraProperties.getSoundType(blockState, this.minecraft.level, pos, this.minecraft.player);
+        }
+        return current;
+    }
+
     @Inject(method = "interact",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V",
                     shift = At.Shift.AFTER),
             cancellable = true)
-    // interact gained an EntityHitResult in 26.2. An @Inject handler must mirror the target's
-    // full parameter list, so it is taken here even though the event does not use it.
-    private void assortedlib_entityInteract(Player player, Entity entity, EntityHitResult hitResult, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir) {
+    private void assortedlib_entityInteract(Player player, Entity entity, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir) {
         final EntityInteractEvent event = new EntityInteractEvent(player, interactionHand, entity);
         Services.EVENTS.handleEvents(event);
 

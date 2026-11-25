@@ -45,12 +45,12 @@ public class FabricNetworkHelper implements INetworkHelper {
         if (handler.side() == MessageBoundSide.CLIENT) {
             // The payload has to be declared on both sides, but only the client can receive it, and
             // the receiver is registered later from the client entrypoint.
-            PayloadTypeRegistry.clientboundPlay().register(type, codec);
+            PayloadTypeRegistry.playS2C().register(type, codec);
             clientMessageHandlers.add(registration);
             return;
         }
 
-        PayloadTypeRegistry.serverboundPlay().register(type, codec);
+        PayloadTypeRegistry.playC2S().register(type, codec);
         ServerPlayNetworking.registerGlobalReceiver(type, (payload, context) -> context.server().execute(
                 () -> handler.messageConsumer().accept(payload.message(), context.player())));
     }

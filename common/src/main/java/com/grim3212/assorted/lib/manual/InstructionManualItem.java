@@ -7,6 +7,7 @@ import com.grim3212.assorted.lib.dist.Dist;
 import com.grim3212.assorted.lib.dist.DistExecutor;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -32,8 +33,8 @@ public class InstructionManualItem extends Item implements IManualEntry.IManualI
 
     /** Whatever the crosshair is on that did not already open the book above. */
     @Override
-    public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        return openLookedAt(level);
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        return new InteractionResultHolder<>(openLookedAt(level), player.getItemInHand(hand));
     }
 
     @Override

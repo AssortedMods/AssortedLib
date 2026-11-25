@@ -1,5 +1,6 @@
 package com.grim3212.assorted.lib.data;
 
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.DamageTypeTagsProvider;
@@ -10,8 +11,8 @@ public class ForgeDamageTypeTagsProvider extends DamageTypeTagsProvider {
 
     private final LibDamageTypeTagsProvider commonTags;
 
-    public ForgeDamageTypeTagsProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, String modId, LibDamageTypeTagsProvider commonTags) {
-        super(output, lookup, modId);
+    public ForgeDamageTypeTagsProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookup, String modId, ExistingFileHelper existingFileHelper, LibDamageTypeTagsProvider commonTags) {
+        super(output, lookup, modId, existingFileHelper);
         this.commonTags = commonTags;
     }
 

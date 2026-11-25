@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.core.network.CycleModePacket;
 import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.platform.services.INetworkHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * The packet behind the switch-modes key, shared by every mod with an {@link ISwitchModes} item. Nothing is
@@ -12,7 +12,7 @@ import net.minecraft.resources.Identifier;
  */
 public final class ModeSwitching {
 
-    public static final Identifier PACKET_ID = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "cycle_mode");
+    public static final ResourceLocation PACKET_ID = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "cycle_mode");
 
     private static boolean enabled;
 

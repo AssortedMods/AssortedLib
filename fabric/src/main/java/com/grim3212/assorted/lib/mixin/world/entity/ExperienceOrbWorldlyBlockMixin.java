@@ -29,7 +29,7 @@ public abstract class ExperienceOrbWorldlyBlockMixin extends Entity {
         if (!(this instanceof EntityAccessor entityAccessor))
             return current;
 
-        final BlockPos pPos = new BlockPos(this.getBlockX(), this.getBlockY(), this.getBlockZ()).below();
+        final BlockPos pPos = this.getBlockPosBelowThatAffectsMyMovement();
         final BlockState blockState = entityAccessor.getLevel().getBlockState(pPos);
 
         if (blockState.getBlock() instanceof IBlockExtraProperties extraProperties) {

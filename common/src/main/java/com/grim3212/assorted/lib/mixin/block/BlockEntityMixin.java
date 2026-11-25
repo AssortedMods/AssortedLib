@@ -3,10 +3,11 @@ package com.grim3212.assorted.lib.mixin.block;
 import com.grim3212.assorted.lib.core.block.IBlockEntityWithModelData;
 import com.grim3212.assorted.lib.core.block.IBlockLightEmission;
 import com.grim3212.assorted.lib.platform.ClientServices;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class BlockEntityMixin {
 
     @Inject(method = "loadWithComponents", at = @At("TAIL"))
-    private void assortedlib_refreshOnLoad(ValueInput input, CallbackInfo ci) {
+    private void assortedlib_refreshOnLoad(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
         BlockEntity self = (BlockEntity) (Object) this;
         Level level = self.getLevel();
         if (level == null || !level.isClientSide()) {

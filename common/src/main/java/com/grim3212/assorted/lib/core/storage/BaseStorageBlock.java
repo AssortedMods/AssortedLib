@@ -1,5 +1,7 @@
 package com.grim3212.assorted.lib.core.storage;
 
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.ItemInteractionResult;
 import com.grim3212.assorted.lib.core.inventory.INamed;
 import com.grim3212.assorted.lib.core.inventory.locking.ILockable;
 import com.grim3212.assorted.lib.core.inventory.locking.LockItems;
@@ -7,11 +9,10 @@ import com.grim3212.assorted.lib.core.inventory.locking.StorageAccessUtil;
 import com.grim3212.assorted.lib.core.inventory.locking.StorageUtil;
 import com.grim3212.assorted.lib.platform.Services;
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -28,8 +29,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.ScheduledTickAccess;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -38,7 +37,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
@@ -52,7 +50,7 @@ import org.jetbrains.annotations.Nullable;
 public abstract class BaseStorageBlock extends Block implements EntityBlock, SimpleWaterloggedBlock {
 
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
-    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
+    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final VoxelShape FAKE_SIDES_AND_BOTTOM = Block.box(0.01D, 0.01D, 0.01D, 16.0D, 16.0D, 16.0D);
 
     public BaseStorageBlock(Properties properties) {
@@ -69,7 +67,7 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
     }
 
     protected boolean isInvalidBlock(LevelAccessor world, BlockPos pos) {
-        return !world.isEmptyBlock(pos) && world.getBlockState(pos).isSolidRender();
+        return !world.isEmptyBlock(pos) && world.getBlockState(pos).isSolidRender(world, pos);
     }
 
     protected boolean isDoorBlocked(LevelAccessor world, BlockPos pos) {
@@ -82,12 +80,12 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
     }
 
     @Override
-    protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess scheduledTickAccess, BlockPos pos, Direction dir, BlockPos neighborPos, BlockState neighborState, RandomSource randomSource) {
+    protected BlockState updateShape(BlockState state, Direction dir, BlockState neighborState, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
         if (state.getValue(WATERLOGGED)) {
-            scheduledTickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
-        return super.updateShape(state, level, scheduledTickAccess, pos, dir, neighborPos, neighborState, randomSource);
+        return super.updateShape(state, dir, neighborState, level, pos, neighborPos);
     }
 
     @Override
@@ -134,19 +132,25 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
     }
 
     /**
-     * Only fires for a real removal, by when the block entity is gone: anything that needs it is in
-     * the block entity's {@code preRemoveSideEffects}.
+     * Drops the lock and contents through the block entity while it still exists, but only when
+     * the block itself changes: a state change (facing, waterlogging) keeps the block entity.
      */
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel worldIn, BlockPos pos, boolean movedByPiston) {
-        worldIn.updateNeighbourForOutputSignal(pos, this);
+    protected void onRemove(BlockState state, Level worldIn, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) {
+            if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storage) {
+                storage.onBlockRemoved(worldIn, pos, state);
+            }
+            worldIn.updateNeighbourForOutputSignal(pos, this);
+        }
+        super.onRemove(state, worldIn, pos, newState, movedByPiston);
     }
 
     @Override
-    protected InteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
+    protected ItemInteractionResult useItemOn(ItemStack heldStack, BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn, BlockHitResult hit) {
         if (this.canBeLocked(worldIn, pos) && LockItems.isLock(player.getItemInHand(handIn))) {
             if (this.placeLock(worldIn, pos, player, handIn))
-                return InteractionResult.SUCCESS;
+                return ItemInteractionResult.SUCCESS;
         }
 
         if (player.isShiftKeyDown() && StorageAccessUtil.canAccess(worldIn, pos, player)) {
@@ -166,7 +170,7 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
                                 blockDropped.playerTouch(player);
                             }
                         }
-                        return InteractionResult.SUCCESS;
+                        return ItemInteractionResult.SUCCESS;
                     }
                 }
             }
@@ -178,13 +182,11 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
                 if (inamedcontainerprovider != null) {
                     this.openMenu(player, inamedcontainerprovider);
                     player.awardStat(this.getOpenStat());
-                    if (worldIn instanceof ServerLevel serverLevel) {
-                        PiglinAi.angerNearbyPiglins(serverLevel, player, true);
-                    }
+                    PiglinAi.angerNearbyPiglins(player, true);
                 }
             }
         }
-        return InteractionResult.SUCCESS;
+        return ItemInteractionResult.SUCCESS;
     }
 
     protected void openMenu(Player player, MenuProvider provider) {
@@ -192,7 +194,7 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
     }
 
     // TODO: Create custom stat for this
-    protected Stat<Identifier> getOpenStat() {
+    protected Stat<ResourceLocation> getOpenStat() {
         return Stats.CUSTOM.get(Stats.OPEN_CHEST);
     }
 
@@ -225,12 +227,12 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
     }
 
     @Override
-    protected int getAnalogOutputSignal(BlockState blockState, Level worldIn, BlockPos pos, Direction direction) {
+    protected int getAnalogOutputSignal(BlockState blockState, Level worldIn, BlockPos pos) {
         if (worldIn.getBlockEntity(pos) instanceof BaseStorageBlockEntity storageBlockEntity) {
             return StorageUtil.getRedstoneSignalFromContainer(storageBlockEntity.getItemStackStorageHandler());
         }
 
-        return super.getAnalogOutputSignal(blockState, worldIn, pos, direction);
+        return super.getAnalogOutputSignal(blockState, worldIn, pos);
     }
 
     @Override
@@ -238,6 +240,7 @@ public abstract class BaseStorageBlock extends Block implements EntityBlock, Sim
         return state.setValue(FACING, rot.rotate(state.getValue(FACING)));
     }
 
+    @SuppressWarnings("deprecation") // NeoForge deprecates BlockState#rotate(Rotation) for its level aware overload; vanilla's own mirror calls this one
     @Override
     protected BlockState mirror(BlockState state, Mirror mirrorIn) {
         return state.rotate(mirrorIn.getRotation(state.getValue(FACING)));

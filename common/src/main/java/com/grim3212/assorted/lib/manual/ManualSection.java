@@ -1,11 +1,11 @@
 package com.grim3212.assorted.lib.manual;
 
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -48,11 +48,15 @@ public record ManualSection(String modId, int sortOrder, Supplier<ItemStack> ico
      * A section file, before the path has told us which mod it belongs to. {@code icon} is one item
      * or a list, the first one registered drawn: mods sharing a section each name the others' items.
      */
-    public record Definition(int sortOrder, List<Identifier> icons) {
+    public record Definition(int sortOrder, List<ResourceLocation> icons) {
+
+        /** One id written bare, or a list of them. */
+        private static final Codec<List<ResourceLocation>> ICONS_CODEC = Codec.either(ResourceLocation.CODEC.listOf(), ResourceLocation.CODEC)
+                .xmap(either -> either.map(list -> list, List::of), list -> list.size() == 1 ? Either.right(list.get(0)) : Either.left(list));
 
         public static final Codec<Definition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.INT.optionalFieldOf("sort_order", DEFAULT_SORT_ORDER).forGetter(Definition::sortOrder),
-                ExtraCodecs.compactListCodec(Identifier.CODEC).optionalFieldOf("icon", List.of()).forGetter(Definition::icons)
+                ICONS_CODEC.optionalFieldOf("icon", List.of()).forGetter(Definition::icons)
         ).apply(instance, Definition::new));
 
         /**
@@ -61,7 +65,7 @@ public record ManualSection(String modId, int sortOrder, Supplier<ItemStack> ico
          * stack then fails.
          */
         public ManualSection bind(String modId) {
-            List<Identifier> icons = this.icons;
+            List<ResourceLocation> icons = this.icons;
             return new ManualSection(modId, this.sortOrder, () -> icons.stream()
                     .flatMap(id -> BuiltInRegistries.ITEM.getOptional(id).stream())
                     .findFirst()

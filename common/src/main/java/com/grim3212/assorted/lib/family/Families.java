@@ -6,7 +6,7 @@ import com.grim3212.assorted.lib.core.creative.SharedCreativeTabs;
 import com.grim3212.assorted.lib.manual.ManualRegistry;
 import com.grim3212.assorted.lib.manual.ManualSection;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
@@ -58,7 +58,7 @@ public final class Families {
     }
 
     /** The family's icon candidates, best first: offered by members that are on, by weight and then mod id. */
-    public static List<Identifier> icons(String familyId) {
+    public static List<ResourceLocation> icons(String familyId) {
         return FAMILIES.getOrDefault(familyId, Map.of()).values().stream()
                 .filter(member -> member.icon() != null && PartToggles.isEnabled(member.modId()))
                 .sorted(Comparator.comparingInt(FamilyMember::iconWeight).reversed().thenComparing(FamilyMember::modId))
@@ -77,7 +77,7 @@ public final class Families {
 
     /** The family's creative tab, {@code <familyId>:tab}, drawn with its icon. Each member fills in its own items. */
     public static ResourceKey<CreativeModeTab> tab(String familyId) {
-        return SharedCreativeTabs.tab(Identifier.fromNamespaceAndPath(familyId, "tab"), () -> icons(familyId));
+        return SharedCreativeTabs.tab(ResourceLocation.fromNamespaceAndPath(familyId, "tab"), () -> icons(familyId));
     }
 
     static void manualOrder(FamilyMember member, int order) {

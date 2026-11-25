@@ -5,14 +5,12 @@ import com.grim3212.assorted.lib.core.crafting.ingredient.LibFluidIngredient;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 import net.neoforged.neoforge.common.crafting.IngredientType;
@@ -30,7 +28,7 @@ import java.util.stream.Stream;
  */
 public class ForgeFluidIngredient implements ICustomIngredient {
 
-    public static final Identifier NAME = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "stored_fluid_ingredient");
+    public static final ResourceLocation NAME = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "stored_fluid_ingredient");
 
     public static final MapCodec<ForgeFluidIngredient> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
             .group(TagKey.codec(Registries.ITEM).optionalFieldOf("item").forGetter(ingredient -> Optional.ofNullable(ingredient.fluidIngredient.getItemTag())),
@@ -78,22 +76,13 @@ public class ForgeFluidIngredient implements ICustomIngredient {
     }
 
     /**
-     * The {@linkplain Item items} this ingredient may ever match, for the recipe book and the
-     * ingredient index. An item alone cannot say what fluid is inside it, so the contents are checked
-     * per stack in {@link #test(ItemStack)} and drawn by {@link #display()}.
+     * The filled containers this ingredient matches, which is what the recipe book and recipe viewers
+     * draw. An item alone cannot say what fluid is inside it, so the contents are checked per stack in
+     * {@link #test(ItemStack)}.
      */
     @Override
-    public Stream<Holder<Item>> items() {
-        return this.fluidIngredient.getMatchingStacks().stream().map(ItemStack::typeHolder).distinct();
-    }
-
-    /**
-     * Vanilla's {@code Ingredient#display()} asks the custom ingredient first on both loaders, so the
-     * filled containers are drawn instead of the bare items {@link #items()} lists.
-     */
-    @Override
-    public SlotDisplay display() {
-        return this.fluidIngredient.display();
+    public Stream<ItemStack> getItems() {
+        return this.fluidIngredient.getMatchingStacks().stream();
     }
 
     public void invalidate() {

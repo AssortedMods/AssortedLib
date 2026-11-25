@@ -7,7 +7,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.function.BiConsumer;
@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 final class RegistryAliasTests {
 
     /** Stands for an id the manual used to have. Nothing registers it. */
-    static final Identifier OLD_MANUAL = Identifier.fromNamespaceAndPath("assortedlib_old", "instruction_manual");
+    static final ResourceLocation OLD_MANUAL = ResourceLocation.fromNamespaceAndPath("assortedlib_old", "instruction_manual");
 
     private RegistryAliasTests() {
     }
@@ -31,7 +31,7 @@ final class RegistryAliasTests {
     }
 
     private static void registryAliasReadsTheOldId(GameTestHelper helper) {
-        helper.assertValueEqual(BuiltInRegistries.ITEM.getValue(OLD_MANUAL), LibItems.INSTRUCTION_MANUAL.get(), "the item under its old id");
+        helper.assertValueEqual(BuiltInRegistries.ITEM.get(OLD_MANUAL), LibItems.INSTRUCTION_MANUAL.get(), "the item under its old id");
 
         ItemStack saved = ItemStack.CODEC.parse(helper.getLevel().registryAccess().createSerializationContext(JsonOps.INSTANCE),
                 JsonParser.parseString("{\"id\": \"" + OLD_MANUAL + "\", \"count\": 2}")).getOrThrow();

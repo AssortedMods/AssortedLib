@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.worldgen.CustomSpawnerFactory;
 import com.grim3212.assorted.lib.worldgen.CustomSpawners;
 import com.grim3212.assorted.lib.worldgen.StructureSpawns;
 import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.biome.Biome;
@@ -16,14 +16,14 @@ import java.util.function.Supplier;
 
 public interface IWorldGenHelper {
 
-    void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier configuredFeatureIdentifier);
+    void addFeatureToBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, ResourceLocation configuredFeatureIdentifier);
 
     /**
      * Takes a placed feature out of every biome the predicate accepts, through the loader's own
      * biome modifiers rather than by overriding the biome's json. The predicate is asked when a world
      * loads its biomes, so it may read config.
      */
-    void removeFeatureFromBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, Identifier placedFeatureIdentifier);
+    void removeFeatureFromBiomes(BiomePredicate biomePredicate, GenerationStep.Decoration step, ResourceLocation placedFeatureIdentifier);
 
     /**
      * Adds a creature to the natural spawns of every biome the predicate accepts, in the category
@@ -49,12 +49,12 @@ public interface IWorldGenHelper {
      * is asked per level and may return null. Ticked while spawn_mobs is on, in name order on both loaders.
      * Neither the biome spawn lists nor the category caps are involved: it is a mod's own pacing.
      */
-    default void addCustomSpawner(Identifier name, CustomSpawnerFactory factory) {
+    default void addCustomSpawner(ResourceLocation name, CustomSpawnerFactory factory) {
         CustomSpawners.add(name, factory);
     }
 
     @FunctionalInterface
     interface BiomePredicate {
-        boolean test(Identifier key, Holder<Biome> biomeHolder);
+        boolean test(ResourceLocation key, Holder<Biome> biomeHolder);
     }
 }

@@ -46,9 +46,9 @@ public class TransformUtil {
      * origin. Used to switch between coordinate systems.
      */
     public static Transformation applyOrigin(Transformation transform, Vector3f origin) {
-        if (transform.equals(Transformation.IDENTITY)) return Transformation.IDENTITY;
+        if (transform.equals(Transformation.identity())) return Transformation.identity();
 
-        Matrix4f ret = transform.getMatrixCopy();
+        Matrix4f ret = new Matrix4f(transform.getMatrix());
         Matrix4f tmp = new Matrix4f().translation(origin.x(), origin.y(), origin.z());
         tmp.mul(ret, ret);
         tmp.translation(-origin.x(), -origin.y(), -origin.z());

@@ -1,7 +1,7 @@
 package com.grim3212.assorted.lib.worldgen;
 
 import com.grim3212.assorted.lib.platform.services.IWorldGenHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.CustomSpawner;
 
@@ -23,7 +23,7 @@ public final class CustomSpawners {
     /** By name, so the spawners tick in the same order on both loaders whatever order the mods loaded in. */
     private static final Comparator<Registration> ORDER = Comparator.comparing(Registration::name);
 
-    public static void add(Identifier name, CustomSpawnerFactory factory) {
+    public static void add(ResourceLocation name, CustomSpawnerFactory factory) {
         REGISTRATIONS.add(new Registration(name, factory));
     }
 
@@ -42,6 +42,6 @@ public final class CustomSpawners {
         return created;
     }
 
-    private record Registration(Identifier name, CustomSpawnerFactory factory) {
+    private record Registration(ResourceLocation name, CustomSpawnerFactory factory) {
     }
 }

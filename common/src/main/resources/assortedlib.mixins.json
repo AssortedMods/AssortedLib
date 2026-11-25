@@ -9,18 +9,20 @@
     "stats.ServerRecipeBookMixin",
     "resources.RegistryFixedCodecMixin",
     "server.ReloadableServerRegistriesHolderMixin",
-    "world.level.chunk.SerializableChunkDataMixin",
+    "server.ServerPlayerAccessor",
+    "test.TestHelperAccessor",
+    "world.level.chunk.ChunkSerializerMixin",
     "world.level.StructureCheckMixin",
     "block.BlockEntityMixin",
     "block.BlockMixin",
     "block.CactusBlockMixin",
     "block.CropBlockMixin",
-    "block.DryVegetationBlockMixin",
+    "block.DeadBushBlockMixin",
     "block.MushroomBlockMixin",
     "block.NetherWartBlockMixin",
     "block.StemBlockMixin",
     "block.SugarCaneBlockMixin",
-    "block.VegetationBlockMixin",
+    "block.BushBlockMixin",
     "data.AccessorBlockLootSubProvider",
     "entity.EntityAccessor",
     "item.ItemStackMixin",
@@ -29,8 +31,8 @@
     "world.level.SpawnStateAccessor"
   ],
   "client": [
-    "client.gui.GuiGraphicsExtractorAccessor",
-    "client.multiplayer.ClientLevelMixin"
+    "client.multiplayer.ClientLevelMixin",
+    "client.particle.ParticleEngineMixin"
   ],
   "injectors": {
     "defaultRequire": 1

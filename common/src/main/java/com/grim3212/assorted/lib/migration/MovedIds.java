@@ -3,14 +3,10 @@ package com.grim3212.assorted.lib.migration;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.grim3212.assorted.lib.LibCommonSetup;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +22,7 @@ public final class MovedIds {
 
     // Concurrent: NeoForge constructs mods in parallel.
     private static final Map<String, Set<String>> HEIRS = new ConcurrentHashMap<>();
-    private static final Map<Identifier, Map<String, String>> CRITERIA = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, Map<String, String>> CRITERIA = new ConcurrentHashMap<>();
 
     private MovedIds() {
     }
@@ -37,7 +33,7 @@ public final class MovedIds {
     }
 
     /** Criteria of {@code advancement} that were renamed, old name to new, so progress on them carries over. */
-    public static void renameCriteria(Identifier advancement, Map<String, String> renames) {
+    public static void renameCriteria(ResourceLocation advancement, Map<String, String> renames) {
         CRITERIA.computeIfAbsent(advancement, key -> new ConcurrentHashMap<>()).putAll(renames);
     }
 
@@ -57,43 +53,31 @@ public final class MovedIds {
     }
 
     /** Where {@code id} went: the first heir of its namespace that has its path, or nothing if it did not move. */
-    public static Optional<Identifier> resolve(Identifier id, Predicate<Identifier> exists) {
+    public static Optional<ResourceLocation> resolve(ResourceLocation id, Predicate<ResourceLocation> exists) {
         if (exists.test(id)) {
             return Optional.empty();
         }
 
         return HEIRS.getOrDefault(id.getNamespace(), Set.of()).stream()
-                .map(heir -> Identifier.fromNamespaceAndPath(heir, id.getPath()))
+                .map(heir -> ResourceLocation.fromNamespaceAndPath(heir, id.getPath()))
                 .filter(exists)
                 .sorted()
                 .findFirst();
     }
 
-    /** A recipe book's recipes with any that moved under their new ids; the same list if none did. */
-    public static List<ResourceKey<Recipe<?>>> recipes(List<ResourceKey<Recipe<?>>> recipes, Predicate<ResourceKey<Recipe<?>>> exists) {
-        List<ResourceKey<Recipe<?>>> moved = new ArrayList<>(recipes.size());
-        boolean changed = false;
-        for (ResourceKey<Recipe<?>> recipe : recipes) {
-            Optional<Identifier> to = resolve(recipe.identifier(), id -> exists.test(ResourceKey.create(Registries.RECIPE, id)));
-            moved.add(to.map(id -> ResourceKey.create(Registries.RECIPE, id)).orElse(recipe));
-            changed |= to.isPresent();
-        }
-
-        return changed ? moved : recipes;
-    }
-
     /** A chunk's saved structure starts or references, keyed by structure, with any that moved renamed in place. */
-    public static void structures(CompoundTag byStructure, Predicate<Identifier> exists) {
-        for (String key : List.copyOf(byStructure.keySet())) {
-            Identifier id = Identifier.tryParse(key);
+    public static void structures(CompoundTag byStructure, Predicate<ResourceLocation> exists) {
+        for (String key : List.copyOf(byStructure.getAllKeys())) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
             if (id == null) {
                 continue;
             }
 
             resolve(id, exists).ifPresent(to -> {
-                Tag saved = byStructure.remove(key);
+                Tag saved = byStructure.get(key);
+                byStructure.remove(key);
                 // A start names its structure again inside itself.
-                if (saved instanceof CompoundTag start && key.equals(start.getStringOr("id", ""))) {
+                if (saved instanceof CompoundTag start && key.equals(start.getString("id"))) {
                     start.putString("id", to.toString());
                 }
                 if (!byStructure.contains(to.toString())) {
@@ -107,28 +91,28 @@ public final class MovedIds {
      * A player's advancement progress file with every advancement that moved under its new id, and renamed criteria
      * under their new names. A criterion done under two old names keeps the earlier date.
      */
-    public static JsonElement advancements(JsonElement saved, Predicate<Identifier> exists) {
+    public static JsonElement advancements(JsonElement saved, Predicate<ResourceLocation> exists) {
         if (!saved.isJsonObject()) {
             return saved;
         }
 
         JsonObject moved = new JsonObject();
         for (Map.Entry<String, JsonElement> entry : saved.getAsJsonObject().entrySet()) {
-            Identifier id = Identifier.tryParse(entry.getKey());
+            ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
             // Only ids a mod moved or renamed criteria of are touched; Iris lets "DataVersion" parse as an id.
             if (id == null || !moved(id.getNamespace()) && !CRITERIA.containsKey(id)) {
                 moved.add(entry.getKey(), entry.getValue());
                 continue;
             }
 
-            Identifier to = resolve(id, exists).orElse(id);
+            ResourceLocation to = resolve(id, exists).orElse(id);
             moved.add(to.toString(), renamed(to, entry.getValue()));
         }
 
         return moved;
     }
 
-    private static JsonElement renamed(Identifier advancement, JsonElement progress) {
+    private static JsonElement renamed(ResourceLocation advancement, JsonElement progress) {
         Map<String, String> renames = CRITERIA.get(advancement);
         if (renames == null || !progress.isJsonObject() || !progress.getAsJsonObject().has("criteria")) {
             return progress;

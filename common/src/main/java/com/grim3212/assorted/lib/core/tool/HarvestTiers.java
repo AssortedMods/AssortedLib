@@ -29,7 +29,6 @@ public final class HarvestTiers {
         // Gold gets drops from iron-level blocks yet breaks like wood, so it sits off the ladder; 0 is what it mined in 1.20.1.
         if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_GOLD_TOOL) return 0;
         if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_STONE_TOOL) return 1;
-        if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_COPPER_TOOL) return 1;
         if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_IRON_TOOL) return 2;
         if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_DIAMOND_TOOL) return 3;
         if (incorrectBlocksForDrops == BlockTags.INCORRECT_FOR_NETHERITE_TOOL) return 4;

@@ -32,7 +32,8 @@ public abstract class BlockItemWorldlyBlockMixin extends Item {
                     value = "INVOKE_ASSIGN",
                     target = "Lnet/minecraft/world/level/Level;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
             ),
-            ordinal = 0
+            // The placed state: the first BlockState local is the placement state, asked for before it.
+            ordinal = 1
     )
     private BlockState assortedlib_injectGetSoundTypeAdaptorForInitialState(final BlockState current) {
         this.soundState = current;
@@ -45,7 +46,7 @@ public abstract class BlockItemWorldlyBlockMixin extends Item {
                     value = "INVOKE_ASSIGN",
                     target = "Lnet/minecraft/world/item/BlockItem;updateBlockStateFromTag(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/level/block/state/BlockState;"
             ),
-            ordinal = 0
+            ordinal = 1
     )
     private BlockState assortedlib_injectGetSoundTypeAdaptorForTagUpdate(final BlockState current) {
         this.soundState = current;

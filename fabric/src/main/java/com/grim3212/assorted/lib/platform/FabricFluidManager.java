@@ -125,11 +125,11 @@ public class FabricFluidManager implements IFluidManager {
             //We have a flowing fluid.
             //Let's make a none flowing variant of it.
             if (fluid.getFluid() instanceof FlowingFluid flowingFluid) {
-                return makeInformation(FluidVariant.of(flowingFluid.getSource(), fluid.getComponentsPatch()), count);
+                return makeInformation(FluidVariant.of(flowingFluid.getSource(), fluid.getComponents()), count);
             }
         }
 
-        return new FluidInformation(fluid.getFluid(), count, fluid.getComponentsPatch());
+        return new FluidInformation(fluid.getFluid(), count, fluid.getComponents());
     }
 
     public static FluidInformation makeInformation(final FluidVariant fluid) {

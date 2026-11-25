@@ -4,40 +4,36 @@ import com.grim3212.assorted.lib.core.fluid.FluidInformation;
 import com.grim3212.assorted.lib.core.fluid.IFluidVariantHandler;
 import com.grim3212.assorted.lib.fluid.ForgeFluidVariantHandlerDelegate;
 import com.grim3212.assorted.lib.platform.services.IFluidManager;
-import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
-import net.neoforged.neoforge.transfer.access.ItemAccess;
-import net.neoforged.neoforge.transfer.fluid.FluidResource;
-import net.neoforged.neoforge.transfer.fluid.FluidUtil;
-import net.neoforged.neoforge.transfer.item.ItemStacksResourceHandler;
-import net.neoforged.neoforge.transfer.resource.ResourceStack;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
 /**
- * An item's fluid capability is a {@link ResourceHandler} of {@link FluidResource}; a simulation is
- * a {@link Transaction} closed without committing.
+ * An item's fluid capability is an {@link IFluidHandlerItem}, asked of a one-item copy of the stack.
+ * The handler may change its item as it fills or drains (a bucket becomes another item), and
+ * {@link IFluidHandlerItem#getContainer()} is what the item became, so the copy is never read back
+ * directly. A simulation is {@link IFluidHandler.FluidAction#SIMULATE}.
  */
 public class ForgeFluidManager implements IFluidManager {
 
     @Override
     public Optional<FluidInformation> get(final ItemStack stack) {
-        final SingleItem item = SingleItem.of(stack);
-        if (item == null)
+        final IFluidHandlerItem handler = handlerFor(stack);
+        if (handler == null)
             return Optional.empty();
 
-        for (int index = 0; index < item.fluids().size(); index++) {
-            final FluidStack contained = FluidUtil.getStack(item.fluids(), index);
+        for (int tank = 0; tank < handler.getTanks(); tank++) {
+            final FluidStack contained = handler.getFluidInTank(tank);
             if (!contained.isEmpty()) {
                 return Optional.of(buildFluidInformation(contained));
             }
@@ -49,57 +45,45 @@ public class ForgeFluidManager implements IFluidManager {
 
     @Override
     public ItemStack extractFrom(final ItemStack stack, final long amount) {
-        final SingleItem item = SingleItem.of(stack);
-        if (item == null)
+        final IFluidHandlerItem handler = handlerFor(stack);
+        if (handler == null)
             return stack.copyWithCount(1);
 
-        try (Transaction transaction = Transaction.openRoot()) {
-            final ResourceStack<FluidResource> extracted = ResourceHandlerUtil.extractFirst(item.fluids(), resource -> true, clamp(amount), transaction);
-            if (extracted != null && extracted.amount() > 0) {
-                transaction.commit();
-            }
-        }
-        return item.contents();
+        handler.drain(clamp(amount), IFluidHandler.FluidAction.EXECUTE);
+        return handler.getContainer();
     }
 
     @Override
     public long simulateExtract(ItemStack stack, long amount) {
-        final SingleItem item = SingleItem.of(stack);
-        if (item == null)
+        final IFluidHandlerItem handler = handlerFor(stack);
+        if (handler == null)
             return 0;
 
-        // Not committing the transaction rolls the extraction back, which is the simulation.
-        try (Transaction transaction = Transaction.openRoot()) {
-            final ResourceStack<FluidResource> extracted = ResourceHandlerUtil.extractFirst(item.fluids(), resource -> true, clamp(amount), transaction);
-            return extracted == null ? 0 : extracted.amount();
-        }
+        return handler.drain(clamp(amount), IFluidHandler.FluidAction.SIMULATE).getAmount();
     }
 
     @Override
     public ItemStack insertInto(final ItemStack stack, final FluidInformation fluidInformation) {
-        final SingleItem item = SingleItem.of(stack);
-        if (item == null)
+        final IFluidHandlerItem handler = handlerFor(stack);
+        if (handler == null)
             return stack.copyWithCount(1);
 
         if (clamp(fluidInformation.amount()) > 0 && fluidInformation.fluid() != Fluids.EMPTY) {
-            try (Transaction transaction = Transaction.openRoot()) {
-                if (ResourceHandlerUtil.insertStacking(item.fluids(), FluidResource.of(buildFluidStack(fluidInformation)), clamp(fluidInformation.amount()), transaction) > 0) {
-                    transaction.commit();
-                }
-            }
+            handler.fill(buildFluidStack(fluidInformation), IFluidHandler.FluidAction.EXECUTE);
         }
-        return item.contents();
+        return handler.getContainer();
     }
 
     @Override
     public long simulateInsert(ItemStack stack, FluidInformation fluidInformation) {
-        final SingleItem item = SingleItem.of(stack);
-        if (item == null || clamp(fluidInformation.amount()) <= 0 || fluidInformation.fluid() == Fluids.EMPTY)
+        if (clamp(fluidInformation.amount()) <= 0 || fluidInformation.fluid() == Fluids.EMPTY)
             return 0;
 
-        try (Transaction transaction = Transaction.openRoot()) {
-            return ResourceHandlerUtil.insertStacking(item.fluids(), FluidResource.of(buildFluidStack(fluidInformation)), clamp(fluidInformation.amount()), transaction);
-        }
+        final IFluidHandlerItem handler = handlerFor(stack);
+        if (handler == null)
+            return 0;
+
+        return handler.fill(buildFluidStack(fluidInformation), IFluidHandler.FluidAction.SIMULATE);
     }
 
     @Override
@@ -110,6 +94,18 @@ public class ForgeFluidManager implements IFluidManager {
     @Override
     public Optional<IFluidVariantHandler> getVariantHandlerFor(Fluid fluid) {
         return Optional.of(new ForgeFluidVariantHandlerDelegate(fluid.getFluidType()));
+    }
+
+    /**
+     * The fluid handler of one item of the stack, made on a copy so {@code stack} itself is never
+     * touched; null when the item holds no fluid.
+     */
+    @Nullable
+    private static IFluidHandlerItem handlerFor(final ItemStack stack) {
+        if (stack.isEmpty())
+            return null;
+
+        return stack.copyWithCount(1).getCapability(Capabilities.FluidHandler.ITEM);
     }
 
     private static int clamp(final long amount) {
@@ -125,27 +121,6 @@ public class ForgeFluidManager implements IFluidManager {
 
     @NotNull
     public static FluidStack buildFluidStack(final FluidInformation fluid) {
-        return new FluidStack(fluid.fluid(), clamp(fluid.amount()), fluid.data());
-    }
-
-    /**
-     * One item from the stack, in a one-slot handler its fluid capability can write to.
-     * {@code ItemAccess.forStack} can never change the item, so a bucket (which empties by becoming
-     * another item) reports nothing extractable; {@link ItemAccess#forHandlerIndexStrict} can.
-     */
-    private record SingleItem(ItemStacksResourceHandler slot, ResourceHandler<FluidResource> fluids) {
-        @Nullable
-        static SingleItem of(final ItemStack stack) {
-            if (stack.isEmpty())
-                return null;
-
-            final ItemStacksResourceHandler slot = new ItemStacksResourceHandler(NonNullList.of(ItemStack.EMPTY, stack.copyWithCount(1)));
-            final ResourceHandler<FluidResource> fluids = ItemAccess.forHandlerIndexStrict(slot, 0).getCapability(Capabilities.Fluid.ITEM);
-            return fluids == null ? null : new SingleItem(slot, fluids);
-        }
-
-        ItemStack contents() {
-            return this.slot.getResource(0).toStack((int) this.slot.getAmountAsLong(0));
-        }
+        return new FluidStack(BuiltInRegistries.FLUID.wrapAsHolder(fluid.fluid()), clamp(fluid.amount()), fluid.data());
     }
 }

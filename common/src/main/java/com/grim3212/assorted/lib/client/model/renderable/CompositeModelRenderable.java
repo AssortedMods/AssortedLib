@@ -2,10 +2,10 @@ package com.grim3212.assorted.lib.client.model.renderable;
 
 import com.google.common.collect.ImmutableMap;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.QuadInstance;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
@@ -24,9 +24,9 @@ public class CompositeModelRenderable implements IModelRenderable<CompositeModel
     }
 
     @Override
-    public void render(PoseStack poseStack, SubmitNodeCollector collector, IModelRenderable.ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay, float partialTick, Transforms context) {
+    public void render(PoseStack poseStack, MultiBufferSource bufferSource, IModelRenderable.ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay, float partialTick, Transforms context) {
         for (var component : components)
-            component.render(poseStack, collector, textureRenderTypeLookup, lightmap, overlay, context);
+            component.render(poseStack, bufferSource, textureRenderTypeLookup, lightmap, overlay, context);
     }
 
     public static Builder builder() {
@@ -42,7 +42,7 @@ public class CompositeModelRenderable implements IModelRenderable<CompositeModel
             this.name = name;
         }
 
-        public void render(PoseStack poseStack, SubmitNodeCollector collector, ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay, Transforms context) {
+        public void render(PoseStack poseStack, MultiBufferSource bufferSource, ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay, Transforms context) {
             Matrix4f matrix = context.getTransform(name);
             if (matrix != null) {
                 poseStack.pushPose();
@@ -50,10 +50,10 @@ public class CompositeModelRenderable implements IModelRenderable<CompositeModel
             }
 
             for (var part : children)
-                part.render(poseStack, collector, textureRenderTypeLookup, lightmap, overlay, context);
+                part.render(poseStack, bufferSource, textureRenderTypeLookup, lightmap, overlay, context);
 
             for (var mesh : meshes)
-                mesh.render(poseStack, collector, textureRenderTypeLookup, lightmap, overlay);
+                mesh.render(poseStack, bufferSource, textureRenderTypeLookup, lightmap, overlay);
 
             if (matrix != null)
                 poseStack.popPose();
@@ -61,29 +61,18 @@ public class CompositeModelRenderable implements IModelRenderable<CompositeModel
     }
 
     private static class Mesh {
-        private final Identifier texture;
+        private final ResourceLocation texture;
         private final List<BakedQuad> quads = new ArrayList<>();
 
-        public Mesh(Identifier texture) {
+        public Mesh(ResourceLocation texture) {
             this.texture = texture;
         }
 
-        public void render(PoseStack poseStack, SubmitNodeCollector collector, ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay) {
-            // A mesh is a loose bag of quads sharing one texture, which does not fit any of the typed
-            // submit calls (submitBlockModel wants BlockStateModelParts, submitItem wants a display
-            // context), so it goes through the custom geometry escape hatch - the one place a raw
-            // VertexConsumer still exists. Colour and light are no longer baked into the quads, they
-            // are carried by the QuadInstance handed to putBakedQuad.
-            var instance = new QuadInstance();
-            instance.setColor(-1);
-            instance.setLightCoords(lightmap);
-            instance.setOverlayCoords(overlay);
-
-            collector.submitCustomGeometry(poseStack, textureRenderTypeLookup.get(texture), (pose, buffer) -> {
-                for (var quad : quads) {
-                    buffer.putBakedQuad(pose, quad, instance);
-                }
-            });
+        public void render(PoseStack poseStack, MultiBufferSource bufferSource, ITextureRenderTypeLookup textureRenderTypeLookup, int lightmap, int overlay) {
+            VertexConsumer consumer = bufferSource.getBuffer(textureRenderTypeLookup.get(texture));
+            for (var quad : quads) {
+                consumer.putBulkData(poseStack.last(), quad, 1, 1, 1, 1, lightmap, overlay);
+            }
         }
     }
 
@@ -119,7 +108,7 @@ public class CompositeModelRenderable implements IModelRenderable<CompositeModel
             return new PartBuilder<>(this, child);
         }
 
-        public PartBuilder<T> addMesh(Identifier texture, List<BakedQuad> quads) {
+        public PartBuilder<T> addMesh(ResourceLocation texture, List<BakedQuad> quads) {
             var mesh = new Mesh(texture);
             mesh.quads.addAll(quads);
             component.meshes.add(mesh);

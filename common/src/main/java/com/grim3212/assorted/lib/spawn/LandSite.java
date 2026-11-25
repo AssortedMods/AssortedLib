@@ -3,7 +3,7 @@ package com.grim3212.assorted.lib.spawn;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -18,7 +18,7 @@ public record LandSite(Heightmap.Types heightmap) implements SpawnSite {
     public static final LandSite DEFAULT = new LandSite(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES);
 
     @Override
-    public Identifier type() {
+    public ResourceLocation type() {
         return SpawnSites.LAND;
     }
 

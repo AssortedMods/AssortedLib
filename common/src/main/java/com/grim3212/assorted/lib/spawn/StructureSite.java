@@ -5,12 +5,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.StructureManager;
-import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -32,7 +32,7 @@ public record StructureSite(EntrySet<Structure> structures) implements SpawnSite
     ).apply(instance, StructureSite::new));
 
     @Override
-    public Identifier type() {
+    public ResourceLocation type() {
         return SpawnSites.STRUCTURE;
     }
 
@@ -44,7 +44,7 @@ public record StructureSite(EntrySet<Structure> structures) implements SpawnSite
 
     @Override
     public @Nullable BlockPos find(ServerLevelAccessor level, BlockPos column, RandomSource random) {
-        Registry<Structure> registry = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         // A generating chunk's starts are in its region, not the level yet.
         StructureManager structures = level instanceof WorldGenRegion region ? level.getLevel().structureManager().forWorldGenRegion(region) : level.getLevel().structureManager();
         // The chunk's reference map, before startsForStructure, which resolves every reference by loading its start's chunk.
@@ -53,8 +53,8 @@ public record StructureSite(EntrySet<Structure> structures) implements SpawnSite
         }
         List<StructurePiece> pieces = null;
         // As StructureManager#getStructureWithPieceAt asks, for a column rather than a block.
-        for (StructureStart start : structures.startsForStructure(SectionPos.blockToSectionCoord(column.getX()), SectionPos.blockToSectionCoord(column.getZ()),
-                structure -> registry.get(registry.getId(structure)).map(this.structures::contains).orElse(false))) {
+        for (StructureStart start : structures.startsForStructure(new ChunkPos(column),
+                structure -> this.structures.contains(registry.wrapAsHolder(structure)))) {
             for (StructurePiece piece : start.getPieces()) {
                 BoundingBox box = piece.getBoundingBox();
                 if (box.minX() <= column.getX() && column.getX() <= box.maxX() && box.minZ() <= column.getZ() && column.getZ() <= box.maxZ()) {

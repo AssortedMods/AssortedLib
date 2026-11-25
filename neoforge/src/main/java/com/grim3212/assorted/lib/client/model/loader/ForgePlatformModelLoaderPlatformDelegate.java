@@ -7,16 +7,16 @@ import com.grim3212.assorted.lib.client.model.loaders.IModelSpecification;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationLoader;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
-import net.neoforged.neoforge.client.model.StandardModelParameters;
-import net.neoforged.neoforge.client.model.UnbakedModelLoader;
+import net.neoforged.neoforge.client.model.geometry.IGeometryLoader;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * An {@link UnbakedModelLoader} that reads the standard top level model fields with
- * {@link StandardModelParameters#parse} and hands them to the delegator.
+ * An {@link IGeometryLoader} reading a model json's {@code loader} object through the common
+ * specification loader. The standard top level fields (textures, transforms, ambient occlusion)
+ * are NeoForge's to read, and reach the specification through its baking context.
  */
 public final class ForgePlatformModelLoaderPlatformDelegate<L extends IModelSpecificationLoader<T>, T extends IModelSpecification<T>>
-        implements UnbakedModelLoader<ForgeModelGeometryToSpecificationPlatformDelegator<T>>, ResourceManagerReloadListener {
+        implements IGeometryLoader<ForgeModelGeometryToSpecificationPlatformDelegator<T>>, ResourceManagerReloadListener {
 
     private final L delegate;
 
@@ -26,13 +26,11 @@ public final class ForgePlatformModelLoaderPlatformDelegate<L extends IModelSpec
 
     @Override
     public ForgeModelGeometryToSpecificationPlatformDelegator<T> read(final JsonObject jsonObject, final JsonDeserializationContext deserializationContext) throws JsonParseException {
-        return new ForgeModelGeometryToSpecificationPlatformDelegator<>(
-                StandardModelParameters.parse(jsonObject, deserializationContext),
-                delegate.read(deserializationContext, jsonObject));
+        return new ForgeModelGeometryToSpecificationPlatformDelegator<>(this.delegate.read(deserializationContext, jsonObject));
     }
 
     @Override
-    public void onResourceManagerReload(final @NotNull ResourceManager p_10758_) {
-        delegate.onResourceManagerReload(p_10758_);
+    public void onResourceManagerReload(final @NotNull ResourceManager resourceManager) {
+        this.delegate.onResourceManagerReload(resourceManager);
     }
 }

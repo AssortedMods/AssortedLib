@@ -1,13 +1,13 @@
 package com.grim3212.assorted.lib.manual;
 
+import net.minecraft.core.HolderLookup;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
-import net.minecraft.world.item.crafting.display.RecipeDisplay;
-import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
-import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
-import net.minecraft.world.item.crafting.display.SlotDisplay;
-import net.minecraft.world.item.crafting.display.StonecutterRecipeDisplay;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapelessRecipe;
+import net.minecraft.world.item.crafting.SingleItemRecipe;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.Optional;
 
 /**
  * A recipe reduced to what the manual draws: a grid of input slots and a result, left unresolved so
- * each slot keeps the tag or fuel behind it. Where they land on the page is
+ * each slot keeps the ingredient behind it. Where they land on the page is
  * {@link com.grim3212.assorted.lib.client.manual.ManualRecipeLayout}.
  *
  * @param width     input slots per row
@@ -36,35 +36,35 @@ public record ManualRecipeView(int width, int height, List<ManualSlot> inputs, M
     }
 
     /**
-     * Empty when neither {@link IManualRecipeProvider} nor a published {@link RecipeDisplay} says
-     * how to draw it.
+     * Empty when the recipe is neither an {@link IManualRecipeProvider} nor one of vanilla's shaped,
+     * shapeless, cooking or single item recipes, or is {@link Recipe#isSpecial special}.
+     *
+     * @param registries what the result is read with
      */
-    public static Optional<ManualRecipeView> of(RecipeHolder<?> holder) {
+    public static Optional<ManualRecipeView> of(RecipeHolder<?> holder, HolderLookup.Provider registries) {
         Recipe<?> recipe = holder.value();
 
         if (recipe instanceof IManualRecipeProvider provider) {
             return Optional.of(provider.manualView());
         }
 
-        return recipe.display().stream().flatMap(display -> fromDisplay(display).stream()).findFirst();
-    }
+        if (recipe.isSpecial()) {
+            return Optional.empty();
+        }
 
-    private static Optional<ManualRecipeView> fromDisplay(RecipeDisplay display) {
-        return switch (display) {
-            case ShapedCraftingRecipeDisplay shaped -> Optional.of(shaped(
-                    shaped.width(), shaped.height(), slots(shaped.ingredients()), ManualSlot.of(shaped.result())));
-            case ShapelessCraftingRecipeDisplay shapeless -> Optional.of(shapeless(
-                    slots(shapeless.ingredients()), ManualSlot.of(shapeless.result())));
-            case FurnaceRecipeDisplay furnace -> Optional.of(shaped(
-                    1, 1, List.of(ManualSlot.of(furnace.ingredient())), ManualSlot.of(furnace.result())));
-            case StonecutterRecipeDisplay stonecutter -> Optional.of(shaped(
-                    1, 1, List.of(ManualSlot.of(stonecutter.input())), ManualSlot.of(stonecutter.result())));
+        ManualSlot result = ManualSlot.of(recipe.getResultItem(registries));
+        return switch (recipe) {
+            case ShapedRecipe shaped -> Optional.of(shaped(
+                    shaped.getWidth(), shaped.getHeight(), slots(shaped.getIngredients()), result));
+            case ShapelessRecipe shapeless -> Optional.of(shapeless(slots(shapeless.getIngredients()), result));
+            case AbstractCookingRecipe cooking -> Optional.of(shaped(1, 1, slots(cooking.getIngredients()), result));
+            case SingleItemRecipe single -> Optional.of(shaped(1, 1, slots(single.getIngredients()), result));
             default -> Optional.empty();
         };
     }
 
-    private static List<ManualSlot> slots(List<SlotDisplay> displays) {
-        return displays.stream().map(ManualSlot::of).toList();
+    private static List<ManualSlot> slots(List<Ingredient> ingredients) {
+        return ingredients.stream().map(ManualSlot::of).toList();
     }
 
     /** Pads the last row so every row is {@code width} slots. */

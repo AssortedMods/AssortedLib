@@ -15,14 +15,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Makes the default {@code isValidSpawn} predicate consult {@link IBlockLightEmission}, so a block
  * whose light depends on its position still blocks mob spawns. Targets the lambda initialising
- * {@link BlockBehaviour.Properties#isValidSpawn} (official synthetic name {@code lambda$new$4}), so
+ * {@link BlockBehaviour.Properties#isValidSpawn} (Mojang's mappings do not name lambdas, so it keeps its intermediary name {@code method_26239}
+ * in development and at runtime alike, hence {@code remap = false}), so
  * only blocks that did not set their own predicate are affected.
  */
 @Mixin(BlockBehaviour.Properties.class)
 public class BlockBehaviourPropertiesMixin {
 
 
-    @Inject(method = "lambda$new$4(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/EntityType;)Z", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "method_26239(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/EntityType;)Z", remap = false, at = @At("HEAD"), cancellable = true)
     private static void assortedlib_onCallDefaultIsValidSpawnCallback(final BlockState blockState, final BlockGetter blockGetter, final BlockPos position, final EntityType<?> entityType, CallbackInfoReturnable<Boolean> cir) {
         if (!(blockState.getBlock() instanceof IBlockLightEmission lightEmission))
             return;

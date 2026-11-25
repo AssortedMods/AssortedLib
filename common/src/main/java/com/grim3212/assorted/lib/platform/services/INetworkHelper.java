@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.platform.services;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -21,7 +21,7 @@ public interface INetworkHelper {
 
     <MSG> void sendToServer(MSG msg);
 
-    record MessageHandler<MSG>(Identifier id,
+    record MessageHandler<MSG>(ResourceLocation id,
                                Class<MSG> messageType,
                                BiConsumer<MSG, FriendlyByteBuf> encoder,
                                Function<FriendlyByteBuf, MSG> decoder,

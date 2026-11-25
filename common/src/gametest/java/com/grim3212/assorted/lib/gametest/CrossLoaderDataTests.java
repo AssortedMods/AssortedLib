@@ -9,11 +9,9 @@ import com.grim3212.assorted.lib.data.CrossLoaderData;
 import com.grim3212.assorted.lib.test.TestSupport;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -72,9 +70,9 @@ final class CrossLoaderDataTests {
                     {"type": "neoforge:not", "value": {"type": "neoforge:mod_loaded", "modid": "create"}}
                   ]}],
                   "type": "minecraft:crafting_shaped",
-                  "key": {"A": {"neoforge:ingredient_type": "neoforge:compound", "children": [
+                  "key": {"A": {"type": "neoforge:compound", "children": [
                     "minecraft:stick",
-                    {"neoforge:ingredient_type": "neoforge:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
+                    {"type": "neoforge:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
                   ]}}
                 }""");
         JsonElement expected = JsonParser.parseString("""
@@ -88,14 +86,14 @@ final class CrossLoaderDataTests {
                     {"condition": "fabric:not", "value": {"condition": "fabric:all_mods_loaded", "values": ["create"]}}
                   ]}],
                   "type": "minecraft:crafting_shaped",
-                  "key": {"A": {"neoforge:ingredient_type": "neoforge:compound", "fabric:type": "fabric:any",
+                  "key": {"A": {"type": "neoforge:compound", "fabric:type": "fabric:any",
                     "children": [
                       "minecraft:stick",
-                      {"neoforge:ingredient_type": "neoforge:difference", "fabric:type": "fabric:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
+                      {"type": "neoforge:difference", "fabric:type": "fabric:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
                     ],
                     "ingredients": [
                       "minecraft:stick",
-                      {"neoforge:ingredient_type": "neoforge:difference", "fabric:type": "fabric:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
+                      {"type": "neoforge:difference", "fabric:type": "fabric:difference", "base": "#minecraft:planks", "subtracted": "minecraft:oak_planks"}
                     ]
                   }}
                 }""");
@@ -109,7 +107,7 @@ final class CrossLoaderDataTests {
         helper.assertTrue(CrossLoaderData.withFabricKeys(plain).equals(plain), "a file with nothing loader specific was changed");
 
         assertRefused(helper, "{\"neoforge:conditions\": [{\"type\": \"neoforge:feature_flags_enabled\", \"flags\": [\"minecraft:vanilla\"]}]}");
-        assertRefused(helper, "{\"key\": {\"A\": {\"neoforge:ingredient_type\": \"neoforge:components\", \"items\": \"minecraft:stick\", \"components\": {}}}}");
+        assertRefused(helper, "{\"key\": {\"A\": {\"type\": \"neoforge:components\", \"items\": \"minecraft:stick\", \"components\": {}}}}");
         assertRefused(helper, "{\"neoforge:conditions\": [], \"neoforge:value\": 1}");
 
         helper.succeed();
@@ -138,14 +136,14 @@ final class CrossLoaderDataTests {
         assertRecipe(helper, server, lib("every_condition_failing"), false);
 
         boolean neoforge = TestSupport.onNeoForge();
-        assertRecipe(helper, server, Identifier.fromNamespaceAndPath("assortedlib_test", "cross_loader_test/neoforge_passes"), neoforge);
-        assertRecipe(helper, server, Identifier.fromNamespaceAndPath("assortedlib_test", "cross_loader_test/fabric_passes"), !neoforge);
+        assertRecipe(helper, server, ResourceLocation.fromNamespaceAndPath("assortedlib_test", "cross_loader_test/neoforge_passes"), neoforge);
+        assertRecipe(helper, server, ResourceLocation.fromNamespaceAndPath("assortedlib_test", "cross_loader_test/fabric_passes"), !neoforge);
 
         helper.succeed();
     }
 
-    private static void assertRecipe(GameTestHelper helper, MinecraftServer server, Identifier id, boolean loaded) {
-        boolean present = server.getRecipeManager().byKey(ResourceKey.create(Registries.RECIPE, id)).isPresent();
+    private static void assertRecipe(GameTestHelper helper, MinecraftServer server, ResourceLocation id, boolean loaded) {
+        boolean present = server.getRecipeManager().byKey(id).isPresent();
         helper.assertTrue(present == loaded, "recipe " + id + (loaded ? " did not load" : " loaded although its conditions fail"));
     }
 
@@ -195,7 +193,7 @@ final class CrossLoaderDataTests {
 
     private static Ingredient decode(GameTestHelper helper, DynamicOps<JsonElement> ops, JsonObject key, String symbol) {
         return Ingredient.CODEC.parse(ops, key.get(symbol))
-                .getOrThrow(error -> helper.assertionException(Component.literal("ingredient " + symbol + " did not decode: " + error)));
+                .getOrThrow(error -> new GameTestAssertException("ingredient " + symbol + " did not decode: " + error));
     }
 
     private static void assertMatches(GameTestHelper helper, String name, Ingredient ingredient, List<Item> accepted, List<Item> rejected) {
@@ -206,7 +204,7 @@ final class CrossLoaderDataTests {
     /** {@code expected} null means the default, one bucket, which is left out of the file. */
     private static void assertAmountWritten(GameTestHelper helper, DynamicOps<JsonElement> ops, Ingredient ingredient, Long expected) {
         JsonObject written = Ingredient.CODEC.encodeStart(ops, ingredient)
-                .getOrThrow(error -> helper.assertionException(Component.literal("a fluid ingredient did not encode: " + error)))
+                .getOrThrow(error -> new GameTestAssertException("a fluid ingredient did not encode: " + error))
                 .getAsJsonObject();
         JsonElement amount = written.get("amount");
         if (expected == null) {
@@ -227,15 +225,15 @@ final class CrossLoaderDataTests {
     }
 
     private static JsonObject readFixture(GameTestHelper helper, MinecraftServer server, String path) {
-        Identifier id = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, path);
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, path);
         try (Reader reader = server.getResourceManager().getResourceOrThrow(id).openAsReader()) {
             return JsonParser.parseReader(reader).getAsJsonObject();
         } catch (IOException e) {
-            throw helper.assertionException(Component.literal("could not read " + id + ": " + e.getMessage()));
+            throw new GameTestAssertException("could not read " + id + ": " + e.getMessage());
         }
     }
 
-    private static Identifier lib(String name) {
-        return Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "cross_loader_test/" + name);
+    private static ResourceLocation lib(String name) {
+        return ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "cross_loader_test/" + name);
     }
 }

@@ -4,10 +4,12 @@ import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
 import com.grim3212.assorted.lib.core.inventory.IValueSerializable;
 import com.grim3212.assorted.lib.platform.Services;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.NotNull;
 
 public class ItemStackStorageHandler implements IItemStorageHandler, IValueSerializable {
@@ -133,25 +135,29 @@ public class ItemStackStorageHandler implements IItemStorageHandler, IValueSeria
     }
 
     @Override
-    public void serialize(ValueOutput output) {
-        ValueOutput.ValueOutputList items = output.childrenList("Items");
+    public void serialize(CompoundTag tag, HolderLookup.Provider registries) {
+        ListTag items = new ListTag();
         for (int i = 0; i < stacks.size(); i++) {
+            // ItemStack#save refuses an empty stack, so empty slots are left out.
             if (!stacks.get(i).isEmpty()) {
-                ValueOutput itemOutput = items.addChild();
-                itemOutput.putInt("Slot", i);
-                itemOutput.store("Item", ItemStack.CODEC, stacks.get(i));
+                CompoundTag itemTag = new CompoundTag();
+                itemTag.putInt("Slot", i);
+                items.add(stacks.get(i).save(registries, itemTag));
             }
         }
-        output.putInt("Size", stacks.size());
+        tag.put("Items", items);
+        tag.putInt("Size", stacks.size());
     }
 
     @Override
-    public void deserialize(ValueInput input) {
-        setSize(input.getIntOr("Size", stacks.size()));
-        for (ValueInput itemInput : input.childrenListOrEmpty("Items")) {
-            int slot = itemInput.getIntOr("Slot", -1);
+    public void deserialize(CompoundTag tag, HolderLookup.Provider registries) {
+        setSize(tag.contains("Size", Tag.TAG_INT) ? tag.getInt("Size") : stacks.size());
+        ListTag items = tag.getList("Items", Tag.TAG_COMPOUND);
+        for (int i = 0; i < items.size(); i++) {
+            CompoundTag itemTag = items.getCompound(i);
+            int slot = itemTag.contains("Slot", Tag.TAG_INT) ? itemTag.getInt("Slot") : -1;
             if (slot >= 0 && slot < stacks.size()) {
-                itemInput.read("Item", ItemStack.CODEC).ifPresent(stack -> stacks.set(slot, stack));
+                ItemStack.parse(registries, itemTag).ifPresent(stack -> stacks.set(slot, stack));
             }
         }
         onLoad();

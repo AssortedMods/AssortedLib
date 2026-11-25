@@ -3,6 +3,9 @@ package com.grim3212.assorted.lib.platform;
 import com.grim3212.assorted.lib.platform.services.ILevelPropertyAccessor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -47,11 +50,10 @@ public class ForgeLevelPropertyAccessor implements ILevelPropertyAccessor {
 
     @Override
     public ItemStack getCloneItemStack(BlockState state, BlockGetter blockGetter, BlockPos pos, Player player) {
-        // The hook needs a LevelReader rather than a plain BlockGetter, because copying the block's
-        // data goes through the level now. The boolean says whether that data should be copied onto
-        // the stack, which is what the old hook always did.
+        // NeoForge's hook takes the hit it was picked with and a LevelReader; there is no hit here,
+        // so it is the top face of the block; the default hook ignores it.
         if (blockGetter instanceof LevelReader levelReader) {
-            return state.getCloneItemStack(pos, levelReader, true, player);
+            return state.getCloneItemStack(new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), levelReader, pos, player);
         }
 
         return new ItemStack(state.getBlock());

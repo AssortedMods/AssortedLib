@@ -1,9 +1,9 @@
 package com.grim3212.assorted.lib.core.inventory.locking;
 
-import net.minecraft.core.component.DataComponentGetter;
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
 import com.grim3212.assorted.lib.core.inventory.impl.ItemStackStorageHandler;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponentHolder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -12,8 +12,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.Nullable;
 
 public class StorageUtil {
@@ -28,19 +26,7 @@ public class StorageUtil {
     public static String readLock(CompoundTag nbt) {
         if (nbt == null) return "";
 
-        return nbt.getStringOr(LOCK_KEY, "");
-    }
-
-    // Block entities save through ValueOutput / ValueInput, which cannot be bridged to a
-    // CompoundTag, so the lock has these overloads beside the tag ones.
-    public static void writeLock(ValueOutput output, String lock) {
-        if (!lock.isEmpty()) {
-            output.putString(LOCK_KEY, lock);
-        }
-    }
-
-    public static String readLock(ValueInput input) {
-        return input.getStringOr(LOCK_KEY, "");
+        return nbt.getString(LOCK_KEY);
     }
 
     public static ItemStack setCodeOnStack(String code, ItemStack stack) {
@@ -77,11 +63,11 @@ public class StorageUtil {
     }
 
     public static String getCode(ItemStack stack) {
-        return getCode((DataComponentGetter) stack);
+        return getCode((DataComponentHolder) stack);
     }
 
-    /** The lock on anything with components: a stack, or the getter a {@code TooltipProvider} is handed. */
-    public static String getCode(DataComponentGetter components) {
+    /** The lock on anything that holds components. */
+    public static String getCode(DataComponentHolder components) {
         return readLock(components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag());
     }
 

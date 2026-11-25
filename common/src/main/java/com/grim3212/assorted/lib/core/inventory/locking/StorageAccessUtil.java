@@ -81,7 +81,7 @@ public class StorageAccessUtil {
             return true;
         }
 
-        return stack.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY).nonEmptyItemCopyStream()
+        return stack.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY).nonEmptyStream()
                 .anyMatch(heldKey -> LockItems.isKey(heldKey) && StorageUtil.hasCodeWithMatch(heldKey, lockCode));
     }
 }

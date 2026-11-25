@@ -7,7 +7,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -36,10 +36,10 @@ public class ForgeRegistryProvider implements IRegistryFactory {
     }
 
     @Override
-    public <T> void alias(ResourceKey<? extends Registry<T>> registry, Identifier from, Identifier to) {
-        Registry<?> target = BuiltInRegistries.REGISTRY.getValue(registry.identifier());
+    public <T> void alias(ResourceKey<? extends Registry<T>> registry, ResourceLocation from, ResourceLocation to) {
+        Registry<?> target = BuiltInRegistries.REGISTRY.get(registry.location());
         if (target == null) {
-            throw new IllegalArgumentException("No registry " + registry.identifier() + " to alias " + from + " in");
+            throw new IllegalArgumentException("No registry " + registry.location() + " to alias " + from + " in");
         }
 
         // NeoForge keeps a registry's aliases in a plain map, and mods are constructed in parallel.
@@ -64,7 +64,7 @@ public class ForgeRegistryProvider implements IRegistryFactory {
         public <I extends T> IRegistryObject<I> register(String name, Supplier<? extends I> supplier) {
             final var obj = registry.<I>register(name, supplier);
             if (this.aliasNamespace != null) {
-                alias(this.registry.getRegistryKey(), Identifier.fromNamespaceAndPath(this.aliasNamespace, name), obj.getId());
+                alias(this.registry.getRegistryKey(), ResourceLocation.fromNamespaceAndPath(this.aliasNamespace, name), obj.getId());
             }
             final var ro = new IRegistryObject<I>() {
 
@@ -72,11 +72,11 @@ public class ForgeRegistryProvider implements IRegistryFactory {
                 public ResourceKey<I> getResourceKey() {
                     // A DeferredHolder is keyed by the registry's type rather than the registered
                     // type, so the narrowing this interface promises has to be done here.
-                    return (ResourceKey<I>) obj.keyOrNull();
+                    return (ResourceKey<I>) obj.getKey();
                 }
 
                 @Override
-                public Identifier getId() {
+                public ResourceLocation getId() {
                     return obj.getId();
                 }
 
@@ -112,7 +112,7 @@ public class ForgeRegistryProvider implements IRegistryFactory {
         }
 
         @Override
-        public Optional<T> getValue(Identifier resourceLocation) {
+        public Optional<T> getValue(ResourceLocation resourceLocation) {
             Optional<T> value = entriesView.stream().filter(x -> x.getId().equals(resourceLocation)).map(x -> x.get()).findFirst();
             return value;
         }
@@ -123,12 +123,12 @@ public class ForgeRegistryProvider implements IRegistryFactory {
         }
 
         @Override
-        public boolean containsKey(Identifier resourceLocation) {
+        public boolean containsKey(ResourceLocation resourceLocation) {
             return this.getValue(resourceLocation).isPresent();
         }
 
         @Override
-        public Identifier getRegistryName(T entry) {
+        public ResourceLocation getRegistryName(T entry) {
             return this.registry.getRegistry().get().getKey(entry);
         }
     }

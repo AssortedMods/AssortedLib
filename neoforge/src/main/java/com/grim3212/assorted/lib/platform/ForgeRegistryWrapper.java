@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.registry.ILoaderRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -20,7 +20,7 @@ public class ForgeRegistryWrapper<T> implements ILoaderRegistry<T> {
 
     public static <T> ILoaderRegistry<T> getRegistry(ResourceKey<? extends Registry<T>> key) {
         Registry<? extends Registry<?>> rootRegistry = BuiltInRegistries.REGISTRY;
-        Registry<?> registry = rootRegistry.getValue(key.identifier());
+        Registry<?> registry = rootRegistry.get(key.location());
         if (registry == null) {
             throw new NullPointerException("Could not find registry for key: " + key);
         }
@@ -37,14 +37,14 @@ public class ForgeRegistryWrapper<T> implements ILoaderRegistry<T> {
     }
 
     @Override
-    public Optional<T> getValue(Identifier resourceLocation) {
+    public Optional<T> getValue(ResourceLocation resourceLocation) {
         // Registry#getValue answers a defaulted registry's default (air, for blocks and items) for an
         // unknown id; getOptional answers empty, which is what Fabric returns and what callers expect.
         return this.registry.getOptional(resourceLocation);
     }
 
     @Override
-    public boolean containsKey(Identifier resourceLocation) {
+    public boolean containsKey(ResourceLocation resourceLocation) {
         return this.registry.containsKey(resourceLocation);
     }
 
@@ -54,7 +54,7 @@ public class ForgeRegistryWrapper<T> implements ILoaderRegistry<T> {
     }
 
     @Override
-    public Identifier getRegistryName(T entry) {
+    public ResourceLocation getRegistryName(T entry) {
         return this.registry.getKey(entry);
     }
 }

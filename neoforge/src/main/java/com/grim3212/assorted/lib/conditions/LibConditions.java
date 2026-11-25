@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.conditions;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.core.conditions.LibCondition;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 public final class LibConditions {
 
     // Synchronized because mods are constructed in parallel; linked so the codecs register in a steady order.
-    private static final Map<Identifier, RecipeConditionWrapper> DYNAMIC_CONDITIONS = Collections.synchronizedMap(new LinkedHashMap<>());
+    private static final Map<ResourceLocation, RecipeConditionWrapper> DYNAMIC_CONDITIONS = Collections.synchronizedMap(new LinkedHashMap<>());
 
     private LibConditions() {
     }
@@ -30,7 +30,7 @@ public final class LibConditions {
      * Registers a runtime supplied condition under the given name. The codec is not registered until
      * {@link #registerCodecs(RegisterEvent)} runs.
      */
-    public static void register(Identifier name, LibCondition condition) {
+    public static void register(ResourceLocation name, LibCondition condition) {
         if (DYNAMIC_CONDITIONS.putIfAbsent(name, new RecipeConditionWrapper(name, condition)) != null)
             LibConstants.LOG.warn("Duplicate condition with id: " + name);
     }
@@ -46,7 +46,7 @@ public final class LibConditions {
     /**
      * The condition wrapper registered under the given name, or {@code null} if there is none.
      */
-    public static RecipeConditionWrapper getCondition(Identifier name) {
+    public static RecipeConditionWrapper getCondition(ResourceLocation name) {
         return DYNAMIC_CONDITIONS.get(name);
     }
 
@@ -65,7 +65,7 @@ public final class LibConditions {
             registry.register(TagPopulatedCondition.BlockTagPopulatedCondition.NAME, TagPopulatedCondition.BlockTagPopulatedCondition.CODEC);
 
             synchronized (DYNAMIC_CONDITIONS) {
-                for (Map.Entry<Identifier, RecipeConditionWrapper> entry : DYNAMIC_CONDITIONS.entrySet()) {
+                for (Map.Entry<ResourceLocation, RecipeConditionWrapper> entry : DYNAMIC_CONDITIONS.entrySet()) {
                     registry.register(entry.getKey(), entry.getValue().codec());
                 }
             }

@@ -3,104 +3,73 @@ package com.grim3212.assorted.lib.inventory;
 import com.grim3212.assorted.lib.core.inventory.IItemStorageHandler;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
-import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Presents a foreign {@link ResourceHandler} as an {@link IItemStorageHandler}, the inverse of
- * {@link ForgeItemStorageHandler}. A {@code simulate} call runs in a transaction that is only
- * committed when the caller wants the change.
+ * Presents a foreign {@link IItemHandler} as an {@link IItemStorageHandler}, the inverse of
+ * {@link ForgeItemStorageHandler}.
  */
 public class ForgeWrappedItemHandler implements IItemStorageHandler {
 
-    private final ResourceHandler<ItemResource> storage;
+    private final IItemHandler storage;
     private final BlockEntity entity;
 
-    public ForgeWrappedItemHandler(@Nullable BlockEntity entity, @NotNull ResourceHandler<ItemResource> storage) {
+    public ForgeWrappedItemHandler(@Nullable BlockEntity entity, @NotNull IItemHandler storage) {
         this.storage = storage;
         this.entity = entity;
     }
 
-    /**
-     * Nests inside whatever transaction is already running, so an operation performed while a
-     * caller holds one is rolled back with it rather than committing independently.
-     */
-    private static Transaction openTransaction() {
-        TransactionContext current = Transaction.getCurrentOpenedTransaction();
-        return current == null ? Transaction.openRoot() : Transaction.open(current);
-    }
-
     @Override
     public int getSlots() {
-        return this.storage.size();
+        return this.storage.getSlots();
     }
 
     @Override
     public @NotNull ItemStack getStackInSlot(int slot) {
-        return this.storage.getResource(slot).toStack(this.storage.getAmountAsInt(slot));
+        return this.storage.getStackInSlot(slot);
     }
 
     @Override
     public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-
-        try (Transaction transaction = openTransaction()) {
-            int inserted = this.storage.insert(slot, ItemResource.of(stack), stack.getCount(), transaction);
-            if (!simulate) {
-                transaction.commit();
-            }
-            return stack.copyWithCount(stack.getCount() - inserted);
-        }
+        return this.storage.insertItem(slot, stack, simulate);
     }
 
     @Override
     public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
-        ItemResource resource = this.storage.getResource(slot);
-        if (resource.isEmpty() || amount <= 0) {
-            return ItemStack.EMPTY;
-        }
-
-        try (Transaction transaction = openTransaction()) {
-            int extracted = this.storage.extract(slot, resource, amount, transaction);
-            if (!simulate) {
-                transaction.commit();
-            }
-            return extracted <= 0 ? ItemStack.EMPTY : resource.toStack(extracted);
-        }
+        return this.storage.extractItem(slot, amount, simulate);
     }
 
     @Override
     public int getSlotLimit(int slot) {
-        return this.storage.getCapacityAsInt(slot, this.storage.getResource(slot));
+        return this.storage.getSlotLimit(slot);
     }
 
     @Override
     public boolean isItemValid(int slot, @NotNull ItemStack stack) {
-        return this.storage.isValid(slot, ItemResource.of(stack));
+        return this.storage.isItemValid(slot, stack);
     }
 
     /**
-     * A {@link ResourceHandler} has no "overwrite this slot" operation - that was an artefact of
-     * the old interface exposing its backing array. The nearest faithful equivalent is to empty
-     * the slot and put the new contents in, done atomically so a partial write cannot be observed.
+     * Writes straight through when the handler allows it. Otherwise the slot is emptied and the new
+     * contents inserted, the nearest a plain {@link IItemHandler} offers; whatever does not fit
+     * stays out.
      */
     @Override
     public void setStackInSlot(int slot, @NotNull ItemStack stack) {
-        try (Transaction transaction = openTransaction()) {
-            ItemResource current = this.storage.getResource(slot);
-            if (!current.isEmpty()) {
-                this.storage.extract(slot, current, this.storage.getAmountAsInt(slot), transaction);
-            }
-            if (!stack.isEmpty()) {
-                this.storage.insert(slot, ItemResource.of(stack), stack.getCount(), transaction);
-            }
-            transaction.commit();
+        if (this.storage instanceof IItemHandlerModifiable modifiable) {
+            modifiable.setStackInSlot(slot, stack);
+            return;
+        }
+
+        ItemStack current = this.storage.getStackInSlot(slot);
+        if (!current.isEmpty()) {
+            this.storage.extractItem(slot, current.getCount(), false);
+        }
+        if (!stack.isEmpty()) {
+            this.storage.insertItem(slot, stack.copy(), false);
         }
     }
 

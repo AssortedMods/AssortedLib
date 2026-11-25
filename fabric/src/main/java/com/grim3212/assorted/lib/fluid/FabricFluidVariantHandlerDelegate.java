@@ -7,12 +7,10 @@ import com.grim3212.assorted.lib.platform.FabricFluidManager;
 import net.fabricmc.fabric.api.transfer.v1.client.fluid.FluidVariantRenderHandler;
 import net.fabricmc.fabric.api.transfer.v1.client.fluid.FluidVariantRendering;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariantAttributeHandler;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.FluidModel;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 
 import java.util.Optional;
@@ -41,7 +39,7 @@ public class FabricFluidVariantHandlerDelegate implements IFluidVariantHandler {
 
     @Override
     public int getLuminance(final FluidInformation variant) {
-        return delegate.getLightEmission(FabricFluidManager.makeVariant(variant));
+        return delegate.getLuminance(FabricFluidManager.makeVariant(variant));
     }
 
     @Override
@@ -72,7 +70,7 @@ public class FabricFluidVariantHandlerDelegate implements IFluidVariantHandler {
     }
 
     @Override
-    public Optional<Identifier> getStillTexture(final FluidInformation variant) {
+    public Optional<ResourceLocation> getStillTexture(final FluidInformation variant) {
 
         return DistExecutor.unsafeRunForDist(
                 () -> () -> {
@@ -81,14 +79,14 @@ public class FabricFluidVariantHandlerDelegate implements IFluidVariantHandler {
                         return renderDelegate.getDelegate().getStillTexture(variant);
                     }
 
-                    return fluidModel(variant.fluid()).map(model -> model.stillMaterial().sprite().contents().name());
+                    return sprite(variant, 0);
                 },
                 () -> Optional::empty
         );
     }
 
     @Override
-    public Optional<Identifier> getFlowingTexture(final FluidInformation variant) {
+    public Optional<ResourceLocation> getFlowingTexture(final FluidInformation variant) {
         return DistExecutor.unsafeRunForDist(
                 () -> () -> {
                     final FluidVariantRenderHandler handler = FluidVariantRendering.getHandlerOrDefault(variant.fluid());
@@ -96,25 +94,28 @@ public class FabricFluidVariantHandlerDelegate implements IFluidVariantHandler {
                         return renderDelegate.getDelegate().getFlowingTexture(variant);
                     }
 
-                    return fluidModel(variant.fluid()).map(model -> model.flowingMaterial().sprite().contents().name());
+                    return sprite(variant, 1);
                 },
                 () -> Optional::empty
         );
     }
 
     /**
-     * The baked {@link FluidModel} the model manager holds for the fluid, which is the only place a
-     * fluid's textures live: {@code FluidVariantRendering#getSprites} and
-     * {@code FluidVariantRenderHandler#getSprites} are both gone. {@code FabricClientFluidHelper} and
-     * NeoForge's {@code ForgeFluidVariantHandlerDelegate} read the same source, so every path answers
-     * alike. Only readable once models have baked, and a {@link FluidInformation}'s extra data cannot
-     * change the answer.
+     * The sprite Fabric's render handler gives the fluid, still at index 0 and flowing at 1. The
+     * handler falls back to the fluid's {@code FluidRenderHandler}, so foreign fluids answer alike;
+     * {@code FabricClientFluidHelper} reads the same source. Only readable once the block atlas is
+     * stitched.
      */
-    private static Optional<FluidModel> fluidModel(final Fluid fluid) {
-        if (fluid == Fluids.EMPTY) {
+    private static Optional<ResourceLocation> sprite(final FluidInformation variant, final int index) {
+        if (variant.fluid() == Fluids.EMPTY) {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.defaultFluidState()));
+        final TextureAtlasSprite[] sprites = FluidVariantRendering.getSprites(FabricFluidManager.makeVariant(variant));
+        if (sprites == null || sprites.length <= index || sprites[index] == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(sprites[index].contents().name());
     }
 }

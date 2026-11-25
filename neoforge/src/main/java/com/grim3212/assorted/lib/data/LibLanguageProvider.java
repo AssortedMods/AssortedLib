@@ -9,7 +9,7 @@ import java.util.Arrays;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 
 import java.util.HashSet;
@@ -75,7 +75,7 @@ public abstract class LibLanguageProvider extends LanguageProvider {
     private <T> void nameMatching(Registry<T> registry, Function<T, String> descriptionId, String pattern, Function<Matcher, String> name) {
         Pattern compiled = Pattern.compile(pattern);
         for (T entry : registry) {
-            Identifier id = registry.getKey(entry);
+            ResourceLocation id = registry.getKey(entry);
             String key = descriptionId.apply(entry);
             if (id == null || !this.modId.equals(id.getNamespace()) || this.added.contains(key)) {
                 continue;

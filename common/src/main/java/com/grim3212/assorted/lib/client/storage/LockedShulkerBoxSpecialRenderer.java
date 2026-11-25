@@ -3,97 +3,81 @@ package com.grim3212.assorted.lib.client.storage;
 import com.grim3212.assorted.lib.core.inventory.locking.StorageUtil;
 import com.grim3212.assorted.lib.util.NBTHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.Sheets;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.special.SpecialModelRenderer;
-import net.minecraft.client.resources.model.sprite.SpriteGetter;
-import net.minecraft.client.resources.model.sprite.SpriteId;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.resources.model.Material;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3fc;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 /**
- * A shulker box as an item. The color and the lock are read per stack, and the material overlay is a second pass
- * over the same model.
+ * A shulker box as an item. The color and the lock are read per stack, and the material overlay is
+ * a second pass over the same model. The item's model must be special
+ * ({@code "parent": "builtin/entity"}), and the renderer registered for it through
+ * {@code ISpecialModelRendererRegistry}.
  */
-public class LockedShulkerBoxSpecialRenderer implements SpecialModelRenderer<LockedShulkerBoxSpecialRenderer.Data> {
+public class LockedShulkerBoxSpecialRenderer extends BlockEntityWithoutLevelRenderer {
+
+    private final ModelLayerLocation layer;
+    private final Material materialSprite;
+    private ShulkerBoxModel model;
 
     /**
-     * @param colorSprite The dyed body sprite, or null for the undyed one.
-     * @param locked      Whether to draw the padlock overlay.
+     * @param texture The material sprite, a path on the shulker atlas.
+     * @param layer   The mod's own model layer for the shulker box.
      */
-    public record Data(@Nullable SpriteId colorSprite, boolean locked) {
-    }
-
-    private final ShulkerBoxModel model;
-    private final SpriteGetter sprites;
-    private final SpriteId materialSprite;
-
-    public LockedShulkerBoxSpecialRenderer(ShulkerBoxModel model, SpriteGetter sprites, SpriteId materialSprite) {
-        this.model = model;
-        this.sprites = sprites;
-        this.materialSprite = materialSprite;
+    public LockedShulkerBoxSpecialRenderer(ResourceLocation texture, ModelLayerLocation layer) {
+        super(Minecraft.getInstance().getBlockEntityRenderDispatcher(), Minecraft.getInstance().getEntityModels());
+        this.layer = layer;
+        this.materialSprite = new Material(Sheets.SHULKER_SHEET, texture);
     }
 
     @Override
-    public void submit(@Nullable Data data, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords, int overlayCoords, boolean hasFoil, int outlineColor) {
-        SpriteId colorSprite = data != null && data.colorSprite() != null ? data.colorSprite() : Sheets.DEFAULT_SHULKER_TEXTURE_LOCATION;
-        ShulkerBoxModel.State state = new ShulkerBoxModel.State(0.0F, data != null && data.locked());
-
-        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, colorSprite, this.sprites, outlineColor);
-        submitNodeCollector.submitModel(this.model, state, poseStack, lightCoords, overlayCoords, -1, this.materialSprite, this.sprites, outlineColor);
+    public void onResourceManagerReload(@NotNull ResourceManager resourceManager) {
+        this.model = bake();
     }
 
-    @Override
-    public void getExtents(Consumer<Vector3fc> output) {
-        PoseStack poseStack = new PoseStack();
-        this.model.setupAnim(new ShulkerBoxModel.State(0.0F, false));
-        this.model.root().getExtentsForGui(poseStack, output);
+    private ShulkerBoxModel bake() {
+        return new ShulkerBoxModel(Minecraft.getInstance().getEntityModels().bakeLayer(this.layer));
     }
 
-    @Override
-    public @Nullable Data extractArgument(ItemStack stack) {
-        SpriteId colorSprite = null;
+    /** The dye a stack carries, or null for an undyed box. */
+    private static @Nullable DyeColor color(ItemStack stack) {
         if (NBTHelper.hasTag(stack, "Color")) {
             int savedColor = NBTHelper.getInt(stack, "Color");
             if (savedColor != -1) {
-                colorSprite = Sheets.getShulkerBoxSprite(DyeColor.byId(savedColor));
+                return DyeColor.byId(savedColor);
             }
         }
-
-        return new Data(colorSprite, StorageUtil.hasCode(stack));
+        return null;
     }
 
-    /** The material sprite is a path on the shulker atlas; the layer is the mod's own, which picks the codec it registered. */
-    public record Unbaked(Identifier texture, ModelLayerLocation layer) implements SpecialModelRenderer.Unbaked<Data> {
-
-        private static final Map<ModelLayerLocation, MapCodec<Unbaked>> CODECS = new ConcurrentHashMap<>();
-
-        /** The codec to register under a mod's own id; one per layer, as an id can only be bound to one codec. */
-        public static MapCodec<Unbaked> codec(ModelLayerLocation layer) {
-            return CODECS.computeIfAbsent(layer, l -> RecordCodecBuilder.mapCodec(i -> i.group(
-                    Identifier.CODEC.fieldOf("texture").forGetter(Unbaked::texture)
-            ).apply(i, texture -> new Unbaked(texture, l))));
+    @Override
+    public void renderByItem(ItemStack stack, ItemDisplayContext displayContext, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        if (this.model == null) {
+            this.model = bake();
         }
 
-        @Override
-        public MapCodec<Unbaked> type() {
-            return codec(this.layer);
-        }
+        Material colorSprite = LockedShulkerBoxRenderer.colorMaterial(color(stack));
+        this.model.setupAnim(new ShulkerBoxModel.State(0.0F, StorageUtil.hasCode(stack)));
 
-        @Override
-        public LockedShulkerBoxSpecialRenderer bake(SpecialModelRenderer.BakingContext context) {
-            ShulkerBoxModel model = new ShulkerBoxModel(context.entityModelSet().bakeLayer(this.layer));
-            return new LockedShulkerBoxSpecialRenderer(model, context.sprites(), new SpriteId(Sheets.SHULKER_SHEET, this.texture));
-        }
+        // Laid out as vanilla's shulker box renderer lays out a placed box facing up, which is what
+        // the builtin/entity display transforms expect.
+        poseStack.pushPose();
+        poseStack.translate(0.5D, 0.5D, 0.5D);
+        poseStack.scale(1.0F, -1.0F, -1.0F);
+        poseStack.translate(0.0D, -1.0D, 0.0D);
+
+        this.model.renderToBuffer(poseStack, colorSprite.buffer(bufferSource, this.model::renderType, stack.hasFoil()), packedLight, packedOverlay);
+        this.model.renderToBuffer(poseStack, this.materialSprite.buffer(bufferSource, this.model::renderType, stack.hasFoil()), packedLight, packedOverlay);
+
+        poseStack.popPose();
     }
 }

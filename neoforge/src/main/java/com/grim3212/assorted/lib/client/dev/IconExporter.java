@@ -5,36 +5,26 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.grim3212.assorted.lib.LibConstants;
-import com.mojang.renderpearl.api.GpuFormat;
-import com.mojang.blaze3d.ProjectionType;
-import com.mojang.renderpearl.api.buffers.GpuBuffer;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
-import com.mojang.renderpearl.api.commands.GpuFence;
+import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.renderpearl.api.commands.CommandEncoder;
-import com.mojang.renderpearl.api.commands.RenderPass;
-import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.textures.GpuTexture;
-import com.mojang.renderpearl.api.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexSorting;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.renderer.Projection;
-import net.minecraft.client.renderer.ProjectionMatrixBuffer;
-import net.minecraft.client.renderer.SubmitNodeStorage;
-import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
@@ -47,22 +37,22 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
+
 /**
  * Development tooling for the documentation site: renders every item's inventory icon to a PNG
  * exactly the way the GUI draws it (same item model resolution, lighting, transforms and special
- * renderers as {@code GuiItemAtlas}), then quits the game.
+ * renderers as {@code GuiGraphics#renderItem}), then quits the game.
  * <p>
  * Inert unless the client is started with {@code -Dassortedlib.exportIcons=<directory>}. Nothing
  * is written anywhere near the resources, so no image ever ends up in a jar; the mods point it at
@@ -125,7 +115,7 @@ public final class IconExporter {
                     // Queued rather than run here: this frame holds the window surface, so the
                     // frames doWorldLoad draws while it waits are skipped, the loading overlay
                     // never draws the frame that removes it, and the wait never ends.
-                    mc.schedule(() -> joinWorld(mc));
+                    mc.tell(() -> joinWorld(mc));
                 }
             }
             case WORLD -> {
@@ -162,9 +152,9 @@ public final class IconExporter {
                 LibConstants.LOG.warn("Could not delete the previous {} world", WORLD_ID, e);
             }
         }
-        final LevelSettings settings = new LevelSettings(WORLD_ID, GameType.CREATIVE,
-                new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, true), true, WorldDataConfiguration.DEFAULT);
-        mc.createWorldOpenFlows().createFreshLevel(WORLD_ID, settings, WorldOptions.defaultWithRandomSeed(), WorldPresets::createTestWorldDimensions, new TitleScreen());
+        final LevelSettings settings = new LevelSettings(WORLD_ID, GameType.CREATIVE, false, Difficulty.PEACEFUL, true, new GameRules(), WorldDataConfiguration.DEFAULT);
+        mc.createWorldOpenFlows().createFreshLevel(WORLD_ID, settings, WorldOptions.defaultWithRandomSeed(),
+                registries -> registries.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions(), new TitleScreen());
     }
 
     private record Job(String key, ItemStack stack) {
@@ -174,9 +164,9 @@ public final class IconExporter {
         final List<Job> jobs = new ArrayList<>();
         final Set<String> namespaces = NAMESPACES == null ? null : Arrays.stream(NAMESPACES.split(",")).map(String::trim).collect(Collectors.toSet());
         BuiltInRegistries.ITEM.entrySet().stream()
-                .sorted((a, b) -> a.getKey().identifier().compareTo(b.getKey().identifier()))
+                .sorted((a, b) -> a.getKey().location().compareTo(b.getKey().location()))
                 .forEach(entry -> {
-                    final Identifier id = entry.getKey().identifier();
+                    final ResourceLocation id = entry.getKey().location();
                     if (namespaces == null || namespaces.contains(id.getNamespace())) {
                         jobs.add(new Job(id.toString(), new ItemStack(entry.getValue())));
                     }
@@ -234,96 +224,77 @@ public final class IconExporter {
     }
 
     /**
-     * One offscreen colour and depth texture the size of an icon, drawn into the way
-     * {@code GuiItemAtlas#drawToSlot} draws a slot, then read back and written as a PNG.
+     * One offscreen colour and depth target the size of an icon, drawn into the way
+     * {@code GuiGraphics#renderItem} draws a slot, then read back and written as a PNG.
      */
     private static final class Renderer implements AutoCloseable {
         private final Minecraft mc;
         private final int size;
-        private final GpuTexture color;
-        private final GpuTextureView colorView;
-        private final GpuTexture depth;
-        private final GpuTextureView depthView;
-        private final Projection projection = new Projection();
-        private final ProjectionMatrixBuffer projectionBuffer = new ProjectionMatrixBuffer("assortedlib icon export");
-        private final SubmitNodeStorage submits = new SubmitNodeStorage();
-        private final ItemStackRenderState state = new ItemStackRenderState();
+        private final TextureTarget target;
 
         Renderer(final Minecraft mc, final int size) {
             this.mc = mc;
             this.size = size;
-            final GpuDevice device = RenderSystem.getDevice();
-            final int colorUsage = GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT;
-            this.color = device.createTexture(() -> "icon export colour", colorUsage, GpuFormat.RGBA8_UNORM, size, size, 1, 1);
-            this.colorView = device.createTextureView(this.color);
-            final int depthUsage = GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT;
-            this.depth = device.createTexture(() -> "icon export depth", depthUsage, GpuFormat.D32_FLOAT, size, size, 1, 1);
-            this.depthView = device.createTextureView(this.depth);
+            this.target = new TextureTarget(size, size, true, Minecraft.ON_OSX);
+            this.target.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
         }
 
         /** Draws the stack and saves it; returns whether the model is front-lit (a flat item). */
         boolean render(final ItemStack stack, final Path file) throws IOException {
-            this.mc.getItemModelResolver().updateForTopItem(this.state, stack, ItemDisplayContext.GUI, this.mc.level, this.mc.player, 0);
-            final boolean flat = !this.state.usesBlockLight();
+            final BakedModel model = this.mc.getItemRenderer().getModel(stack, this.mc.level, this.mc.player, 0);
+            final boolean flat = !model.usesBlockLight();
 
-            final CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
-            encoder.clearColorAndDepthTextures(this.color, GuiRenderer.CLEAR_COLOR, this.depth, 0.0);
+            this.target.clear(Minecraft.ON_OSX);
+            this.target.bindWrite(true);
+
+            // The GUI's own projection and view, at the icon's size.
+            RenderSystem.backupProjectionMatrix();
+            RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(0.0F, this.size, this.size, 0.0F, 1000.0F, 21000.0F), VertexSorting.ORTHOGRAPHIC_Z);
+            final Matrix4fStack modelView = RenderSystem.getModelViewStack();
+            modelView.pushMatrix();
+            modelView.translation(0.0F, 0.0F, -11000.0F);
+            RenderSystem.applyModelViewMatrix();
 
             final PoseStack pose = new PoseStack();
-            pose.translate(this.size / 2.0F, this.size / 2.0F, 0.0F);
-            pose.scale(this.size, -this.size, this.size);
-            this.projection.setupOrtho(-1000.0F, 1000.0F, this.size, this.size, true);
-            RenderSystem.setProjectionMatrix(this.projectionBuffer.getBuffer(this.projection), ProjectionType.ORTHOGRAPHIC);
-            this.mc.gameRenderer.lighting().setupFor(flat ? Lighting.Entry.ITEMS_FLAT : Lighting.Entry.ITEMS_3D);
-            this.state.submit(pose, this.submits, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
-            // GuiItemAtlas's way of drawing into a texture of its own: a render pass on its views.
-            try (FeatureRenderDispatcher.PreparedFrame frame = this.mc.gameRenderer.featureRenderDispatcher().prepareFrame(this.submits);
-                 RenderPass renderPass = encoder.createRenderPass(() -> "Icon export", this.colorView, Optional.empty(), this.depthView, OptionalDouble.empty())) {
-                RenderSystem.bindDefaultUniforms(renderPass);
-                FeatureRenderDispatcher.renderAllFeatures(renderPass, frame);
+            pose.translate(this.size / 2.0F, this.size / 2.0F, 150.0F);
+            pose.mulPose(new Matrix4f().scaling(1.0F, -1.0F, 1.0F));
+            pose.scale(this.size, this.size, this.size);
+            if (flat) {
+                Lighting.setupForFlatItems();
+            }
+            final MultiBufferSource.BufferSource buffers = this.mc.renderBuffers().bufferSource();
+            this.mc.getItemRenderer().render(stack, ItemDisplayContext.GUI, false, pose, buffers, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, model);
+            RenderSystem.disableDepthTest();
+            buffers.endBatch();
+            RenderSystem.enableDepthTest();
+            if (flat) {
+                Lighting.setupFor3DItems();
             }
 
-            this.readBack(encoder, file);
+            modelView.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+            RenderSystem.restoreProjectionMatrix();
+
+            this.readBack(file);
+            this.mc.getMainRenderTarget().bindWrite(true);
             return flat;
         }
 
-        /**
-         * Copies the colour texture into a buffer and waits for the GPU so the PNG can be written
-         * right away. The copy completes through the render system's fenced task queue, which
-         * otherwise only runs once per frame, so the frame is submitted and drained here.
-         */
-        private void readBack(final CommandEncoder encoder, final Path file) throws IOException {
-            final long bytes = (long) this.size * this.size * 4;
-            final GpuBuffer buffer = RenderSystem.getDevice().createBuffer(() -> "icon export readback", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, bytes);
-            final IOException[] failure = new IOException[1];
-            encoder.copyTextureToBuffer(this.color, buffer, 0L, () -> {
-                try (GpuBufferSlice.MappedView view = buffer.map(true, false); NativeImage image = new NativeImage(this.size, this.size, false)) {
-                    final ByteBuffer data = view.data();
-                    for (int y = 0; y < this.size; y++) {
-                        for (int x = 0; x < this.size; x++) {
-                            // RGBA bytes read as a little-endian int are what NativeImage calls ABGR.
-                            // The texture was blended with straight alpha onto transparent black,
-                            // so its colour is premultiplied; PNG wants it straight.
-                            image.setPixelABGR(x, this.size - 1 - y, unpremultiply(data.getInt((x + y * this.size) * 4)));
-                        }
+        /** Copies the colour texture back from the GPU and writes it. */
+        private void readBack(final Path file) throws IOException {
+            try (NativeImage image = new NativeImage(this.size, this.size, false)) {
+                RenderSystem.bindTexture(this.target.getColorTextureId());
+                image.downloadTexture(0, false);
+                image.flipY();
+                for (int y = 0; y < this.size; y++) {
+                    for (int x = 0; x < this.size; x++) {
+                        // The target was blended with straight alpha onto transparent black, so its
+                        // colour is premultiplied; PNG wants it straight. NativeImage packs ABGR.
+                        image.setPixelRGBA(x, y, unpremultiply(image.getPixelRGBA(x, y)));
                     }
-                    Files.createDirectories(file.getParent());
-                    image.writeToFile(file);
-                } catch (IOException e) {
-                    failure[0] = e;
-                } finally {
-                    buffer.close();
                 }
-            }, 0);
-            // A fence can only be waited on once its submit has ended, so end it here; the frame
-            // that this runs in has already been drawn.
-            try (GpuFence fence = encoder.createFence()) {
-                encoder.submit();
-                fence.awaitCompletion(Long.MAX_VALUE);
-            }
-            RenderSystem.executePendingTasks();
-            if (failure[0] != null) {
-                throw failure[0];
+                Files.createDirectories(file.getParent());
+                image.writeToFile(file);
             }
         }
 
@@ -340,11 +311,7 @@ public final class IconExporter {
 
         @Override
         public void close() {
-            this.colorView.close();
-            this.color.close();
-            this.depthView.close();
-            this.depth.close();
-            this.projectionBuffer.close();
+            this.target.destroyBuffers();
         }
     }
 

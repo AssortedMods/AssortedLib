@@ -3,6 +3,7 @@ package com.grim3212.assorted.lib.util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
@@ -39,11 +40,11 @@ public class NBTHelper {
             return new CompoundTag();
         }
 
-        return compound.getCompoundOrEmpty(keyName);
+        return compound.getCompound(keyName);
     }
 
     public static CompoundTag getTag(ItemStack stack, String keyName) {
-        return customData(stack).getCompoundOrEmpty(keyName);
+        return customData(stack).getCompound(keyName);
     }
 
     public static void putTag(ItemStack stack, String keyName, CompoundTag compound) {
@@ -56,7 +57,7 @@ public class NBTHelper {
             return "";
         }
 
-        return compound.getStringOr(keyName, "");
+        return compound.getString(keyName);
     }
 
     public static void putString(CompoundTag compound, String keyName, String keyValue) {
@@ -68,7 +69,7 @@ public class NBTHelper {
     }
 
     public static String getString(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getStringOr(keyName, "");
+        return customData(itemStack).getString(keyName);
     }
 
     public static void putString(ItemStack itemStack, String keyName, String keyValue) {
@@ -84,7 +85,7 @@ public class NBTHelper {
 
     // =============== BOOLEAN ===============
     public static boolean getBoolean(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getBooleanOr(keyName, false);
+        return customData(itemStack).getBoolean(keyName);
     }
 
     public static void putBoolean(ItemStack itemStack, String keyName, boolean keyValue) {
@@ -100,7 +101,7 @@ public class NBTHelper {
 
     // =============== BYTE ===============
     public static byte getByte(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getByteOr(keyName, (byte) 0);
+        return customData(itemStack).getByte(keyName);
     }
 
     public static void putByte(ItemStack itemStack, String keyName, byte keyValue) {
@@ -116,7 +117,7 @@ public class NBTHelper {
 
     // =============== SHORT ===============
     public static short getShort(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getShortOr(keyName, (short) 0);
+        return customData(itemStack).getShort(keyName);
     }
 
     public static void putShort(ItemStack itemStack, String keyName, short keyValue) {
@@ -136,7 +137,7 @@ public class NBTHelper {
             return 0;
         }
 
-        return compound.getIntOr(keyName, 0);
+        return compound.getInt(keyName);
     }
 
     public static void putInt(CompoundTag compound, String keyName, int keyValue) {
@@ -152,7 +153,8 @@ public class NBTHelper {
     }
 
     public static int getInt(ItemStack itemStack, String keyName, int fallback) {
-        return customData(itemStack).getIntOr(keyName, fallback);
+        CompoundTag tag = customData(itemStack);
+        return tag.contains(keyName, Tag.TAG_ANY_NUMERIC) ? tag.getInt(keyName) : fallback;
     }
 
     public static void putInt(ItemStack itemStack, String keyName, int keyValue) {
@@ -172,7 +174,7 @@ public class NBTHelper {
             return 0;
         }
 
-        return compound.getLongOr(keyName, 0);
+        return compound.getLong(keyName);
     }
 
     public static void putLong(CompoundTag compound, String keyName, long keyValue) {
@@ -184,7 +186,7 @@ public class NBTHelper {
     }
 
     public static long getLong(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getLongOr(keyName, 0);
+        return customData(itemStack).getLong(keyName);
     }
 
     public static void putLong(ItemStack itemStack, String keyName, long keyValue) {
@@ -200,7 +202,7 @@ public class NBTHelper {
 
     // =============== FLOAT ===============
     public static float getFloat(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getFloatOr(keyName, 0);
+        return customData(itemStack).getFloat(keyName);
     }
 
     public static void putFloat(ItemStack itemStack, String keyName, float keyValue) {
@@ -216,7 +218,7 @@ public class NBTHelper {
 
     // =============== DOUBLE ===============
     public static double getDouble(ItemStack itemStack, String keyName) {
-        return customData(itemStack).getDoubleOr(keyName, 0);
+        return customData(itemStack).getDouble(keyName);
     }
 
     public static void putDouble(ItemStack itemStack, String keyName, double keyValue) {
@@ -244,8 +246,8 @@ public class NBTHelper {
     }
 
     private static BlockPos readBlockPos(CompoundTag tag, String keyName) {
-        int[] pos = tag.getIntArray(keyName).orElse(null);
-        if (pos == null || pos.length < 3) {
+        int[] pos = tag.getIntArray(keyName);
+        if (pos.length < 3) {
             return BlockPos.ZERO;
         }
 

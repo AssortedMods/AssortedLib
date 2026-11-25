@@ -1,26 +1,23 @@
 package com.grim3212.assorted.lib.client.screen;
 
-import com.grim3212.assorted.lib.mixin.client.gui.GuiGraphicsExtractorAccessor;
+import com.mojang.blaze3d.platform.Lighting;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
-import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
-import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
-import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.block.model.ItemTransform;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3x2f;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Draws an item into a screen the way {@link GuiGraphicsExtractor#item} does, but with a view of
- * your own. Vanilla's call always resolves the model for {@link ItemDisplayContext#GUI} and applies
- * the transform the model carries for it, so a screen that wants a block seen head on - a storage
- * crate's face, a machine's front - cannot use it.
+ * Draws an item into a screen the way {@link GuiGraphics#renderItem(ItemStack, int, int)} does, but
+ * with a view of your own. Vanilla's call always applies the transform the model carries for
+ * {@link ItemDisplayContext#GUI}, so a screen that wants a block seen head on - a storage crate's
+ * face, a machine's front - cannot use it.
  */
 public final class LibGuiItemRenderer {
 
@@ -33,48 +30,43 @@ public final class LibGuiItemRenderer {
     }
 
     /**
-     * @param displayContext the context the model resolves its layers for
-     * @param transform      replaces the transform each resolved layer took from the model, or null to keep it
+     * @param displayContext the context whose model transform is applied when {@code transform} is null
+     * @param transform      replaces the transform the model carries, or null to keep the one for {@code displayContext}
      */
-    public static void item(GuiGraphicsExtractor graphics, ItemStack stack, ItemDisplayContext displayContext, @Nullable ItemTransform transform, int x, int y) {
+    public static void item(GuiGraphics graphics, ItemStack stack, ItemDisplayContext displayContext, @Nullable ItemTransform transform, int x, int y) {
         if (stack.isEmpty()) {
             return;
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        LayerTrackingRenderState state = new LayerTrackingRenderState();
-        minecraft.getItemModelResolver().updateForTopItem(state, stack, displayContext, minecraft.level, null, 0);
+        ItemRenderer itemRenderer = minecraft.getItemRenderer();
+        BakedModel model = itemRenderer.getModel(stack, minecraft.level, null, 0);
 
+        PoseStack pose = graphics.pose();
+        pose.pushPose();
+        pose.translate((float) (x + 8), (float) (y + 8), 150.0F);
+        pose.scale(16.0F, -16.0F, 16.0F);
+
+        // ItemRenderer applies the model's own transform for the context it is given. NONE carries
+        // none, so a replacement is applied here and the model is drawn with NONE.
+        ItemDisplayContext context = displayContext;
         if (transform != null) {
-            state.applyTransform(transform);
+            transform.apply(false, pose);
+            context = ItemDisplayContext.NONE;
         }
 
-        // Drawn items are cached in an atlas keyed on this identity. The same stack drawn two ways is
-        // two pictures, so the view has to be part of the key or one drawing is served the other's.
-        state.appendModelIdentityElement(displayContext);
-        state.appendModelIdentityElement(transform == null ? ItemTransform.NO_TRANSFORM : transform);
-
-        ((GuiGraphicsExtractorAccessor) graphics).getGuiRenderState()
-                .addItem(new GuiItemRenderState(new Matrix3x2f(graphics.pose()), state, x, y, null));
-    }
-
-    /**
-     * The layers a model resolved into. {@code newLayer} is the only way to see them - the array
-     * behind it is private - and a layer's transform can only be set, never read back.
-     */
-    private static final class LayerTrackingRenderState extends TrackingItemStackRenderState {
-
-        private final List<ItemStackRenderState.LayerRenderState> layers = new ArrayList<>();
-
-        @Override
-        public ItemStackRenderState.LayerRenderState newLayer() {
-            ItemStackRenderState.LayerRenderState layer = super.newLayer();
-            this.layers.add(layer);
-            return layer;
+        boolean flatLighting = !model.usesBlockLight();
+        if (flatLighting) {
+            Lighting.setupForFlatItems();
         }
 
-        private void applyTransform(ItemTransform transform) {
-            this.layers.forEach(layer -> layer.setItemTransform(transform));
+        itemRenderer.render(stack, context, false, pose, graphics.bufferSource(), 0xF000F0, OverlayTexture.NO_OVERLAY, model);
+        graphics.flush();
+
+        if (flatLighting) {
+            Lighting.setupFor3DItems();
         }
+
+        pose.popPose();
     }
 }

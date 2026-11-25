@@ -1,28 +1,5 @@
-accessWidener	v2	official
-# Nothing is widened any more.
-#
-# The 1.20.1 list widened ItemBlockRenderTypes.TYPE_BY_BLOCK, the BlockElement / BlockElementFace /
-# BlockFaceUV / ItemTransform / ItemTransforms / ItemOverride deserializers, SimpleBakedModel$Builder,
-# ItemOverrides, ItemModelGenerator.processFrames, ModelManager$ReloadState, RenderType.create and
-# ItemRenderer.renderModelLists. Every one of those was deleted or made private by the 1.21.4-26.x
-# model pipeline rewrite, and the code that needed them has been rebuilt on the public API:
-# custom model json goes through Fabric's UnbakedModelDeserializer and the public
-# CuboidModel.Deserializer, and unbaked models are collected through the model loading plugin
-# instead of by reaching into ModelManager.
-#
-# Add entries back only when a real access problem shows up, and only in the "official" namespace -
-# "named" is gone along with intermediary in 26.x.
-
-# ItemModels.ID_MAPPER is the only registry for a custom ItemModel.Unbaked type. NeoForge fires
-# RegisterItemModelsEvent over the same mapper; Fabric API has no equivalent, so the mapper itself is
-# what IClientHelper#registerItemModelType has to reach.
-accessible	field	net/minecraft/client/renderer/item/ItemModels	ID_MAPPER	Lnet/minecraft/util/ExtraCodecs$LateBoundIdMapper;
-
-# Same story for a custom ConditionalItemModelProperty: NeoForge fires
-# RegisterConditionalItemModelPropertyEvent over this mapper, Fabric API has no equivalent.
-accessible	field	net/minecraft/client/renderer/item/properties/conditional/ConditionalItemModelProperties	ID_MAPPER	Lnet/minecraft/util/ExtraCodecs$LateBoundIdMapper;
-
-# SpawnPlacements.register is private. Fabric API widens it for its own entity type builder, but not
-# transitively, and that builder only takes a rule while the type is being built, which common code
-# cannot reach. NeoForge fires RegisterSpawnPlacementsEvent instead.
-accessible	method	net/minecraft/world/entity/SpawnPlacements	register	(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/entity/SpawnPlacementType;Lnet/minecraft/world/level/levelgen/Heightmap$Types;Lnet/minecraft/world/entity/SpawnPlacements$SpawnPredicate;)V
+accessWidener v2 named
+# Nothing is widened here. What the Fabric module reaches that vanilla keeps private - the MenuType
+# constructor, BlockEntityType.BlockEntitySupplier, SpawnPlacements.register, ItemProperties.register,
+# BlockEntityRenderers.register and MenuScreens.register - Fabric API's transitive access wideners
+# already open.

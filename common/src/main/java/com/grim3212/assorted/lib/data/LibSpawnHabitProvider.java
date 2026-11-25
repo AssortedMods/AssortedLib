@@ -1,10 +1,11 @@
 package com.grim3212.assorted.lib.data;
 
 import com.grim3212.assorted.lib.spawn.SpawnHabit;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,7 +30,7 @@ public abstract class LibSpawnHabitProvider implements DataProvider {
         Map<String, SpawnHabit> habits = new LinkedHashMap<>();
         this.addHabits(habits::put);
         return CompletableFuture.allOf(habits.entrySet().stream()
-                .map(entry -> DataProvider.saveStable(cache, SpawnHabit.CODEC, entry.getValue(), this.paths.json(Identifier.fromNamespaceAndPath(this.modId, entry.getKey()))))
+                .map(entry -> DataProvider.saveStable(cache, SpawnHabit.CODEC.encodeStart(JsonOps.INSTANCE, entry.getValue()).getOrThrow(), this.paths.json(ResourceLocation.fromNamespaceAndPath(this.modId, entry.getKey()))))
                 .toArray(CompletableFuture[]::new));
     }
 

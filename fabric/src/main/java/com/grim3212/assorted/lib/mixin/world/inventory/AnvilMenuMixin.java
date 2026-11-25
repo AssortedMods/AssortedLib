@@ -27,15 +27,14 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     @Shadow
     private int repairItemCountCost;
 
-    public AnvilMenuMixin(@Nullable MenuType<?> menuType, int i, Inventory inventory, ContainerLevelAccess containerLevelAccess, ItemCombinerMenuSlotDefinition slotDefinition) {
-        super(menuType, i, inventory, containerLevelAccess, slotDefinition);
+    public AnvilMenuMixin(@Nullable MenuType<?> menuType, int i, Inventory inventory, ContainerLevelAccess containerLevelAccess) {
+        super(menuType, i, inventory, containerLevelAccess);
     }
 
     @Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
     private void assortedlib_checkForResults(CallbackInfo ci) {
         ItemStack leftSlot = inputSlots.getItem(0);
         ItemStack rightSlot = inputSlots.getItem(1);
-        // ItemStack#getBaseRepairCost is gone; the repair cost is a data component now.
         int baseCost = leftSlot.getOrDefault(DataComponents.REPAIR_COST, 0) + (rightSlot.isEmpty() ? 0 : rightSlot.getOrDefault(DataComponents.REPAIR_COST, 0));
 
         final AnvilUpdatedEvent event = new AnvilUpdatedEvent(leftSlot, rightSlot, itemName, baseCost, this.player);

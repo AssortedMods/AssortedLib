@@ -2,60 +2,59 @@ package com.grim3212.assorted.lib.core.conditions;
 
 import com.grim3212.assorted.lib.conditions.PartToggles;
 import com.grim3212.assorted.lib.platform.Services;
-import net.minecraft.advancements.Advancement;
 import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.data.CachedOutput;
+import net.minecraft.data.PackOutput;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 public abstract class ConditionalRecipeProvider extends RecipeProvider {
 
-    protected final Map<Identifier, List<LibConditionProvider>> conditions;
-    protected final HolderGetter<Item> items;
-    private final BootstrapContext<Recipe<?>> recipes;
+    protected final Map<ResourceLocation, List<LibConditionProvider>> conditions = new HashMap<>();
     private final String modId;
+    private HolderLookup.Provider lookupProvider;
+    /** Where {@link #buildRecipes()} saves to. Every recipe saved here, and its unlock advancement, carries the conditions. */
+    protected RecipeOutput output;
+
+    public ConditionalRecipeProvider(PackOutput packOutput, CompletableFuture<HolderLookup.Provider> registries, String modId) {
+        super(packOutput, registries);
+        this.modId = modId;
+    }
+
+    @Override
+    public CompletableFuture<?> run(CachedOutput cache, HolderLookup.Provider registries) {
+        this.lookupProvider = registries;
+        return super.run(cache, registries);
+    }
 
     /**
-     * Recipes are registry entries built in a bootstrap now. Both contexts are wrapped so each recipe and its
-     * unlock advancement carry the conditions, read lazily so registerConditions() can still fill them.
+     * Wraps vanilla's output so each recipe is written with its conditions, read as it is saved so
+     * {@link #registerConditions()} can still fill them, then hands over to {@link #buildRecipes()}.
      */
-    public ConditionalRecipeProvider(BootstrapContext<Recipe<?>> recipes, BootstrapContext<Advancement> advancements, String modId) {
-        Map<Identifier, List<LibConditionProvider>> conditions = new HashMap<>();
-        this.conditions = conditions;
-        this.modId = modId;
-        this.recipes = recipes;
-        this.items = recipes.lookup(Registries.ITEM);
-        super(Services.CONDITIONS.conditionalContext(recipes, key -> withPart(conditions.get(key.identifier()), modId)),
-                Services.CONDITIONS.conditionalContext(advancements, key -> withPart(conditions.get(unlockedRecipe(conditions, key.identifier())), modId)));
+    @Override
+    public final void buildRecipes(RecipeOutput recipeOutput) {
+        this.output = Services.CONDITIONS.conditionalOutput(recipeOutput, id -> withPart(this.conditions.get(id), this.modId));
+        this.buildRecipes();
     }
 
-    /** The recipe an unlock advancement belongs to: vanilla's {@code recipes/<folder>/<path>}, or a mod builder's {@code recipes/<path>}. */
-    private static Identifier unlockedRecipe(Map<Identifier, List<LibConditionProvider>> conditions, Identifier advancement) {
-        String path = advancement.getPath();
-        if (!path.startsWith("recipes/")) {
-            return advancement;
-        }
-        Identifier unfiled = advancement.withPath(path.substring("recipes/".length()));
-        int folderEnd = path.indexOf('/', "recipes/".length());
-        return folderEnd < 0 || conditions.containsKey(unfiled) ? unfiled : advancement.withPath(path.substring(folderEnd + 1));
-    }
-
-    /** What {@code RecipeProvider#registries} was for: holders from any registry the recipes name. */
+    /** Holders from any registry the recipes name. Only valid while the recipes are being built. */
     protected <S> HolderGetter<S> lookup(ResourceKey<? extends Registry<? extends S>> key) {
-        return this.recipes.lookup(key);
+        return this.lookupProvider.lookupOrThrow(key);
     }
 
     /** A mod with a {@link PartToggles} switch has every recipe turned off with it. */
@@ -125,23 +124,23 @@ public abstract class ConditionalRecipeProvider extends RecipeProvider {
         return id(b).getPath();
     }
 
-    protected Identifier id(Item i) {
+    protected ResourceLocation id(Item i) {
         return Services.PLATFORM.getRegistry(Registries.ITEM).getRegistryName(i);
     }
 
-    protected Identifier id(Block b) {
+    protected ResourceLocation id(Block b) {
         return Services.PLATFORM.getRegistry(Registries.BLOCK).getRegistryName(b);
     }
 
-    protected Identifier prefix(String name) {
-        return Identifier.fromNamespaceAndPath(this.modId, name);
+    protected ResourceLocation prefix(String name) {
+        return ResourceLocation.fromNamespaceAndPath(this.modId, name);
     }
 
-    public void addConditions(LibConditionProvider condition, Identifier... recipes) {
+    public void addConditions(LibConditionProvider condition, ResourceLocation... recipes) {
         if (recipes.length == 0)
             return;
 
-        for (Identifier recipe : recipes) {
+        for (ResourceLocation recipe : recipes) {
             this.conditions.computeIfAbsent(recipe, (r) -> new ArrayList<>()).add(condition);
         }
     }
@@ -152,8 +151,7 @@ public abstract class ConditionalRecipeProvider extends RecipeProvider {
      */
     public abstract void registerConditions();
 
-    // public, not protected, so the mods' overrides can stay public; widening an override is allowed.
-    @Override
+    /** Builds the recipes into {@link #output}. Overrides call {@code super.buildRecipes()} first. */
     public void buildRecipes() {
         this.registerConditions();
     }

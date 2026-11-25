@@ -8,7 +8,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -27,10 +27,10 @@ public class FabricRegistryProvider implements IRegistryFactory {
     }
 
     @Override
-    public <T> void alias(ResourceKey<? extends Registry<T>> registry, Identifier from, Identifier to) {
-        Registry<?> target = BuiltInRegistries.REGISTRY.getValue(registry.identifier());
+    public <T> void alias(ResourceKey<? extends Registry<T>> registry, ResourceLocation from, ResourceLocation to) {
+        Registry<?> target = BuiltInRegistries.REGISTRY.get(registry.location());
         if (target == null) {
-            throw new IllegalArgumentException("No registry " + registry.identifier() + " to alias " + from + " in");
+            throw new IllegalArgumentException("No registry " + registry.location() + " to alias " + from + " in");
         }
 
         ((FabricRegistry) target).addAlias(from, to);
@@ -48,9 +48,9 @@ public class FabricRegistryProvider implements IRegistryFactory {
         private Provider(String modId, ResourceKey<? extends Registry<T>> key) {
             this.modId = modId;
 
-            final var reg = BuiltInRegistries.REGISTRY.getValue(key.identifier());
+            final var reg = BuiltInRegistries.REGISTRY.get(key.location());
             if (reg == null) {
-                throw new RuntimeException("Registry with name " + key.identifier() + " was not found!");
+                throw new RuntimeException("Registry with name " + key.location() + " was not found!");
             }
             registry = (Registry<T>) reg;
         }
@@ -63,10 +63,10 @@ public class FabricRegistryProvider implements IRegistryFactory {
         @Override
         @SuppressWarnings("unchecked")
         public <I extends T> IRegistryObject<I> register(String name, Supplier<? extends I> supplier) {
-            final var rl = Identifier.fromNamespaceAndPath(modId, name);
+            final var rl = ResourceLocation.fromNamespaceAndPath(modId, name);
             final var obj = Registry.register(registry, rl, supplier.get());
             if (this.aliasNamespace != null) {
-                alias(this.registry.key(), Identifier.fromNamespaceAndPath(this.aliasNamespace, name), rl);
+                alias(this.registry.key(), ResourceLocation.fromNamespaceAndPath(this.aliasNamespace, name), rl);
             }
             final var ro = new IRegistryObject<I>() {
                 final ResourceKey<I> key =
@@ -78,7 +78,7 @@ public class FabricRegistryProvider implements IRegistryFactory {
                 }
 
                 @Override
-                public Identifier getId() {
+                public ResourceLocation getId() {
                     return rl;
                 }
 
@@ -89,7 +89,9 @@ public class FabricRegistryProvider implements IRegistryFactory {
 
                 @Override
                 public Holder<I> asHolder() {
-                    return (Holder<I>) registry.getOrThrow((ResourceKey<T>) this.key);
+                    // getOrThrow is the value on 1.21.1, which is only its own holder in registries
+                    // with intrusive holders (blocks, items, ...), not armour materials and the like.
+                    return (Holder<I>) registry.getHolderOrThrow((ResourceKey<T>) this.key);
                 }
             };
             entries.add((IRegistryObject<T>) ro);
@@ -114,7 +116,7 @@ public class FabricRegistryProvider implements IRegistryFactory {
         }
 
         @Override
-        public Optional<T> getValue(Identifier resourceLocation) {
+        public Optional<T> getValue(ResourceLocation resourceLocation) {
             return entriesView.stream().filter(x -> x.getResourceKey().equals(resourceLocation)).map(x -> x.get()).findFirst();
         }
 
@@ -124,12 +126,12 @@ public class FabricRegistryProvider implements IRegistryFactory {
         }
 
         @Override
-        public boolean containsKey(Identifier resourceLocation) {
+        public boolean containsKey(ResourceLocation resourceLocation) {
             return this.getValue(resourceLocation).isPresent();
         }
 
         @Override
-        public Identifier getRegistryName(T entry) {
+        public ResourceLocation getRegistryName(T entry) {
             return this.registry.getKey(entry);
         }
     }

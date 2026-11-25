@@ -30,7 +30,7 @@ public abstract class BlockStateBaseMixin {
 
     @Shadow
     @Final
-    public MapColor mapColor;
+    private MapColor mapColor;
 
 
     @Inject(method = "getMapColor", at = @At("HEAD"), cancellable = true)

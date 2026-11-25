@@ -10,12 +10,9 @@ import com.grim3212.assorted.lib.manual.ManualLinks;
 import com.grim3212.assorted.lib.manual.ManualPageRef;
 import com.grim3212.assorted.lib.manual.ManualSection;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -257,15 +254,18 @@ public class ManualScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        super.extractBackground(graphics, mouseX, mouseY, a);
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+        super.renderBackground(graphics, mouseX, mouseY, a);
         ManualBookStyle style = this.style();
-        graphics.blit(RenderPipelines.GUI_TEXTURED, style.texture(), this.left, this.top, 0.0F, 0.0F,
+        graphics.blit(style.texture(), this.left, this.top, 0.0F, 0.0F,
                 style.width(), style.height(), style.textureWidth(), style.textureHeight());
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+        // The background and the buttons first: the background is drawn inside super.render.
+        super.render(graphics, mouseX, mouseY, a);
+
         this.leftPageView = this.pageView(graphics, 0, mouseX, mouseY);
         this.rightPageView = this.pageView(graphics, 1, mouseX, mouseY);
 
@@ -288,18 +288,12 @@ public class ManualScreen extends Screen {
         this.drawScrollbar(graphics, 0, mouseX, mouseY);
         this.drawScrollbar(graphics, 1, mouseX, mouseY);
 
-        if (linkedPage(this.leftPageView) != null || linkedPage(this.rightPageView) != null) {
-            graphics.requestCursor(CursorTypes.POINTING_HAND);
-        }
-
-        super.extractRenderState(graphics, mouseX, mouseY, a);
-
         // Last, so a tooltip is never painted over by the other page.
         this.leftPageView.drawHoveredTooltip();
         this.rightPageView.drawHoveredTooltip();
     }
 
-    private ManualPageView pageView(GuiGraphicsExtractor graphics, int side, int mouseX, int mouseY) {
+    private ManualPageView pageView(GuiGraphics graphics, int side, int mouseX, int mouseY) {
         ManualBookStyle style = this.style();
         return new ManualPageView(graphics, this.font, style,
                 this.left + style.contentX(side), this.top + style.contentY(),
@@ -328,7 +322,7 @@ public class ManualScreen extends Screen {
         return new Scrollbar(x, top, track, thumbY, thumb, overflow);
     }
 
-    private void drawScrollbar(GuiGraphicsExtractor graphics, int side, int mouseX, int mouseY) {
+    private void drawScrollbar(GuiGraphics graphics, int side, int mouseX, int mouseY) {
         Scrollbar bar = this.scrollbar(side);
         if (bar == null) {
             return;
@@ -336,12 +330,6 @@ public class ManualScreen extends Screen {
 
         // Lights up on hover as well as while held, as an affordance.
         boolean active = this.draggingSide == side || (bar.grabbed(mouseX, mouseY) && bar.onThumb(mouseY));
-        // As a vanilla scroll area does.
-        if (this.draggingSide == side) {
-            graphics.requestCursor(CursorTypes.RESIZE_NS);
-        } else if (this.draggingSide < 0 && bar.grabbed(mouseX, mouseY)) {
-            graphics.requestCursor(CursorTypes.POINTING_HAND);
-        }
         int color = active ? this.style().hoveredTextColor() : this.style().mutedTextColor();
         graphics.fill(bar.x(), bar.top(), bar.x() + BAR_WIDTH, bar.top() + bar.track(), this.style().mutedTextColor() & 0x30FFFFFF);
         graphics.fill(bar.x(), bar.thumbY(), bar.x() + BAR_WIDTH, bar.thumbY() + bar.thumb(), color);
@@ -411,36 +399,33 @@ public class ManualScreen extends Screen {
                 this.style().footerY() - this.style().contentY(), this.style().mutedTextColor());
     }
 
-    private void drawRows(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    private void drawRows(GuiGraphics graphics, int mouseX, int mouseY) {
         for (Row row : this.rows) {
             boolean hovered = row.contains(mouseX, mouseY);
             int color = hovered ? this.style().hoveredTextColor() : this.style().textColor();
-            if (hovered) {
-                graphics.requestCursor(CursorTypes.POINTING_HAND);
-            }
-            graphics.text(this.font, row.label(), row.x(), row.y(), color, false);
+            graphics.drawString(this.font, row.label(), row.x(), row.y(), color, false);
         }
     }
 
     // ---- input ------------------------------------------------------------------------------
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             // Asked first: the bar sits over the page margin and must win over what is behind it.
             for (int side = 0; side < 2; side++) {
                 Scrollbar bar = this.scrollbar(side);
-                if (bar == null || !bar.grabbed(event.x(), event.y())) {
+                if (bar == null || !bar.grabbed(mouseX, mouseY)) {
                     continue;
                 }
 
-                if (bar.onThumb(event.y())) {
+                if (bar.onThumb(mouseY)) {
                     // Keep the grab offset, so the thumb does not jump under the cursor.
-                    this.dragGrabOffset = (int) event.y() - bar.thumbY();
+                    this.dragGrabOffset = (int) mouseY - bar.thumbY();
                 } else {
                     // On the track: bring the thumb to the cursor and carry on dragging.
                     this.dragGrabOffset = bar.thumb() / 2;
-                    this.scrollTo(side, bar, (int) event.y() - this.dragGrabOffset);
+                    this.scrollTo(side, bar, (int) mouseY - this.dragGrabOffset);
                 }
 
                 this.draggingSide = side;
@@ -448,7 +433,7 @@ public class ManualScreen extends Screen {
             }
 
             for (Row row : this.rows) {
-                if (row.contains(event.x(), event.y())) {
+                if (row.contains(mouseX, mouseY)) {
                     this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0F));
                     row.action().run();
                     return true;
@@ -460,7 +445,13 @@ public class ManualScreen extends Screen {
             }
         }
 
-        return super.mouseClicked(event, doubleClick);
+        boolean handled = super.mouseClicked(mouseX, mouseY, button);
+        // A click focuses what it pressed, which would leave a page button lit until the next
+        // click. Only the keyboard keeps one focused, so the controls stay reachable that way.
+        if (this.getFocused() instanceof ManualSpriteButton) {
+            this.setFocused(null);
+        }
+        return handled;
     }
 
     /** An item drawn on a page is a link to its own page. */
@@ -486,26 +477,26 @@ public class ManualScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
         if (this.draggingSide >= 0) {
             Scrollbar bar = this.scrollbar(this.draggingSide);
             if (bar != null) {
-                this.scrollTo(this.draggingSide, bar, (int) event.y() - this.dragGrabOffset);
+                this.scrollTo(this.draggingSide, bar, (int) mouseY - this.dragGrabOffset);
             }
             return true;
         }
 
-        return super.mouseDragged(event, dx, dy);
+        return super.mouseDragged(mouseX, mouseY, button, dx, dy);
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
-        if (this.draggingSide >= 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (this.draggingSide >= 0 && button == InputConstants.MOUSE_BUTTON_LEFT) {
             this.draggingSide = -1;
             return true;
         }
 
-        return super.mouseReleased(event);
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     /** Scrolls whichever page the cursor is over. */

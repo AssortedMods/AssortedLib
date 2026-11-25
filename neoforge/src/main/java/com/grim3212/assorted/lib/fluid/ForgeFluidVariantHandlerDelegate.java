@@ -4,11 +4,9 @@ import com.grim3212.assorted.lib.core.fluid.FluidInformation;
 import com.grim3212.assorted.lib.core.fluid.IFluidVariantHandler;
 import com.grim3212.assorted.lib.platform.ForgeFluidManager;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.FluidModel;
-import net.neoforged.neoforge.client.fluid.FluidTintSource;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.common.SoundActions;
 import net.neoforged.neoforge.fluids.FluidType;
 
@@ -58,25 +56,22 @@ public class ForgeFluidVariantHandlerDelegate implements IFluidVariantHandler {
 
     @Override
     public int getTintColor(final FluidInformation variant) {
-        final FluidTintSource tintSource = fluidModel(variant).fluidTintSource();
-        return tintSource == null ? -1 : tintSource.colorAsStack(ForgeFluidManager.buildFluidStack(variant));
+        return client().getTintColor(ForgeFluidManager.buildFluidStack(variant));
     }
 
     @Override
-    public Optional<Identifier> getStillTexture(final FluidInformation variant) {
-        return Optional.of(fluidModel(variant).stillMaterial().sprite().contents().name());
+    public Optional<ResourceLocation> getStillTexture(final FluidInformation variant) {
+        return Optional.ofNullable(client().getStillTexture(ForgeFluidManager.buildFluidStack(variant)));
     }
 
     @Override
-    public Optional<Identifier> getFlowingTexture(final FluidInformation variant) {
-        return Optional.of(fluidModel(variant).flowingMaterial().sprite().contents().name());
+    public Optional<ResourceLocation> getFlowingTexture(final FluidInformation variant) {
+        return Optional.ofNullable(client().getFlowingTexture(ForgeFluidManager.buildFluidStack(variant)));
     }
 
-    // A fluid's textures and tint are a baked FluidModel per Fluid, not anything on the FluidType,
-    // so this looks the model up by fluid: readable only once models have baked, and
-    // FluidInformation#data cannot change the result. Fabric reads the same source; said at
-    // IFluidVariantHandler.
-    private static FluidModel fluidModel(final FluidInformation variant) {
-        return Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(variant.fluid().defaultFluidState());
+    // A fluid's textures and tint are client-side extensions of its FluidType, so this is client
+    // only. Fabric reads its FluidRenderHandler, the same per-fluid answer.
+    private IClientFluidTypeExtensions client() {
+        return IClientFluidTypeExtensions.of(this.delegate);
     }
 }

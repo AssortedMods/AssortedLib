@@ -23,7 +23,7 @@ public final class ManualClient {
         DisplayConditions.bootstrap();
 
         ClientServices.CLIENT.addReloadListener(ManualLoader.ID, new ManualLoader());
-        ClientServices.CLIENT.registerHudElement(ManualHud.ID, ManualHud::extract);
+        ClientServices.CLIENT.registerHudElement(ManualHud.ID, ManualHud::render);
         // Recipes arrive after the join refresh, and a recipe_exists page waits on them.
         SyncedRecipes.addUpdateListener(ManualContent::refresh);
     }
@@ -45,7 +45,7 @@ public final class ManualClient {
 
     /** Opens at {@code ref} when it resolves, otherwise where the book was last left. */
     public static void open(@Nullable ManualPageRef ref) {
-        Minecraft.getInstance().gui.setScreen(ManualScreen.openedAt(ref));
+        Minecraft.getInstance().setScreen(ManualScreen.openedAt(ref));
     }
 
     /** Raytraces here because a non living entity is only known to the client. */

@@ -7,7 +7,8 @@ import com.grim3212.assorted.lib.platform.Services;
 import com.grim3212.assorted.lib.util.LibCommonTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ToolMaterial;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.Tiers;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,12 +38,12 @@ public final class ToolTiers {
         // Needed at registration: items bake their material as they are constructed.
         IConfigurationBuilder builder = Services.CONFIG.createBuilder(ConfigurationType.NEEDED_AT_REGISTRATION, CONFIG_NAME);
 
-        this.wood = new ToolTier(builder, "vanilla_materials", "wood", ToolMaterial.WOOD, 6.0F, -3.2F);
-        this.stone = new ToolTier(builder, "vanilla_materials", "stone", ToolMaterial.STONE, 7.0F, -3.2F);
-        this.gold = new ToolTier(builder, "vanilla_materials", "gold", ToolMaterial.GOLD, 6.0F, -3.0F);
-        this.iron = new ToolTier(builder, "vanilla_materials", "iron", ToolMaterial.IRON, 6.0F, -3.1F);
-        this.diamond = new ToolTier(builder, "vanilla_materials", "diamond", ToolMaterial.DIAMOND, 5.0F, -3.0F);
-        this.netherite = new ToolTier(builder, "vanilla_materials", "netherite", ToolMaterial.NETHERITE, 5.0F, -3.0F);
+        this.wood = new ToolTier(builder, "vanilla_materials", "wood", Tiers.WOOD, ItemTags.PLANKS, 6.0F, -3.2F);
+        this.stone = new ToolTier(builder, "vanilla_materials", "stone", Tiers.STONE, ItemTags.STONE_TOOL_MATERIALS, 7.0F, -3.2F);
+        this.gold = new ToolTier(builder, "vanilla_materials", "gold", Tiers.GOLD, LibCommonTags.Items.INGOTS_GOLD, 6.0F, -3.0F);
+        this.iron = new ToolTier(builder, "vanilla_materials", "iron", Tiers.IRON, LibCommonTags.Items.INGOTS_IRON, 6.0F, -3.1F);
+        this.diamond = new ToolTier(builder, "vanilla_materials", "diamond", Tiers.DIAMOND, LibCommonTags.Items.GEMS_DIAMOND, 5.0F, -3.0F);
+        this.netherite = new ToolTier(builder, "vanilla_materials", "netherite", Tiers.NETHERITE, LibCommonTags.Items.INGOTS_NETHERITE, 5.0F, -3.0F);
 
         extra(builder, "tin", 1, 80, 2.5F, 0.4F, 14, LibCommonTags.Items.INGOTS_TIN, 6.0F, -3.2F);
         extra(builder, "copper", 2, 150, 4.3F, 1.0F, 14, LibCommonTags.Items.INGOTS_COPPER, 7.0F, -3.2F);
@@ -103,7 +104,6 @@ public final class ToolTiers {
     }
 
     private void extra(IConfigurationBuilder builder, String name, int harvestLevel, int maxUses, float efficiency, float damage, int enchantability, TagKey<Item> repairItems, float axeDamage, float axeSpeed) {
-        ToolMaterial defaults = new ToolMaterial(HarvestTiers.incorrectBlocksForDrops(harvestLevel), maxUses, efficiency, damage, enchantability, repairItems);
-        this.extras.put(name, new ToolTier(builder, "extra_materials", name, defaults, axeDamage, axeSpeed));
+        this.extras.put(name, new ToolTier(builder, "extra_materials", name, harvestLevel, maxUses, efficiency, damage, enchantability, repairItems, axeDamage, axeSpeed));
     }
 }

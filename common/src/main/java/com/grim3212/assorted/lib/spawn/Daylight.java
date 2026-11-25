@@ -21,8 +21,8 @@ public enum Daylight implements StringRepresentable {
     public boolean allows(ServerLevel level) {
         return switch (this) {
             case ANY -> true;
-            case DAY -> level.isBrightOutside();
-            case NIGHT -> !level.isBrightOutside();
+            case DAY -> level.isDay();
+            case NIGHT -> !level.isDay();
         };
     }
 

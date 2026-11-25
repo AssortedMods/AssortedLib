@@ -2,17 +2,23 @@ package com.grim3212.assorted.lib.client.storage;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonObject;
+import com.grim3212.assorted.lib.client.model.EmptyModel;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecification;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationLoader;
 import com.grim3212.assorted.lib.client.model.loaders.context.IModelBakingContext;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.renderer.block.dispatch.ModelState;
+import net.minecraft.client.renderer.block.model.ItemOverrides;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.Material;
 import net.minecraft.client.resources.model.ModelBaker;
-import net.minecraft.client.resources.model.ResolvableModel;
-import net.minecraft.client.resources.model.SimpleModelWrapper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.resources.model.ModelState;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * A block model that swaps between a locked and an unlocked child, given as model ids since inline json children
@@ -20,27 +26,25 @@ import net.minecraft.util.GsonHelper;
  */
 public class LockedModel implements IModelSpecification<LockedModel> {
 
-    private final Identifier unlockedModel;
-    private final Identifier lockedModel;
+    private final ResourceLocation unlockedModel;
+    private final ResourceLocation lockedModel;
 
-    private LockedModel(Identifier unlockedModel, Identifier lockedModel) {
+    private LockedModel(ResourceLocation unlockedModel, ResourceLocation lockedModel) {
         this.unlockedModel = unlockedModel;
         this.lockedModel = lockedModel;
     }
 
-    // ModelBaker#getModel only resolves ids marked during discovery; discovery does not walk the
-    // resource pack, so an unmarked child bakes to the missing model however correct its json is.
     @Override
-    public void resolveDependencies(ResolvableModel.Resolver resolver) {
-        resolver.markDependency(this.unlockedModel);
-        resolver.markDependency(this.lockedModel);
+    public Collection<ResourceLocation> getDependencies() {
+        return List.of(this.unlockedModel, this.lockedModel);
     }
 
+    @SuppressWarnings("deprecation") // NeoForge deprecates ModelBaker#bake(ResourceLocation, ModelState) for an overload of its own extension, which common cannot see
     @Override
-    public BlockStateModel bake(IModelBakingContext context, ModelBaker baker, ModelState modelState, Identifier modelLocation) {
-        BlockStateModelPart unlocked = SimpleModelWrapper.bake(baker, this.unlockedModel, modelState);
-        BlockStateModelPart locked = SimpleModelWrapper.bake(baker, this.lockedModel, modelState);
-        return new LockedBakedModel(unlocked, locked);
+    public BakedModel bake(IModelBakingContext context, ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState, ItemOverrides overrides) {
+        BakedModel unlocked = Objects.requireNonNullElse(baker.bake(this.unlockedModel, modelState), EmptyModel.BAKED);
+        BakedModel locked = Objects.requireNonNullElse(baker.bake(this.lockedModel, modelState), EmptyModel.BAKED);
+        return new LockedBakedModel(unlocked, locked, overrides);
     }
 
     public enum Loader implements IModelSpecificationLoader<LockedModel> {
@@ -48,8 +52,8 @@ public class LockedModel implements IModelSpecification<LockedModel> {
 
         @Override
         public LockedModel read(JsonDeserializationContext deserializationContext, JsonObject modelContents) {
-            Identifier unlocked = Identifier.parse(GsonHelper.getAsString(modelContents, "unlocked"));
-            Identifier locked = Identifier.parse(GsonHelper.getAsString(modelContents, "locked"));
+            ResourceLocation unlocked = ResourceLocation.parse(GsonHelper.getAsString(modelContents, "unlocked"));
+            ResourceLocation locked = ResourceLocation.parse(GsonHelper.getAsString(modelContents, "locked"));
             return new LockedModel(unlocked, locked);
         }
     }

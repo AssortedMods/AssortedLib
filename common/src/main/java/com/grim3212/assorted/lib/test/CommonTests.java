@@ -3,18 +3,24 @@ package com.grim3212.assorted.lib.test;
 import com.grim3212.assorted.lib.platform.Services;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.block.entity.DispenserBlockEntity;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.core.dispenser.BlockSource;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -23,32 +29,30 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.AbstractCookingRecipe;
 import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
-import net.minecraft.world.item.crafting.display.SlotDisplay;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -79,15 +83,53 @@ public final class CommonTests {
         out.accept("every_item_is_in_a_creative_tab", helper -> report(helper, itemsInNoCreativeTab(helper, modId, hiddenItems), "items in no creative tab"));
     }
 
+    /** For a mod with spawn eggs: {@code every_spawn_egg_hatches_from_a_dispenser}, which needs its own test_instance json. */
+    public static void registerSpawnEggs(BiConsumer<String, Consumer<GameTestHelper>> out, String modId) {
+        out.accept("every_spawn_egg_hatches_from_a_dispenser", helper -> report(helper, spawnEggsADispenserDrops(helper, modId), "spawn eggs a dispenser drops instead of hatching"));
+    }
+
+    /**
+     * The mod's spawn eggs a dispenser would not hatch. Each is handed to the behaviour a dispenser facing
+     * up would use for it, as {@code DispenserBlock#dispenseFrom} does, and must leave its mob above the
+     * dispenser and one egg fewer in the stack.
+     */
+    public static List<String> spawnEggsADispenserDrops(GameTestHelper helper, String modId) {
+        ServerLevel level = helper.getLevel();
+        List<String> problems = new ArrayList<>();
+        BlockPos at = helper.absolutePos(AT);
+        BlockState dispenser = Blocks.DISPENSER.defaultBlockState().setValue(DispenserBlock.FACING, Direction.UP);
+        level.setBlockAndUpdate(at, dispenser);
+        DispenserBlockEntity blockEntity = (DispenserBlockEntity) level.getBlockEntity(at);
+        AABB above = new AABB(at.above()).inflate(1.0D);
+
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+            if (!id.getNamespace().equals(modId) || !(item instanceof SpawnEggItem egg)) {
+                continue;
+            }
+
+            ItemStack stack = new ItemStack(egg, 2);
+            EntityType<?> type = egg.getType(stack);
+            DispenserBlock.DISPENSER_REGISTRY.get(egg).dispense(new BlockSource(level, at, dispenser, blockEntity), stack);
+            List<? extends Entity> hatched = level.getEntities(type, above, entity -> true);
+            if (hatched.isEmpty() || stack.getCount() != 1) {
+                problems.add(id + " (" + hatched.size() + " " + EntityType.getKey(type) + " hatched, " + stack.getCount() + " eggs left of 2)");
+            }
+            hatched.forEach(Entity::discard);
+        }
+        level.removeBlock(at, false);
+        return problems;
+    }
+
     /** Crafting and cooking recipes that their own first-choice ingredients do not make. */
     public static List<String> uncraftableRecipes(GameTestHelper helper, String modId) {
         ServerLevel level = helper.getLevel();
         List<String> problems = new ArrayList<>();
 
-        for (RecipeHolder<?> holder : level.recipeAccess().getRecipes()) {
-            String id = holder.id().identifier().toString();
+        for (RecipeHolder<?> holder : level.getRecipeManager().getRecipes()) {
+            String id = holder.id().toString();
             Recipe<?> recipe = holder.value();
-            if (!holder.id().identifier().getNamespace().equals(modId) || recipe.isSpecial()) {
+            if (!holder.id().getNamespace().equals(modId) || recipe.isSpecial()) {
                 continue;
             }
 
@@ -95,21 +137,20 @@ public final class CommonTests {
             List<ItemStack> tried = List.of();
             if (recipe instanceof ShapedRecipe shaped) {
                 List<ItemStack> grid = new ArrayList<>();
-                shaped.getIngredients().forEach(ingredient -> grid.add(ingredient.isPresent() ? first(ingredient.get()) : ItemStack.EMPTY));
+                shaped.getIngredients().forEach(ingredient -> grid.add(ingredient.isEmpty() ? ItemStack.EMPTY : first(ingredient)));
                 tried = grid;
                 CraftingInput input = grid.contains(null) ? null : CraftingInput.of(shaped.getWidth(), shaped.getHeight(), grid);
-                made = input == null ? null : shaped.matches(input, level) ? shaped.assemble(input) : ItemStack.EMPTY;
+                made = input == null ? null : shaped.matches(input, level) ? shaped.assemble(input, level.registryAccess()) : ItemStack.EMPTY;
             } else if (recipe instanceof ShapelessRecipe shapeless) {
                 List<ItemStack> items = new ArrayList<>();
-                shapeless.placementInfo().ingredients().forEach(ingredient -> items.add(first(ingredient)));
+                shapeless.getIngredients().forEach(ingredient -> items.add(first(ingredient)));
                 tried = items;
-                // A recipe with an ingredient nothing matches has no placement at all, so it lists no ingredients.
-                CraftingInput input = items.contains(null) || shapeless.placementInfo().isImpossibleToPlace() ? null : CraftingInput.of(items.size(), 1, items);
-                made = input == null ? null : shapeless.matches(input, level) ? shapeless.assemble(input) : ItemStack.EMPTY;
+                CraftingInput input = items.contains(null) ? null : CraftingInput.of(items.size(), 1, items);
+                made = input == null ? null : shapeless.matches(input, level) ? shapeless.assemble(input, level.registryAccess()) : ItemStack.EMPTY;
             } else if (recipe instanceof AbstractCookingRecipe cooking) {
-                ItemStack item = first(cooking.input());
+                ItemStack item = first(cooking.getIngredients().getFirst());
                 SingleRecipeInput input = item == null ? null : new SingleRecipeInput(item);
-                made = input == null ? null : cooking.matches(input, level) ? cooking.assemble(input) : ItemStack.EMPTY;
+                made = input == null ? null : cooking.matches(input, level) ? cooking.assemble(input, level.registryAccess()) : ItemStack.EMPTY;
             } else {
                 continue;
             }
@@ -133,12 +174,13 @@ public final class CommonTests {
         List<String> problems = new ArrayList<>();
 
         for (Block block : blocks(modId)) {
-            if (block.getLootTable().isEmpty()) {
+            ResourceKey<LootTable> key = block.getLootTable();
+            if (key == BuiltInLootTables.EMPTY) {
                 continue;
             }
-            LootTable table = level.getServer().reloadableRegistries().getLootTable(block.getLootTable().get());
+            LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
             if (table == LootTable.EMPTY) {
-                problems.add(BuiltInRegistries.BLOCK.getKey(block) + " names loot table " + block.getLootTable().get().identifier() + ", which does not exist");
+                problems.add(BuiltInRegistries.BLOCK.getKey(block) + " names loot table " + key.location() + ", which does not exist");
                 continue;
             }
             // A table with no pools drops nothing on purpose, as a cake's does, and one naming an absent mod waits on it.
@@ -224,7 +266,7 @@ public final class CommonTests {
 
         List<String> problems = new ArrayList<>();
         for (Item item : BuiltInRegistries.ITEM) {
-            Identifier id = BuiltInRegistries.ITEM.getKey(item);
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             if (id.getNamespace().equals(modId) && !shown.contains(item) && !hiddenItems.contains(id.getPath())) {
                 problems.add(id.toString());
             }
@@ -235,24 +277,23 @@ public final class CommonTests {
     /** Upgrade recipes of the {@code locked_upgrading} kind whose result drops the name, contents or lock of the item it upgrades. */
     public static List<String> upgradesThatLoseTheirData(GameTestHelper helper, String modId) {
         ServerLevel level = helper.getLevel();
-        ContextMap context = SlotDisplayContext.fromLevel(level);
         List<String> problems = new ArrayList<>();
         int checked = 0;
 
-        for (RecipeHolder<?> holder : level.recipeAccess().getRecipes()) {
-            if (!(holder.value() instanceof CraftingRecipe recipe) || !holder.id().identifier().getNamespace().equals(modId)
-                    || !"locked_upgrading".equals(BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer()).getPath())
-                    || !(recipe.display().getFirst() instanceof ShapedCraftingRecipeDisplay shape)) {
+        for (RecipeHolder<?> holder : level.getRecipeManager().getRecipes()) {
+            if (!(holder.value() instanceof ShapedRecipe recipe) || !holder.id().getNamespace().equals(modId)
+                    || !"locked_upgrading".equals(BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer()).getPath())) {
                 continue;
             }
 
             // The mod's own storage item is the one upgraded; a vanilla one in a level 0 tag carries nothing to keep.
             boolean marked = false;
             List<ItemStack> grid = new ArrayList<>();
-            for (SlotDisplay slot : shape.ingredients()) {
-                ItemStack stack = slot.resolveForStacks(context).stream()
+            for (Ingredient slot : recipe.getIngredients()) {
+                ItemStack[] candidates = slot.getItems();
+                ItemStack stack = Arrays.stream(candidates)
                         .filter(candidate -> BuiltInRegistries.ITEM.getKey(candidate.getItem()).getNamespace().equals(modId))
-                        .findFirst().orElseGet(() -> slot.resolveForFirstStack(context)).copy();
+                        .findFirst().orElse(candidates.length > 0 ? candidates[0] : ItemStack.EMPTY).copy();
                 if (!stack.isEmpty() && BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace().equals(modId)) {
                     stack.set(DataComponents.CUSTOM_NAME, Component.literal("Kept"));
                     marked = true;
@@ -264,13 +305,13 @@ public final class CommonTests {
             }
             checked++;
 
-            CraftingInput input = CraftingInput.of(shape.width(), shape.height(), grid);
-            String id = holder.id().identifier().toString();
+            CraftingInput input = CraftingInput.of(recipe.getWidth(), recipe.getHeight(), grid);
+            String id = holder.id().toString();
             if (!recipe.matches(input, level)) {
                 problems.add(id + " does not match its own ingredients");
                 continue;
             }
-            Component name = recipe.assemble(input).get(DataComponents.CUSTOM_NAME);
+            Component name = recipe.assemble(input, level.registryAccess()).get(DataComponents.CUSTOM_NAME);
             if (name == null || !name.getString().equals("Kept")) {
                 problems.add(id + " drops what the upgraded item carried");
             }
@@ -297,10 +338,16 @@ public final class CommonTests {
         return BuiltInRegistries.BLOCK.stream().filter(block -> BuiltInRegistries.BLOCK.getKey(block).getNamespace().equals(modId)).toList();
     }
 
-    /** Null when the ingredient matches nothing, such as an empty tag. */
+    /**
+     * Null when the ingredient matches nothing, such as an empty tag. NeoForge lists an empty tag as one barrier
+     * named {@code Empty Tag: <tag>}, which nothing matches either.
+     */
     private static ItemStack first(Ingredient ingredient) {
-        Optional<Holder<Item>> item = ingredient.items().findFirst();
-        return item.map(ItemStack::new).orElse(null);
+        ItemStack[] items = ingredient.getItems();
+        if (items.length == 0 || items[0].is(Items.BARRIER) && items[0].getHoverName().getString().startsWith("Empty Tag: ")) {
+            return null;
+        }
+        return items[0].copy();
     }
 
     private static void report(GameTestHelper helper, List<String> problems, String what) {

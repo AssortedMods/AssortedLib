@@ -1,11 +1,13 @@
 package com.grim3212.assorted.lib.mixin.client.render.block;
 
 import com.grim3212.assorted.lib.core.block.IBlockLightEmission;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
-import net.minecraft.client.renderer.block.BlockQuadOutput;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,7 +28,7 @@ public abstract class ModelBlockRendererWorldlyBlockMixin {
                     target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"
             )
     )
-    private int assortedlib_handleWorldlyBlocksWhichDoNotEmitDefaultLightForAO(final BlockState instance, final BlockQuadOutput output, final float x, final float y, final float z, final BlockAndTintGetter level, final BlockPos pos, final BlockState blockState, final BlockStateModel model, final long seed) {
+    private int assortedlib_handleWorldlyBlocksWhichDoNotEmitDefaultLightForAO(final BlockState instance, final BlockAndTintGetter level, final BakedModel model, final BlockState blockState, final BlockPos pos, final PoseStack poseStack, final VertexConsumer consumer, final boolean checkSides, final RandomSource random, final long seed, final int packedOverlay) {
         if (instance.getBlock() instanceof IBlockLightEmission extraProperties) {
             return extraProperties.getLightEmission(instance, level, pos);
         }

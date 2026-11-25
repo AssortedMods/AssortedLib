@@ -2,17 +2,20 @@ package com.grim3212.assorted.lib.spawn;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.conditions.LibParts;
-import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.Identifier;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -20,18 +23,22 @@ import java.util.Map;
  * Plain JsonOps: nothing in a habit needs registry ops, see {@link EntrySet}. The map is swapped whole,
  * so the spawner reads a consistent set and a datapack reload takes effect at the next tick.
  */
-public final class SpawnHabits extends SimpleJsonResourceReloadListener<SpawnHabit> {
+public final class SpawnHabits extends SimpleJsonResourceReloadListener {
 
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "spawn_habits");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "spawn_habits");
 
-    private static volatile Map<Identifier, SpawnHabit> habits = Map.of();
+    private static volatile Map<ResourceLocation, SpawnHabit> habits = Map.of();
 
     public SpawnHabits() {
-        super(SpawnHabit.CODEC, FileToIdConverter.json("spawn_habit"));
+        super(new Gson(), "spawn_habit");
     }
 
     @Override
-    protected void apply(Map<Identifier, SpawnHabit> loaded, ResourceManager manager, ProfilerFiller profiler) {
+    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
+        Map<ResourceLocation, SpawnHabit> loaded = new HashMap<>();
+        files.forEach((id, json) -> SpawnHabit.CODEC.parse(JsonOps.INSTANCE, json)
+                .resultOrPartial(error -> LibConstants.LOG.error("Couldn't parse spawn habit {}: {}", id, error))
+                .ifPresent(habit -> loaded.put(id, habit)));
         loaded.forEach((id, habit) -> habit.part().filter(part -> !LibParts.isRegistered(part))
                 .ifPresent(part -> LibConstants.LOG.warn("Spawn habit {} names part '{}', which no mod registered; it will never spawn", id, part)));
         loaded.forEach((id, habit) -> {
@@ -45,8 +52,8 @@ public final class SpawnHabits extends SimpleJsonResourceReloadListener<SpawnHab
 
     /** Every habit's seed roll for a chunk that is generating; from NaturalSpawnerSeedMixin, on a worldgen thread. */
     public static void seedChunk(ServerLevelAccessor level, ChunkPos chunk, RandomSource random) {
-        Map<Identifier, SpawnHabit> loaded = habits;
-        if (loaded.isEmpty() || !level.getLevel().getGameRules().get(GameRules.SPAWN_MOBS)) {
+        Map<ResourceLocation, SpawnHabit> loaded = habits;
+        if (loaded.isEmpty() || !level.getLevel().getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) {
             return;
         }
         for (SpawnHabit habit : loaded.values()) {
@@ -54,12 +61,12 @@ public final class SpawnHabits extends SimpleJsonResourceReloadListener<SpawnHab
         }
     }
 
-    public static Map<Identifier, SpawnHabit> all() {
+    public static Map<ResourceLocation, SpawnHabit> all() {
         return habits;
     }
 
     @Nullable
-    public static SpawnHabit get(Identifier id) {
+    public static SpawnHabit get(ResourceLocation id) {
         return habits.get(id);
     }
 }

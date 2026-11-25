@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.Advancement;
-import net.minecraft.core.HolderGetter;
+import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
@@ -17,8 +17,10 @@ public final class HandWrittenData {
     /** Takes every entry and tag as present, as hand-written json names other mods' content that datagen never loads. */
     private static final RegistryOps<JsonElement> OPS = RegistryOps.create(JsonOps.INSTANCE, new RegistryOps.RegistryInfoLookup() {
         @Override
-        public <T> Optional<HolderGetter<T>> lookup(ResourceKey<? extends Registry<? extends T>> registryKey) {
-            return Optional.of(new AnyEntryLookup<>());
+        public <T> Optional<RegistryOps.RegistryInfo<T>> lookup(ResourceKey<? extends Registry<? extends T>> registryKey) {
+            @SuppressWarnings("unchecked") // The lookup is asked for a registry of T, whatever wildcard it is spelt with.
+            AnyEntryLookup<T> lookup = new AnyEntryLookup<>((ResourceKey<? extends Registry<T>>) registryKey);
+            return Optional.of(new RegistryOps.RegistryInfo<>(lookup.owner(), lookup, Lifecycle.stable()));
         }
     });
 

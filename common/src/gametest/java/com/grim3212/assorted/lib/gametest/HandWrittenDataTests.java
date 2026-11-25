@@ -31,17 +31,17 @@ final class HandWrittenDataTests {
         out.accept("hand_written_advancements_are_checked", HandWrittenDataTests::advancementsAreChecked);
     }
 
-    /** 26.2 named the unlocked recipe {@code recipe}; 26.3 reads {@code recipes} and refused the old files at load. */
+    /** 1.21.1 names the unlocked recipe {@code recipe}; a file spelling it {@code recipes}, as 26.3 does, is refused at load. */
     private static void advancementsAreChecked(GameTestHelper helper) {
-        HandWrittenData.advancement(unlock("recipes"));
+        HandWrittenData.advancement(unlock("recipe"));
 
         try {
-            HandWrittenData.advancement(unlock("recipe"));
+            HandWrittenData.advancement(unlock("recipes"));
         } catch (IllegalStateException expected) {
             helper.succeed();
             return;
         }
-        helper.fail("An unlock advancement with 26.2's recipe key passed the check");
+        helper.fail("An unlock advancement with 26.3's recipes key passed the check");
     }
 
     private static JsonObject unlock(String recipeKey) {

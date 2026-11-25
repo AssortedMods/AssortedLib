@@ -29,8 +29,7 @@ public class FabricIngredientHelper implements IIngredientHelper {
 
     @Override
     public Ingredient or(Ingredient... ingredients) {
-        // An Ingredient may not be empty in 26.2 - vanilla spells "none" as Optional<Ingredient> -
-        // so an empty OR is rejected here rather than silently matching nothing.
+        // An empty OR would silently match nothing, so it is rejected here, as NeoForge does.
         if (ingredients.length == 0)
             throw new IllegalArgumentException("You must supply at least 1 ingredient for an OR!");
 
@@ -44,7 +43,7 @@ public class FabricIngredientHelper implements IIngredientHelper {
 
     @Override
     public Ingredient nbt(ItemStack item) {
-        // NBT is gone; the strict variant is now a component patch match against the stack.
+        // Stacks carry data components rather than NBT, so the strict match is a component patch match.
         return DefaultCustomIngredients.components(item);
     }
 

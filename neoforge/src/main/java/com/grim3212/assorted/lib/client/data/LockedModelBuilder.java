@@ -2,45 +2,39 @@ package com.grim3212.assorted.lib.client.data;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
-import net.minecraft.resources.Identifier;
-import net.neoforged.neoforge.client.model.generators.template.CustomLoaderBuilder;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.client.model.generators.ModelBuilder;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.function.BiFunction;
 
 /**
  * Writes the loader block of a {@code LockedModel} under the loader name a mod registered it as. The children are
- * model ids, {@code {"unlocked": "ns:block/foo_unlocked", "locked": "ns:block/foo_locked"}}.
+ * model ids, {@code {"unlocked": "ns:block/foo_unlocked", "locked": "ns:block/foo_locked"}}. Used as
+ * {@code builder.customLoader(LockedModelBuilder.begin(loaderName))}.
  */
-public class LockedModelBuilder extends LibCustomLoaderBuilder {
+public class LockedModelBuilder<T extends ModelBuilder<T>> extends LibCustomLoaderBuilder<T> {
 
-    private final Identifier loaderName;
-    private @Nullable Identifier unlockedModel;
-    private @Nullable Identifier lockedModel;
+    private @Nullable ResourceLocation unlockedModel;
+    private @Nullable ResourceLocation lockedModel;
 
-    protected LockedModelBuilder(Identifier loaderName) {
-        super(loaderName, false);
-        this.loaderName = loaderName;
+    protected LockedModelBuilder(ResourceLocation loaderName, T parent, ExistingFileHelper existingFileHelper) {
+        super(loaderName, parent, existingFileHelper, false);
     }
 
-    public static LockedModelBuilder begin(Identifier loaderName) {
-        return new LockedModelBuilder(loaderName);
+    public static <T extends ModelBuilder<T>> BiFunction<T, ExistingFileHelper, LockedModelBuilder<T>> begin(ResourceLocation loaderName) {
+        return (parent, existingFileHelper) -> new LockedModelBuilder<>(loaderName, parent, existingFileHelper);
     }
 
-    public LockedModelBuilder unlockedModel(Identifier unlockedModel) {
+    public LockedModelBuilder<T> unlockedModel(ResourceLocation unlockedModel) {
         this.unlockedModel = unlockedModel;
         return this;
     }
 
-    public LockedModelBuilder lockedModel(Identifier lockedModel) {
+    public LockedModelBuilder<T> lockedModel(ResourceLocation lockedModel) {
         this.lockedModel = lockedModel;
         return this;
-    }
-
-    @Override
-    protected CustomLoaderBuilder copyInternal() {
-        LockedModelBuilder copy = new LockedModelBuilder(this.loaderName);
-        copy.unlockedModel = this.unlockedModel;
-        copy.lockedModel = this.lockedModel;
-        return copy;
     }
 
     @Override

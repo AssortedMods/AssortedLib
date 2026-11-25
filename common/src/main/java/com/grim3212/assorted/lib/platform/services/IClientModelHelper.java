@@ -3,9 +3,16 @@ package com.grim3212.assorted.lib.platform.services;
 import com.grim3212.assorted.lib.client.model.data.IBlockModelData;
 import com.grim3212.assorted.lib.client.model.data.IModelDataBuilder;
 import com.grim3212.assorted.lib.client.model.data.IModelDataKey;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Collection;
+import java.util.List;
 
 public interface IClientModelHelper {
     /**
@@ -34,16 +41,26 @@ public interface IClientModelHelper {
     @NotNull <T> IModelDataKey<T> createNewModelDataKey();
 
     /**
-     * Adapts a vanilla {@link BlockStateModel} to this loader's own model implementation, unlocking
-     * loader-specific functionality where there is any.
+     * Adapts a vanilla {@link BakedModel} to this loader's own model implementation, unlocking
+     * loader-specific functionality where there is any. An
+     * {@link com.grim3212.assorted.lib.client.model.baked.IDataAwareBakedModel} comes back wrapped in
+     * the loader's delegate, which feeds it the model data of the position it is drawn at.
      */
-    BlockStateModel adaptToPlatform(final BlockStateModel model);
+    BakedModel adaptToPlatform(final BakedModel model);
 
-    // No model lookup or render type queries here any more, because 26.2 has no answer either loader
-    // can give honestly:
-    //  - an UnbakedModel can only be resolved through a ModelBaker, mid-bake, so a model that needs
-    //    one takes an IModelBakingContext instead of asking this service;
-    //  - a block model does not declare its render types (a terrain layer comes per quad from
-    //    BakedQuad.MaterialInfo) and a fluid has only the ChunkSectionLayer on its baked FluidModel,
-    //    so a caller that must know reads the layer itself.
+    /**
+     * The chunk layers {@code model} draws {@code state} in, asked the way the loader asks: on
+     * NeoForge through the model ({@code render_type} in its json, or the model's own answer), on
+     * Fabric through the block's registered layer. Meant for a model one of ours stands in for, such
+     * as a colorizer's stored block; a data aware model asking about itself would be asked back.
+     */
+    @NotNull
+    Collection<RenderType> getRenderTypesFor(BakedModel model, BlockState state, RandomSource rand, IBlockModelData data);
+
+    /**
+     * The render types {@code model} draws {@code stack} with as an item, asked the way the loader
+     * asks. The same rule applies as for the block form: for a foreign model only.
+     */
+    @NotNull
+    List<RenderType> getRenderTypesFor(BakedModel model, ItemStack stack, boolean fabulous);
 }

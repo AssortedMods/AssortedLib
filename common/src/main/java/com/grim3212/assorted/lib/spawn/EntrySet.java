@@ -6,7 +6,6 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
 import java.util.Set;
@@ -19,7 +18,12 @@ import java.util.Set;
 public record EntrySet<T>(Either<TagKey<T>, Set<ResourceKey<T>>> entries) {
 
     public static <T> Codec<EntrySet<T>> codec(ResourceKey<? extends Registry<T>> registry) {
-        Codec<Set<ResourceKey<T>>> keys = ExtraCodecs.compactListCodec(ResourceKey.codec(registry)).xmap(Set::copyOf, List::copyOf);
+        Codec<ResourceKey<T>> one = ResourceKey.codec(registry);
+        // One id on its own, or a list of them.
+        Codec<List<ResourceKey<T>>> list = Codec.either(one, one.listOf()).xmap(
+                either -> either.map(List::of, many -> many),
+                many -> many.size() == 1 ? Either.left(many.get(0)) : Either.right(many));
+        Codec<Set<ResourceKey<T>>> keys = list.xmap(Set::copyOf, List::copyOf);
         return Codec.either(TagKey.hashedCodec(registry), keys).xmap(EntrySet::new, EntrySet::entries);
     }
 

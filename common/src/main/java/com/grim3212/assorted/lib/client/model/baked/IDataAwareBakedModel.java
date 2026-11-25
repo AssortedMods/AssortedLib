@@ -1,48 +1,67 @@
 package com.grim3212.assorted.lib.client.model.baked;
 
 import com.grim3212.assorted.lib.client.model.data.IBlockModelData;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
- * A {@link BlockStateModel} whose geometry also depends on the model data a block entity exposes.
- * Vanilla's {@link BlockStateModel#collectParts(RandomSource, List)} gets no level, position or
- * data, so the loader delegates ({@code FabricBakedModelDelegate}, {@code ForgeBakedModelDelegate})
- * route the data in here; vanilla call sites get {@linkplain IBlockModelData#empty() empty} data.
- * The model is baked per {@link BlockState}, so capture the state while baking.
+ * A {@link BakedModel} whose geometry also depends on the model data a block entity exposes.
+ * Vanilla's {@link BakedModel#getQuads(BlockState, Direction, RandomSource)} gets no data, so the
+ * loader delegates ({@code FabricBakedModelDelegate}, {@code ForgeBakedModelDelegate}) route the
+ * data of the position being drawn in here; vanilla call sites get
+ * {@linkplain IBlockModelData#empty() empty} data. Wrap a model in its delegate with
+ * {@code ClientServices.MODELS.adaptToPlatform}.
+ * <p>
+ * The item form of such a model reads its data from the stack instead: give the model
+ * {@link com.grim3212.assorted.lib.client.model.item.DataAwareItemOverrides} as its
+ * {@link #getOverrides() overrides}.
  */
-public interface IDataAwareBakedModel extends BlockStateModel {
+public interface IDataAwareBakedModel extends BakedModel {
 
     /**
-     * Collects the parts of this model for {@code extraData} into {@code output}. {@code random} is
-     * seeded from the block position.
+     * The quads of this model for {@code extraData}.
+     *
+     * @param renderType The chunk layer being drawn, or null when the caller wants every layer.
      */
-    void collectParts(@NotNull RandomSource random, @NotNull IBlockModelData extraData, @NotNull List<BlockStateModelPart> output);
+    @NotNull
+    List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, @NotNull RandomSource rand, @NotNull IBlockModelData extraData, @Nullable RenderType renderType);
 
     /**
      * The particle sprite for {@code extraData}. Break and hit particles read this rather than the
      * geometry, so a model textured from a block entity must answer it from the data too.
      */
-    // Deprecated by NeoForge in favour of the level/pos aware overload the delegates implement.
-    @SuppressWarnings("deprecation")
-    default Material.Baked particleMaterial(@NotNull IBlockModelData extraData) {
-        return particleMaterial();
+    @SuppressWarnings("deprecation") // NeoForge deprecates this vanilla method for its own ModelData overload, which common cannot see
+    default TextureAtlasSprite getParticleIcon(@NotNull IBlockModelData extraData) {
+        return getParticleIcon();
     }
 
-    // Deprecated by NeoForge in favour of a level/pos aware overload that only exists in its patched
-    // jar; vanilla still declares this one abstract, so it has to be implemented here.
-    @SuppressWarnings("deprecation")
+    /**
+     * The chunk layers this model draws {@code state} in for {@code data}. Each is then asked for
+     * its quads through {@link #getQuads(BlockState, Direction, RandomSource, IBlockModelData, RenderType)}.
+     */
+    @NotNull
+    Collection<RenderType> getSupportedRenderTypes(BlockState state, RandomSource rand, IBlockModelData data);
+
+    /**
+     * The render types this model draws {@code stack} with as an item.
+     */
+    @NotNull
+    List<RenderType> getSupportedRenderTypes(ItemStack stack, boolean fabulous);
+
+    @SuppressWarnings("deprecation") // NeoForge deprecates this vanilla method for its own ModelData overload, which common cannot see
     @Override
-    default void collectParts(@NotNull RandomSource random, @NotNull List<BlockStateModelPart> output) {
-        collectParts(random, IBlockModelData.empty(), output);
+    default List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand) {
+        return getQuads(state, side, rand, IBlockModelData.empty(), null);
     }
-
-    // getSupportedRenderTypes is gone: a quad's layer comes from its sprite's transparency
-    // (MaterialInfo#layer()), so a model has no render type to answer.
 }

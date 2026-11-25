@@ -15,15 +15,15 @@ public final class ClientTransformationUtils {
             stack.pushPose();
         }
 
-        Vector3fc trans = transformation.translation();
+        Vector3fc trans = transformation.getTranslation();
         stack.translate(trans.x(), trans.y(), trans.z());
 
-        stack.rotate(transformation.leftRotation());
+        stack.mulPose(transformation.getLeftRotation());
 
-        Vector3fc scale = transformation.scale();
+        Vector3fc scale = transformation.getScale();
         stack.scale(scale.x(), scale.y(), scale.z());
 
-        stack.rotate(transformation.rightRotation());
+        stack.mulPose(transformation.getRightRotation());
     }
 
 }

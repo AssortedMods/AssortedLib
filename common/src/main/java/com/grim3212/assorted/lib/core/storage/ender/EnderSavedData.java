@@ -3,22 +3,24 @@ package com.grim3212.assorted.lib.core.storage.ender;
 import com.google.common.collect.Maps;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import com.grim3212.assorted.lib.LibConstants;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
-import net.minecraft.world.level.storage.SavedDataStorage;
+import net.minecraft.world.level.storage.DimensionDataStorage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * The locked ender chest inventories, one per lock code, saved through a {@link SavedDataType}
- * codec.
+ * The locked ender chest inventories, one per lock code, saved through {@link #CODEC} into the
+ * overworld's data storage.
  */
 public class EnderSavedData extends SavedData implements IEnderData {
 
@@ -28,8 +30,9 @@ public class EnderSavedData extends SavedData implements IEnderData {
             Codec.unboundedMap(Codec.STRING, ItemStack.OPTIONAL_CODEC.listOf()).optionalFieldOf("locked_ender_chests", Map.of()).forGetter(EnderSavedData::writeChests)
     ).apply(instance, EnderSavedData::new));
 
-    // Assorted Storage's id, kept so worlds saved before this moved here find their inventories
-    public static final SavedDataType<EnderSavedData> TYPE = new SavedDataType<>(Identifier.fromNamespaceAndPath("assortedstorage", "locked_ender_saved_data"), EnderSavedData::new, CODEC, DataFixTypes.LEVEL);
+    // Assorted Storage's file name, kept so worlds saved before this moved here find their inventories
+    public static final String ID = "locked_ender_saved_data";
+    public static final SavedData.Factory<EnderSavedData> FACTORY = new SavedData.Factory<>(EnderSavedData::new, EnderSavedData::load, DataFixTypes.LEVEL);
 
     private final EnderData enderData = new EnderData();
 
@@ -67,8 +70,22 @@ public class EnderSavedData extends SavedData implements IEnderData {
             return DUMMY_SAVE;
         }
 
-        SavedDataStorage storage = world.getServer().overworld().getDataStorage();
-        return storage.computeIfAbsent(TYPE);
+        DimensionDataStorage storage = world.getServer().overworld().getDataStorage();
+        return storage.computeIfAbsent(FACTORY, ID);
+    }
+
+    private static EnderSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
+        return CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag)
+                .resultOrPartial(error -> LibConstants.LOG.error("Failed to read locked ender chests: {}", error))
+                .orElseGet(EnderSavedData::new);
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), this)
+                .resultOrPartial(error -> LibConstants.LOG.error("Failed to save locked ender chests: {}", error))
+                .ifPresent(encoded -> tag.merge((CompoundTag) encoded));
+        return tag;
     }
 
     @Override

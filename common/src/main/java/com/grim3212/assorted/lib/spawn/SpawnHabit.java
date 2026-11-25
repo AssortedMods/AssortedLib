@@ -15,9 +15,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.player.Player;
@@ -135,22 +135,22 @@ public record SpawnHabit(EntityType<?> entity, Optional<String> part, int interv
         for (int attempt = 0; attempt < wanted * 2 && pack.size() < wanted; attempt++) {
             BlockPos pos = attempt == 0 ? first : this.site.find(level, this.scatter(first, random, within), random);
             if (pos == null || isTaken(pack, pos) || !this.fits(level, pos)
-                    || !SpawnPlacements.isSpawnPositionOk(this.entity, level, pos) || !SpawnPlacements.checkSpawnRules(this.entity, level, EntitySpawnReason.NATURAL, pos, random)) {
+                    || !SpawnPlacements.isSpawnPositionOk(this.entity, level, pos) || !SpawnPlacements.checkSpawnRules(this.entity, level, MobSpawnType.NATURAL, pos, random)) {
                 continue;
             }
-            Entity created = this.entity.create(level.getLevel(), EntitySpawnReason.NATURAL);
+            Entity created = this.entity.create(level.getLevel());
             if (!(created instanceof Mob mob)) {
                 if (created != null) {
                     created.discard();
                 }
                 break;
             }
-            mob.snapTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, random.nextFloat() * 360.0F, 0.0F);
-            if (!mob.checkSpawnRules(level, EntitySpawnReason.NATURAL) || !mob.checkSpawnObstruction(level)) {
+            mob.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, random.nextFloat() * 360.0F, 0.0F);
+            if (!mob.checkSpawnRules(level, MobSpawnType.NATURAL) || !mob.checkSpawnObstruction(level)) {
                 mob.discard();
                 continue;
             }
-            groupData = Services.PLATFORM.finalizeSpawn(mob, level, level.getCurrentDifficultyAt(pos), EntitySpawnReason.NATURAL, groupData);
+            groupData = Services.PLATFORM.finalizeSpawn(mob, level, level.getCurrentDifficultyAt(pos), MobSpawnType.NATURAL, groupData);
             if (this.persistent) {
                 mob.setPersistenceRequired();
             }
@@ -218,7 +218,7 @@ public record SpawnHabit(EntityType<?> entity, Optional<String> part, int interv
         if (!(state instanceof SpawnStateAccessor caps)) {
             return false;
         }
-        return caps.assortedlib_canSpawnForCategoryGlobal(this.entity.getCategory()) && caps.assortedlib_canSpawnForCategoryLocal(this.entity.getCategory(), ChunkPos.containing(pos));
+        return caps.assortedlib_canSpawnForCategory(this.entity.getCategory(), new ChunkPos(pos));
     }
 
     private BlockPos scatter(BlockPos first, RandomSource random, @Nullable ChunkPos within) {

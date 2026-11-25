@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.client.key.IKeyConflictHelper;
 import com.grim3212.assorted.lib.client.key.KeyModifier;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public interface IKeyBindingHelper {
 
@@ -28,7 +28,7 @@ public interface IKeyBindingHelper {
      * @param category the category id; its label {@code key.category.<namespace>.<path>} is the
      *                 caller's to translate
      */
-    KeyMapping createNew(String translationKey, IKeyConflictHelper keyConflictContext, InputConstants.Type inputType, int key, Identifier category);
+    KeyMapping createNew(String translationKey, IKeyConflictHelper keyConflictContext, InputConstants.Type inputType, int key, ResourceLocation category);
 
     /**
      * Creates a key mapping, with a conflict context where the loader supports one.
@@ -36,7 +36,7 @@ public interface IKeyBindingHelper {
      * @param category the category id; its label {@code key.category.<namespace>.<path>} is the
      *                 caller's to translate
      */
-    KeyMapping createNew(String translationKey, IKeyConflictHelper keyConflictContext, KeyModifier keyModifier, InputConstants.Type inputType, int key, Identifier category);
+    KeyMapping createNew(String translationKey, IKeyConflictHelper keyConflictContext, KeyModifier keyModifier, InputConstants.Type inputType, int key, ResourceLocation category);
 
     /** Whether the key mapping's conflict context is active. */
     boolean isKeyConflictOfActive(KeyMapping keybinding);

@@ -8,22 +8,24 @@ import com.grim3212.assorted.lib.conditions.TagPopulatedCondition;
 import com.grim3212.assorted.lib.core.conditions.LibCondition;
 import com.grim3212.assorted.lib.core.conditions.LibConditionProvider;
 import com.grim3212.assorted.lib.platform.services.IConditionHelper;
-import net.minecraft.core.Holder;
-import net.minecraft.core.HolderGetter;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.Registry;
-import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.crafting.Recipe;
+import net.neoforged.neoforge.common.conditions.AndCondition;
 import net.neoforged.neoforge.common.conditions.ICondition;
-import net.neoforged.neoforge.common.conditions.NeoForgeConditions;
+import net.neoforged.neoforge.common.conditions.ItemExistsCondition;
+import net.neoforged.neoforge.common.conditions.ModLoadedCondition;
+import net.neoforged.neoforge.common.conditions.NotCondition;
+import net.neoforged.neoforge.common.conditions.OrCondition;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -39,39 +41,38 @@ public class ForgeConditionHelper implements IConditionHelper {
     }
 
     @Override
-    public <T> BootstrapContext<T> conditionalContext(BootstrapContext<T> context, Function<ResourceKey<T>, List<LibConditionProvider>> conditions) {
-        return new ConditionalContext<>(context, conditions);
+    public RecipeOutput conditionalOutput(RecipeOutput output, Function<ResourceLocation, List<LibConditionProvider>> conditions) {
+        return new ConditionalOutput(output, conditions);
     }
 
     @Override
-    public void register(Identifier name, LibCondition condition) {
+    public void register(ResourceLocation name, LibCondition condition) {
         LibConditions.register(name, condition);
     }
 
     @Override
     public LibConditionProvider and(LibConditionProvider... values) {
-        return wrap(NeoForgeConditions.and(unwrapAll(values)));
+        return wrap(new AndCondition(List.of(unwrapAll(values))));
     }
 
     @Override
     public LibConditionProvider not(LibConditionProvider value) {
-        return wrap(NeoForgeConditions.not(unwrap(value)));
+        return wrap(new NotCondition(unwrap(value)));
     }
 
     @Override
     public LibConditionProvider or(LibConditionProvider... values) {
-        return wrap(NeoForgeConditions.or(unwrapAll(values)));
+        return wrap(new OrCondition(List.of(unwrapAll(values))));
     }
 
     @Override
-    public LibConditionProvider blockExists(Identifier block) {
+    public LibConditionProvider blockExists(ResourceLocation block) {
         return wrap(new BlockExistsCondition(block));
     }
 
     @Override
-    public LibConditionProvider itemExists(Identifier item) {
-        // NeoForge ships this one itself now, as a generic "is this key registered" condition.
-        return wrap(NeoForgeConditions.itemRegistered(item));
+    public LibConditionProvider itemExists(ResourceLocation item) {
+        return wrap(new ItemExistsCondition(item));
     }
 
     @Override
@@ -86,7 +87,7 @@ public class ForgeConditionHelper implements IConditionHelper {
 
     @Override
     public LibConditionProvider modLoaded(String modId) {
-        return wrap(NeoForgeConditions.modLoaded(modId));
+        return wrap(new ModLoadedCondition(modId));
     }
 
     @Override
@@ -115,41 +116,26 @@ public class ForgeConditionHelper implements IConditionHelper {
     }
 
     /**
-     * Adds each entry's conditions to any the caller passes. Both overloads are overridden: vanilla calls the
-     * plain one, and NeoForge's default for the other drops the conditions.
+     * Adds each recipe's conditions to any the caller passes. NeoForge writes the recipe's unlock
+     * advancement with the same conditions, so both come and go together.
      */
-    private record ConditionalContext<T>(BootstrapContext<T> delegate, Function<ResourceKey<T>, List<LibConditionProvider>> conditions) implements BootstrapContext<T> {
+    private record ConditionalOutput(RecipeOutput delegate, Function<ResourceLocation, List<LibConditionProvider>> conditions) implements RecipeOutput {
 
         @Override
-        public Holder.Reference<T> register(ResourceKey<T> key, T value) {
-            return this.register(key, value, new ICondition[0]);
+        public Advancement.Builder advancement() {
+            return this.delegate.advancement();
         }
 
         @Override
-        public Holder.Reference<T> register(ResourceKey<T> key, T value, ICondition... extraConditions) {
-            List<LibConditionProvider> registered = this.conditions.apply(key);
+        public void accept(ResourceLocation id, Recipe<?> recipe, @Nullable AdvancementHolder advancement, ICondition... extraConditions) {
+            List<LibConditionProvider> registered = this.conditions.apply(id);
             if (registered == null || registered.isEmpty()) {
-                return this.delegate.register(key, value, extraConditions);
+                this.delegate.accept(id, recipe, advancement, extraConditions);
+                return;
             }
 
             ICondition[] all = Stream.concat(Arrays.stream(extraConditions), registered.stream().map(ForgeConditionHelper::unwrap)).toArray(ICondition[]::new);
-            return this.delegate.register(key, value, all);
-        }
-
-        @Override
-        public <S> HolderGetter<S> lookup(ResourceKey<? extends Registry<? extends S>> key) {
-            return this.delegate.lookup(key);
-        }
-
-        @Deprecated
-        @Override
-        public <S> Stream<Holder.Reference<S>> listContextElements(ResourceKey<? extends Registry<? extends S>> key) {
-            return this.delegate.listContextElements(key);
-        }
-
-        @Override
-        public <S> Optional<HolderLookup<S>> holderLookup(ResourceKey<? extends Registry<? extends S>> registry) {
-            return this.delegate.holderLookup(registry);
+            this.delegate.accept(id, recipe, advancement, all);
         }
     }
 }

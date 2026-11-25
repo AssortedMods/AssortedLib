@@ -5,7 +5,7 @@ import com.grim3212.assorted.lib.platform.Services;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
@@ -35,13 +35,13 @@ public final class SharedCreativeTabs {
      * The tab {@code id}, titled by {@code itemGroup.<namespace>}. Its icon is the first of {@code icons}
      * that is registered, so every mod of the family passes the same list.
      */
-    public static ResourceKey<CreativeModeTab> tab(Identifier id, List<Identifier> icons) {
-        List<Identifier> fixed = List.copyOf(icons);
+    public static ResourceKey<CreativeModeTab> tab(ResourceLocation id, List<ResourceLocation> icons) {
+        List<ResourceLocation> fixed = List.copyOf(icons);
         return tab(id, () -> fixed);
     }
 
     /** As above, with icons asked for when the tab is first drawn, so they can depend on what is switched on. */
-    public static ResourceKey<CreativeModeTab> tab(Identifier id, Supplier<List<Identifier>> icons) {
+    public static ResourceKey<CreativeModeTab> tab(ResourceLocation id, Supplier<List<ResourceLocation>> icons) {
         ResourceKey<CreativeModeTab> key = ResourceKey.create(Registries.CREATIVE_MODE_TAB, id);
         CONTENTS.computeIfAbsent(key, created -> {
             Services.PLATFORM.registerCreativeTab(id, () -> build(id, icons));
@@ -55,7 +55,7 @@ public final class SharedCreativeTabs {
     public static void add(ResourceKey<CreativeModeTab> tab, int order, Supplier<List<ItemStack>> items) {
         List<Map.Entry<Integer, Supplier<List<ItemStack>>>> contents = CONTENTS.get(tab);
         if (contents == null) {
-            throw new IllegalArgumentException("No shared creative tab " + tab.identifier() + "; ask for it with SharedCreativeTabs.tab first");
+            throw new IllegalArgumentException("No shared creative tab " + tab.location() + "; ask for it with SharedCreativeTabs.tab first");
         }
 
         contents.add(Map.entry(order, items));
@@ -71,7 +71,7 @@ public final class SharedCreativeTabs {
 
     // Built empty and filled through modifyCreativeTab; the builder is deprecated only by NeoForge's patches.
     @SuppressWarnings("deprecation")
-    private static CreativeModeTab build(Identifier id, Supplier<List<Identifier>> icons) {
+    private static CreativeModeTab build(ResourceLocation id, Supplier<List<ResourceLocation>> icons) {
         return CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable("itemGroup." + id.getNamespace()))
                 .icon(() -> icons.get().stream()

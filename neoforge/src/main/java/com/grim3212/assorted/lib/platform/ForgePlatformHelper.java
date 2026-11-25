@@ -1,13 +1,14 @@
 package com.grim3212.assorted.lib.platform;
 
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.event.EventHooks;
-import net.minecraft.world.item.component.TooltipProvider;
+import com.grim3212.assorted.lib.core.item.IStackTooltipProvider;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.core.component.DataComponentType;
 import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
 import com.grim3212.assorted.lib.core.inventory.MenuData;
@@ -22,7 +23,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.world.MenuProvider;
@@ -50,7 +51,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 
@@ -87,7 +88,7 @@ public class ForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isProduction() {
-        return FMLEnvironment.isProduction();
+        return FMLEnvironment.production;
     }
 
     @Override
@@ -103,7 +104,7 @@ public class ForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public Dist getCurrentDistribution() {
-        return switch (FMLEnvironment.getDist()) {
+        return switch (FMLEnvironment.dist) {
             case CLIENT -> Dist.CLIENT;
             case DEDICATED_SERVER -> Dist.DEDICATED_SERVER;
         };
@@ -133,26 +134,26 @@ public class ForgePlatformHelper implements IPlatformHelper {
     }
 
     // Registered on Lib's own bus by AssortedLibForge: the tab's namespace may be a mod that is not installed.
-    public static final Map<Identifier, Supplier<CreativeModeTab>> creativeTabsToRegister = new ConcurrentHashMap<>();
+    public static final Map<ResourceLocation, Supplier<CreativeModeTab>> creativeTabsToRegister = new ConcurrentHashMap<>();
 
     @Override
-    public void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab) {
+    public void registerCreativeTab(ResourceLocation id, Supplier<CreativeModeTab> tab) {
         creativeTabsToRegister.putIfAbsent(id, tab);
     }
 
-    public static final Map<Identifier, Supplier<? extends DataComponentType<?>>> componentTypesToRegister = new ConcurrentHashMap<>();
+    public static final Map<ResourceLocation, Supplier<? extends DataComponentType<?>>> componentTypesToRegister = new ConcurrentHashMap<>();
 
     @Override
-    public void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type) {
+    public void registerDataComponentType(ResourceLocation id, Supplier<? extends DataComponentType<?>> type) {
         componentTypesToRegister.putIfAbsent(id, type);
     }
 
     // Concurrent because mods are constructed in parallel.
-    public static final List<Supplier<? extends DataComponentType<? extends TooltipProvider>>> componentTooltips = new CopyOnWriteArrayList<>();
+    public static final List<Supplier<? extends DataComponentType<? extends IStackTooltipProvider>>> componentTooltips = new CopyOnWriteArrayList<>();
 
-    // Registered from AssortedLibForge's RegisterTooltipAppendersEvent listener, once the types exist.
+    // Read by AssortedLibForge's ItemTooltipEvent listener, once the types exist.
     @Override
-    public <T extends TooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type) {
+    public <T extends IStackTooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type) {
         componentTooltips.add(type);
     }
 
@@ -179,6 +180,32 @@ public class ForgePlatformHelper implements IPlatformHelper {
     public record FlammableRegistration(Supplier<? extends Block> block, int igniteOdds, int burnOdds) {
     }
 
+    public static final List<FuelRegistration> fuelsToRegister = new CopyOnWriteArrayList<>();
+    public static final List<CompostableRegistration> compostablesToRegister = new CopyOnWriteArrayList<>();
+
+    @Override
+    public void registerFuel(Supplier<? extends ItemLike> item, int burnTime) {
+        fuelsToRegister.add(new FuelRegistration(item, burnTime));
+    }
+
+    @Override
+    public void registerCompostable(Supplier<? extends ItemLike> item, float chance) {
+        compostablesToRegister.add(new CompostableRegistration(item, chance));
+    }
+
+    /** Written to NeoForge's {@code furnace_fuels} data map by {@code ForgeRegistryEntries}. */
+    public record FuelRegistration(Supplier<? extends ItemLike> item, int burnTime) {
+    }
+
+    /** Written to NeoForge's {@code compostables} data map by {@code ForgeRegistryEntries}. */
+    public record CompostableRegistration(Supplier<? extends ItemLike> item, float chance) {
+    }
+
+    @Override
+    public int getFuelTime(ItemStack stack, @Nullable RecipeType<?> recipeType) {
+        return stack.getBurnTime(recipeType);
+    }
+
     @Override
     public <T extends LivingEntity> void registerEntityAttributes(Supplier<EntityType<T>> type, Supplier<AttributeSupplier.Builder> attributes) {
         attributesToRegister.add(new AttributeRegistration<>(type, attributes));
@@ -191,7 +218,7 @@ public class ForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public @Nullable SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
+    public @Nullable SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData groupData) {
         return EventHooks.finalizeMobSpawn(mob, level, difficulty, reason, groupData);
     }
 
@@ -207,10 +234,9 @@ public class ForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public void addReloadListener(Identifier identifier, PreparableReloadListener reloadListener) {
-        // AddReloadListenerEvent was split per side and listeners are named now, so the identifier
-        // this interface has always carried finally has a use.
-        NeoForge.EVENT_BUS.addListener((AddServerReloadListenersEvent event) -> event.addListener(identifier, reloadListener));
+    public void addReloadListener(ResourceLocation identifier, PreparableReloadListener reloadListener) {
+        // NeoForge's server reload listeners are not named; the identifier is Fabric's.
+        NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent event) -> event.addListener(reloadListener));
     }
 
     // getRandomDungeonEntity is no longer overridden here. Forge's DungeonHooks is gone and there is
@@ -219,8 +245,8 @@ public class ForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public <T extends BlockEntity> BlockEntityType<T> createBlockEntityType(BiFunction<BlockPos, BlockState, T> builder, Block... blocks) {
-        // BlockEntityType.Builder is gone; the type takes its factory and valid blocks directly.
-        return new BlockEntityType<>(builder::apply, blocks);
+        // No data fixer type: a mod's block entities have no vanilla schema to fix up against.
+        return BlockEntityType.Builder.<T>of(builder::apply, blocks).build(null);
     }
 
     @Override

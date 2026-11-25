@@ -3,51 +3,46 @@ package com.grim3212.assorted.lib.platform;
 import com.grim3212.assorted.lib.core.fluid.FluidInformation;
 import com.grim3212.assorted.lib.platform.services.IClientFluidHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.client.fluid.FluidTintSource;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 
 /**
- * A fluid's textures are a baked {@link FluidModel} per {@link Fluid}, readable only once models
- * have baked, so everything resolves from the fluid alone; the extra data a {@link FluidInformation}
- * carries only still feeds the tint. Fabric's helper reads that same source.
+ * A fluid's textures and tint are the client extensions of its {@code FluidType}. The sprite is
+ * looked up on the block atlas, where fluid textures are stitched.
  */
 public class ForgeClientFluidHelper implements IClientFluidHelper {
 
     @Override
     public int getFluidColor(FluidInformation fluid) {
-        final FluidTintSource tintSource = fluidModel(fluid.fluid()).fluidTintSource();
-        return tintSource == null ? -1 : tintSource.colorAsStack(ForgeFluidManager.buildFluidStack(fluid));
+        return IClientFluidTypeExtensions.of(fluid.fluid()).getTintColor(ForgeFluidManager.buildFluidStack(fluid));
     }
 
     @Override
     public TextureAtlasSprite getSprite(FluidInformation fluid) {
-        return fluidModel(fluid.fluid()).stillMaterial().sprite();
+        final ResourceLocation still = IClientFluidTypeExtensions.of(fluid.fluid()).getStillTexture(ForgeFluidManager.buildFluidStack(fluid));
+        return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(still);
     }
 
     @Override
-    public Identifier getFlowingFluidTexture(final FluidInformation fluidInformation) {
-        return getFlowingFluidTexture(fluidInformation.fluid());
+    public ResourceLocation getFlowingFluidTexture(final FluidInformation fluidInformation) {
+        return IClientFluidTypeExtensions.of(fluidInformation.fluid()).getFlowingTexture(ForgeFluidManager.buildFluidStack(fluidInformation));
     }
 
     @Override
-    public Identifier getFlowingFluidTexture(final Fluid fluid) {
-        return fluidModel(fluid).flowingMaterial().sprite().contents().name();
+    public ResourceLocation getFlowingFluidTexture(final Fluid fluid) {
+        return IClientFluidTypeExtensions.of(fluid).getFlowingTexture();
     }
 
     @Override
-    public Identifier getStillFluidTexture(final FluidInformation fluidInformation) {
-        return getStillFluidTexture(fluidInformation.fluid());
+    public ResourceLocation getStillFluidTexture(final FluidInformation fluidInformation) {
+        return IClientFluidTypeExtensions.of(fluidInformation.fluid()).getStillTexture(ForgeFluidManager.buildFluidStack(fluidInformation));
     }
 
     @Override
-    public Identifier getStillFluidTexture(final Fluid fluid) {
-        return fluidModel(fluid).stillMaterial().sprite().contents().name();
-    }
-
-    private static FluidModel fluidModel(final Fluid fluid) {
-        return Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.defaultFluidState());
+    public ResourceLocation getStillFluidTexture(final Fluid fluid) {
+        return IClientFluidTypeExtensions.of(fluid).getStillTexture();
     }
 }

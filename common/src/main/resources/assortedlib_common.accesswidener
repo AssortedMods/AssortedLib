@@ -1,4 +1,4 @@
-accessWidener	v2	official
+accessWidener v2 named
 # Entries are reintroduced as each area is ported to 26.2.
 # The 1.20.1 list targeted ItemOverrides, SimpleBakedModel$Builder, ModelBakery$BakedCacheKey
 # and friends, all of which were removed in the 1.21.4-26.x model pipeline rewrite.

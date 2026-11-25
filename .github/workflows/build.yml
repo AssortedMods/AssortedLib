@@ -32,10 +32,6 @@ on:
         description: Version to release (blank uses the one in gradle.properties)
         type: string
         default: ''
-      client_gametests:
-        description: Also run the Fabric client gametests (a real client, under xvfb)
-        type: boolean
-        default: false
       mods:
         description: In a family repo, the mods to release or publish, comma separated (blank is all)
         type: string
@@ -62,6 +58,7 @@ jobs:
       release_type: ${{ inputs.release_type || 'release' }}
       dry_run: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run }}
       version: ${{ inputs.version }}
-      client_gametests: ${{ github.event_name == 'workflow_dispatch' && inputs.client_gametests }}
+      # No client gametests on 1.21.1: Fabric API has no client gametest module before 1.21.4.
+      client_gametests: false
       mods: ${{ inputs.mods }}
     secrets: inherit

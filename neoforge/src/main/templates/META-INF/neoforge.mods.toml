@@ -1,8 +1,10 @@
+# FML 4, which NeoForge 21.1 runs on, still requires the language loader to be named.
+modLoader = "javafml"
+loaderVersion = "[4,)"
 license = "${license}"
 logoBlur = false
 issueTrackerURL = "${issue_tracker}"
-# logoFile was deprecated in 26.x; logo.png is square, so it is the icon.
-iconFile = "logo.png"
+logoFile = "logo.png"
 
 [[mods]]
 modId = "${mod_id}"

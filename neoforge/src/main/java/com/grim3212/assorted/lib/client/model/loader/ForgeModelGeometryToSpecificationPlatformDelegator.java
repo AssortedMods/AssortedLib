@@ -1,42 +1,31 @@
 package com.grim3212.assorted.lib.client.model.loader;
 
-import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.client.model.loaders.IModelSpecification;
-import com.grim3212.assorted.lib.client.model.loaders.IModelSpecificationHolder;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.resources.model.ResolvableModel;
-import net.minecraft.client.resources.model.geometry.QuadCollection;
-import net.minecraft.client.resources.model.geometry.UnbakedGeometry;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.client.model.AbstractUnbakedModel;
-import net.neoforged.neoforge.client.model.ExtendedUnbakedGeometry;
-import net.neoforged.neoforge.client.model.StandardModelParameters;
+import com.grim3212.assorted.lib.platform.ClientServices;
+import net.minecraft.client.renderer.block.model.ItemOverrides;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.Material;
+import net.minecraft.client.resources.model.ModelBaker;
+import net.minecraft.client.resources.model.ModelState;
+import net.minecraft.client.resources.model.UnbakedModel;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.client.model.geometry.IGeometryBakingContext;
+import net.neoforged.neoforge.client.model.geometry.IUnbakedGeometry;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.Function;
 
 /**
- * Adapts an {@link IModelSpecification} onto NeoForge's unbaked model pipeline: an {@link
- * AbstractUnbakedModel} carrying the json's {@link StandardModelParameters}, whose {@link
- * #geometry()} bakes into a {@link QuadCollection}. A model json loader can only contribute geometry,
- * so the specification is baked once with empty data and its parts flattened; one that varies with
- * the random source or {@link com.grim3212.assorted.lib.client.model.data.IBlockModelData} must be
- * baked from the blockstate side ({@link ForgeSpecificationBlockStateModel}).
+ * Adapts an {@link IModelSpecification} onto NeoForge's {@link IUnbakedGeometry}. The baked model is
+ * wrapped in a {@link ForgeBakedModelDelegate}, so a data aware specification is handed the model
+ * data of the position it is drawn at.
  */
-public final class ForgeModelGeometryToSpecificationPlatformDelegator<T extends IModelSpecification<T>> extends AbstractUnbakedModel implements IModelSpecificationHolder {
-
-    private static final Identifier UNKNOWN_MODEL = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "unknown_model");
+public final class ForgeModelGeometryToSpecificationPlatformDelegator<T extends IModelSpecification<T>>
+        implements IUnbakedGeometry<ForgeModelGeometryToSpecificationPlatformDelegator<T>> {
 
     private final T delegate;
 
-    public ForgeModelGeometryToSpecificationPlatformDelegator(final StandardModelParameters parameters, final T delegate) {
-        super(parameters);
+    public ForgeModelGeometryToSpecificationPlatformDelegator(final T delegate) {
         this.delegate = delegate;
     }
 
@@ -45,47 +34,20 @@ public final class ForgeModelGeometryToSpecificationPlatformDelegator<T extends 
     }
 
     @Override
-    public T getModelSpecification() {
-        return this.delegate;
+    public BakedModel bake(IGeometryBakingContext context, ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState, ItemOverrides overrides) {
+        final ForgeModelBakingContextDelegate contextDelegate = new ForgeModelBakingContextDelegate(baker::getModel, context);
+
+        return ClientServices.MODELS.adaptToPlatform(this.delegate.bake(contextDelegate, baker, spriteGetter, modelState, overrides));
     }
 
     /**
-     * Forwards to the specification so anything it resolves through the baker is discovered first.
-     * The vanilla {@code parent} of this json is handled by {@link #parent()}; this covers the model
-     * ids a specification reaches for on its own.
+     * Resolves the parents of every model the specification reaches for on its own, which the
+     * bakery only does for the models it knows of.
      */
     @Override
-    public void resolveDependencies(ResolvableModel.Resolver resolver) {
-        super.resolveDependencies(resolver);
-        this.delegate.resolveDependencies(resolver);
-    }
-
-    @Override
-    public UnbakedGeometry geometry() {
-        return (ExtendedUnbakedGeometry) (textureSlots, baker, modelState, debugName, additionalProperties) -> {
-            final ForgeModelBakingContextDelegate context = new ForgeModelBakingContextDelegate(baker, textureSlots, this.parameters);
-
-            Identifier modelLocation = Identifier.tryParse(debugName.debugName());
-            if (modelLocation == null) {
-                modelLocation = UNKNOWN_MODEL;
-            }
-
-            final BlockStateModel model = this.delegate.bake(context, baker, modelState, modelLocation);
-
-            final List<BlockStateModelPart> parts = new ArrayList<>();
-            // Baking has no level or position, so this is the same empty context DynamicBlockStateModel
-            // feeds the level aware overload with.
-            model.collectParts(BlockAndTintGetter.EMPTY, BlockPos.ZERO, Blocks.AIR.defaultBlockState(), RandomSource.create(), parts);
-
-            final QuadCollection.Builder builder = new QuadCollection.Builder();
-            for (BlockStateModelPart part : parts) {
-                part.getQuads(null).forEach(builder::addUnculledFace);
-                for (Direction direction : Direction.values()) {
-                    part.getQuads(direction).forEach(quad -> builder.addCulledFace(direction, quad));
-                }
-            }
-
-            return builder.build();
-        };
+    public void resolveParents(Function<ResourceLocation, UnbakedModel> modelGetter, IGeometryBakingContext context) {
+        for (ResourceLocation dependency : this.delegate.getDependencies()) {
+            modelGetter.apply(dependency).resolveParents(modelGetter);
+        }
     }
 }

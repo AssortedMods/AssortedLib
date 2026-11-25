@@ -8,7 +8,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ItemFrame;
@@ -35,24 +35,24 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ManualLinks {
 
     // Concurrent: NeoForge constructs mods in parallel and each registers its own.
-    private static final Map<Identifier, ManualPageRef> BLOCKS = new ConcurrentHashMap<>();
-    private static final Map<Identifier, ManualPageRef> ITEMS = new ConcurrentHashMap<>();
-    private static final Map<Identifier, ManualPageRef> ENTITIES = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, ManualPageRef> BLOCKS = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, ManualPageRef> ITEMS = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, ManualPageRef> ENTITIES = new ConcurrentHashMap<>();
 
     private static volatile Loaded loaded = Loaded.EMPTY;
 
     private ManualLinks() {
     }
 
-    public static void linkBlock(Identifier blockId, ManualPageRef page) {
+    public static void linkBlock(ResourceLocation blockId, ManualPageRef page) {
         BLOCKS.put(blockId, page);
     }
 
-    public static void linkItem(Identifier itemId, ManualPageRef page) {
+    public static void linkItem(ResourceLocation itemId, ManualPageRef page) {
         ITEMS.put(itemId, page);
     }
 
-    public static void linkEntity(Identifier entityId, ManualPageRef page) {
+    public static void linkEntity(ResourceLocation entityId, ManualPageRef page) {
         ENTITIES.put(entityId, page);
     }
 
@@ -141,23 +141,23 @@ public final class ManualLinks {
         return entity instanceof ItemFrame frame ? pageFor(frame.getItem()) : null;
     }
 
-    private static @Nullable ManualPageRef lookUp(Identifier id, Map<Identifier, ManualPageRef> fromData,
-                                                  Map<Identifier, ManualPageRef> fromCode) {
+    private static @Nullable ManualPageRef lookUp(ResourceLocation id, Map<ResourceLocation, ManualPageRef> fromData,
+                                                  Map<ResourceLocation, ManualPageRef> fromCode) {
         ManualPageRef page = fromData.get(id);
         return page != null ? page : fromCode.get(id);
     }
 
     /** One reload's worth of links, by kind. */
-    public record Loaded(Map<Identifier, ManualPageRef> blocks, Map<Identifier, ManualPageRef> items,
-                         Map<Identifier, ManualPageRef> entities) {
+    public record Loaded(Map<ResourceLocation, ManualPageRef> blocks, Map<ResourceLocation, ManualPageRef> items,
+                         Map<ResourceLocation, ManualPageRef> entities) {
 
         public static final Loaded EMPTY = new Loaded(Map.of(), Map.of(), Map.of());
 
         /** Flattens the groups a {@code links.json} is written as into a lookup per kind. */
         public static Loaded of(List<Group> groups) {
-            Map<Identifier, ManualPageRef> blocks = new HashMap<>();
-            Map<Identifier, ManualPageRef> items = new HashMap<>();
-            Map<Identifier, ManualPageRef> entities = new HashMap<>();
+            Map<ResourceLocation, ManualPageRef> blocks = new HashMap<>();
+            Map<ResourceLocation, ManualPageRef> items = new HashMap<>();
+            Map<ResourceLocation, ManualPageRef> entities = new HashMap<>();
 
             for (Group group : groups) {
                 // A block's item shares its id, so listing a block covers the item that places it.
@@ -177,13 +177,13 @@ public final class ManualLinks {
      * Everything that opens one page, grouped so a page is named once rather than per id.
      * {@code blocks} also links the item that places them.
      */
-    public record Group(ManualPageRef page, List<Identifier> blocks, List<Identifier> items, List<Identifier> entities) {
+    public record Group(ManualPageRef page, List<ResourceLocation> blocks, List<ResourceLocation> items, List<ResourceLocation> entities) {
 
         public static final Codec<Group> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 ManualPageRef.CODEC.fieldOf("page").forGetter(Group::page),
-                Identifier.CODEC.listOf().optionalFieldOf("blocks", List.of()).forGetter(Group::blocks),
-                Identifier.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Group::items),
-                Identifier.CODEC.listOf().optionalFieldOf("entities", List.of()).forGetter(Group::entities)
+                ResourceLocation.CODEC.listOf().optionalFieldOf("blocks", List.of()).forGetter(Group::blocks),
+                ResourceLocation.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Group::items),
+                ResourceLocation.CODEC.listOf().optionalFieldOf("entities", List.of()).forGetter(Group::entities)
         ).apply(instance, Group::new));
 
         /** The shape of a {@code links.json}: a {@code links} array of these. */

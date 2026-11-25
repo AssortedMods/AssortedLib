@@ -1,25 +1,22 @@
 package com.grim3212.assorted.lib.core.tool;
 
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.equipment.ArmorType;
+import net.minecraft.world.item.ArmorItem;
 
-/** A piece of armour built from a configured armour material. */
-public class ConfigurableArmorItem extends Item {
+/** A piece of armour built from a configured armour material, which must already be registered. */
+public class ConfigurableArmorItem extends ArmorItem {
 
-    private final ArmorMaterialConfig material;
-    private final ArmorType armorType;
+    private final ArmorMaterialConfig armorMaterial;
 
-    public ConfigurableArmorItem(ArmorMaterialConfig material, ArmorType type, Properties properties) {
-        super(properties.humanoidArmor(material.material(), type));
-        this.material = material;
-        this.armorType = type;
+    public ConfigurableArmorItem(ArmorMaterialConfig material, ArmorItem.Type type, Properties properties) {
+        super(material.holder(), type, properties.durability(type.getDurability(material.getDurability())));
+        this.armorMaterial = material;
     }
 
     public ArmorMaterialConfig getArmorMaterial() {
-        return this.material;
+        return this.armorMaterial;
     }
 
-    public ArmorType getArmorType() {
-        return this.armorType;
+    public ArmorItem.Type getArmorType() {
+        return this.type;
     }
 }

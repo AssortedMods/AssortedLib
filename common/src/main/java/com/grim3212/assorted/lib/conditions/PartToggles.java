@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.grim3212.assorted.lib.LibConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
@@ -53,7 +53,7 @@ public final class PartToggles {
     }
 
     /** Whether the mod that owns {@code id}'s namespace is on. */
-    public static boolean isEnabled(Identifier id) {
+    public static boolean isEnabled(ResourceLocation id) {
         return isEnabled(id.getNamespace());
     }
 

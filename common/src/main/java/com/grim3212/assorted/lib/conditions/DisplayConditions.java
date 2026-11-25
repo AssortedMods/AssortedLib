@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -27,11 +27,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DisplayConditions {
 
     // Concurrent: NeoForge constructs mods in parallel and each registers its own.
-    private static final Map<Identifier, MapCodec<? extends DisplayCondition>> BY_ID = new ConcurrentHashMap<>();
-    private static final Map<MapCodec<? extends DisplayCondition>, Identifier> BY_CODEC = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, MapCodec<? extends DisplayCondition>> BY_ID = new ConcurrentHashMap<>();
+    private static final Map<MapCodec<? extends DisplayCondition>, ResourceLocation> BY_CODEC = new ConcurrentHashMap<>();
 
     /** Dispatch resolves per use, since init order across mods is not promised. */
-    public static final Codec<DisplayCondition> CODEC = Identifier.CODEC
+    public static final Codec<DisplayCondition> CODEC = ResourceLocation.CODEC
             .dispatch("type", condition -> BY_CODEC.get(condition.codec()), DisplayConditions::codecOf);
 
     /**
@@ -46,12 +46,12 @@ public final class DisplayConditions {
     private DisplayConditions() {
     }
 
-    public static void register(Identifier id, MapCodec<? extends DisplayCondition> codec) {
+    public static void register(ResourceLocation id, MapCodec<? extends DisplayCondition> codec) {
         BY_ID.put(id, codec);
         BY_CODEC.put(codec, id);
     }
 
-    private static MapCodec<? extends DisplayCondition> codecOf(Identifier id) {
+    private static MapCodec<? extends DisplayCondition> codecOf(ResourceLocation id) {
         MapCodec<? extends DisplayCondition> codec = BY_ID.get(id);
         if (codec == null) {
             throw new IllegalArgumentException("Unknown display condition: " + id);
@@ -59,7 +59,7 @@ public final class DisplayConditions {
         return codec;
     }
 
-    public static boolean isRegistered(Identifier id) {
+    public static boolean isRegistered(ResourceLocation id) {
         return BY_ID.containsKey(id);
     }
 
@@ -86,8 +86,8 @@ public final class DisplayConditions {
         register(id("recipe_exists"), RecipeExists.CODEC);
     }
 
-    private static Identifier id(String name) {
-        return Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, name);
+    private static ResourceLocation id(String name) {
+        return ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, name);
     }
 
     /** A part of a mod that its config can switch off; see {@link LibParts}. */
@@ -126,10 +126,10 @@ public final class DisplayConditions {
     }
 
     /** For content that only makes sense when another mod's item is present. */
-    public record ItemExists(Identifier item) implements DisplayCondition {
+    public record ItemExists(ResourceLocation item) implements DisplayCondition {
 
         public static final MapCodec<ItemExists> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
-                .group(Identifier.CODEC.fieldOf("item").forGetter(ItemExists::item))
+                .group(ResourceLocation.CODEC.fieldOf("item").forGetter(ItemExists::item))
                 .apply(instance, ItemExists::new));
 
         @Override
@@ -143,10 +143,10 @@ public final class DisplayConditions {
         }
     }
 
-    public record BlockExists(Identifier block) implements DisplayCondition {
+    public record BlockExists(ResourceLocation block) implements DisplayCondition {
 
         public static final MapCodec<BlockExists> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
-                .group(Identifier.CODEC.fieldOf("block").forGetter(BlockExists::block))
+                .group(ResourceLocation.CODEC.fieldOf("block").forGetter(BlockExists::block))
                 .apply(instance, BlockExists::new));
 
         @Override

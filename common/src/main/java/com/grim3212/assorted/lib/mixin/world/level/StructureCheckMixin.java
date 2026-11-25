@@ -1,9 +1,12 @@
 package com.grim3212.assorted.lib.mixin.world.level;
 
 import com.grim3212.assorted.lib.migration.MovedIds;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureCheck;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,9 +25,12 @@ public abstract class StructureCheckMixin {
 
     @Inject(method = "loadStructures", at = @At("HEAD"))
     private void assortedlib_carryOverMovedStarts(CompoundTag chunkTag, CallbackInfoReturnable<?> cir) {
-        if (MovedIds.enabled()) {
-            chunkTag.getCompound("structures").flatMap(tag -> tag.getCompound("starts"))
-                    .ifPresent(starts -> MovedIds.structures(starts, this.registryAccess.lookupOrThrow(Registries.STRUCTURE)::containsKey));
+        if (MovedIds.enabled() && chunkTag.contains("structures", Tag.TAG_COMPOUND)) {
+            CompoundTag structures = chunkTag.getCompound("structures");
+            if (structures.contains("starts", Tag.TAG_COMPOUND)) {
+                Registry<Structure> registry = this.registryAccess.registryOrThrow(Registries.STRUCTURE);
+                MovedIds.structures(structures.getCompound("starts"), registry::containsKey);
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.grim3212.assorted.lib.core.conditions;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * An opaque, loader-agnostic handle on one recipe condition. Each loader implements it over its own
@@ -9,5 +9,5 @@ import net.minecraft.resources.Identifier;
  */
 public interface LibConditionProvider {
 
-    Identifier getName();
+    ResourceLocation getName();
 }

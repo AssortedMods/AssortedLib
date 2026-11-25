@@ -1,7 +1,7 @@
 package com.grim3212.assorted.lib.mixin.server;
 
 import com.grim3212.assorted.lib.migration.MovedIds;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.ReloadableServerRegistries;
@@ -19,7 +19,7 @@ public abstract class ReloadableServerRegistriesHolderMixin {
 
     @Shadow
     @Final
-    private HolderLookup.Provider registries;
+    private RegistryAccess.Frozen registries;
 
     @Inject(method = "getLootTable", at = @At("HEAD"), cancellable = true)
     private void assortedlib_carryOverMovedLootTables(ResourceKey<LootTable> id, CallbackInfoReturnable<LootTable> cir) {
@@ -27,7 +27,7 @@ public abstract class ReloadableServerRegistriesHolderMixin {
             return;
         }
 
-        this.registries.lookup(Registries.LOOT_TABLE).ifPresent(tables -> MovedIds.resolve(id.identifier(), to -> tables.get(ResourceKey.create(Registries.LOOT_TABLE, to)).isPresent())
+        this.registries.lookup(Registries.LOOT_TABLE).ifPresent(tables -> MovedIds.resolve(id.location(), to -> tables.get(ResourceKey.create(Registries.LOOT_TABLE, to)).isPresent())
                 .flatMap(to -> tables.get(ResourceKey.create(Registries.LOOT_TABLE, to)))
                 .ifPresent(table -> cir.setReturnValue(table.value())));
     }

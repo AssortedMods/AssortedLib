@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.spawn;
 
 import com.grim3212.assorted.lib.LibConstants;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,25 +13,25 @@ public final class SpawnSites {
     private SpawnSites() {
     }
 
-    private static final Map<Identifier, MapCodec<? extends SpawnSite>> TYPES = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, MapCodec<? extends SpawnSite>> TYPES = new ConcurrentHashMap<>();
 
-    public static final Identifier LAND = register("land", LandSite.CODEC);
-    public static final Identifier WATER = register("water", WaterSite.CODEC);
-    public static final Identifier COLUMN = register("column", ColumnSite.CODEC);
-    public static final Identifier STRUCTURE = register("structure", StructureSite.CODEC);
+    public static final ResourceLocation LAND = register("land", LandSite.CODEC);
+    public static final ResourceLocation WATER = register("water", WaterSite.CODEC);
+    public static final ResourceLocation COLUMN = register("column", ColumnSite.CODEC);
+    public static final ResourceLocation STRUCTURE = register("structure", StructureSite.CODEC);
 
-    public static Identifier register(String name, MapCodec<? extends SpawnSite> codec) {
-        return register(Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, name), codec);
+    public static ResourceLocation register(String name, MapCodec<? extends SpawnSite> codec) {
+        return register(ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, name), codec);
     }
 
-    public static Identifier register(Identifier name, MapCodec<? extends SpawnSite> codec) {
+    public static ResourceLocation register(ResourceLocation name, MapCodec<? extends SpawnSite> codec) {
         if (TYPES.putIfAbsent(name, codec) != null) {
             throw new IllegalStateException("Spawn site type registered twice: " + name);
         }
         return name;
     }
 
-    static MapCodec<? extends SpawnSite> codec(Identifier type) {
+    static MapCodec<? extends SpawnSite> codec(ResourceLocation type) {
         MapCodec<? extends SpawnSite> codec = TYPES.get(type);
         if (codec == null) {
             throw new IllegalArgumentException("Unknown spawn site type " + type);

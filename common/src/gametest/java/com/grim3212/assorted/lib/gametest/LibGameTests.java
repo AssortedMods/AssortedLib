@@ -27,6 +27,7 @@ public final class LibGameTests {
         EventTests.register(out);
         MenuTests.register(out);
         ManualTests.register(out);
+        ManualTagSyncTests.register(out);
         SpawnerTests.register(out);
         RegistryAliasTests.register(out);
         MovedIdsTests.register(out);

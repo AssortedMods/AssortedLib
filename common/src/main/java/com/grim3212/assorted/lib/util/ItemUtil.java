@@ -29,7 +29,7 @@ public class ItemUtil {
      */
     public static boolean destroyBlock(BlockPos blockPos, Level level, Player player) {
         BlockState blockState = level.getBlockState(blockPos);
-        if (!player.getMainHandItem().getItem().canDestroyBlock(player.getMainHandItem(), blockState, level, blockPos, player)) {
+        if (!player.getMainHandItem().getItem().canAttackBlock(blockState, level, blockPos, player)) {
             return false;
         } else {
             BlockEntity blockEntity = level.getBlockEntity(blockPos);

@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.registry;
 
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.function.Supplier;
 
@@ -10,7 +10,7 @@ public interface IRegistryObject<T> extends Supplier<T> {
 
     ResourceKey<T> getResourceKey();
 
-    Identifier getId();
+    ResourceLocation getId();
 
     @Override
     T get();

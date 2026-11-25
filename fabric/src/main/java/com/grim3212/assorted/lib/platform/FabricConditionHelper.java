@@ -12,13 +12,14 @@ import net.fabricmc.fabric.api.resource.conditions.v1.ResourceCondition;
 import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditionType;
 import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditions;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,7 +31,7 @@ import java.util.function.Supplier;
  * {@link ResourceConditionType} registered for its id.
  */
 public class FabricConditionHelper implements IConditionHelper {
-    public static final Identifier PART_ENABLED = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "part_enabled");
+    public static final ResourceLocation PART_ENABLED = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "part_enabled");
 
     @Override
     public void init() {
@@ -41,12 +42,12 @@ public class FabricConditionHelper implements IConditionHelper {
 
     /** Data is only generated on NeoForge, which writes Fabric's condition keys too. */
     @Override
-    public <T> BootstrapContext<T> conditionalContext(BootstrapContext<T> context, Function<ResourceKey<T>, List<LibConditionProvider>> conditions) {
+    public RecipeOutput conditionalOutput(RecipeOutput output, Function<ResourceLocation, List<LibConditionProvider>> conditions) {
         throw new UnsupportedOperationException("Assorted data is generated on NeoForge");
     }
 
     @Override
-    public void register(Identifier name, LibCondition condition) {
+    public void register(ResourceLocation name, LibCondition condition) {
         ResourceConditions.register(new LibResourceCondition(name, condition).getType());
     }
 
@@ -66,12 +67,12 @@ public class FabricConditionHelper implements IConditionHelper {
     }
 
     @Override
-    public LibConditionProvider blockExists(Identifier block) {
+    public LibConditionProvider blockExists(ResourceLocation block) {
         return wrap(ResourceConditions.registryContains(Registries.BLOCK, block));
     }
 
     @Override
-    public LibConditionProvider itemExists(Identifier item) {
+    public LibConditionProvider itemExists(ResourceLocation item) {
         return wrap(ResourceConditions.registryContains(Registries.ITEM, item));
     }
 
@@ -122,7 +123,7 @@ public class FabricConditionHelper implements IConditionHelper {
         private final ResourceConditionType<LibResourceCondition> type;
         private final LibCondition condition;
 
-        private LibResourceCondition(Identifier id, LibCondition condition) {
+        private LibResourceCondition(ResourceLocation id, LibCondition condition) {
             this.condition = condition;
             this.type = ResourceConditionType.create(id, MapCodec.unit(() -> this));
         }
@@ -133,7 +134,7 @@ public class FabricConditionHelper implements IConditionHelper {
         }
 
         @Override
-        public boolean test(RegistryOps.RegistryInfoLookup registryInfoLookup) {
+        public boolean test(@Nullable HolderLookup.Provider registryLookup) {
             return this.condition.test();
         }
     }
@@ -150,7 +151,7 @@ public class FabricConditionHelper implements IConditionHelper {
         }
 
         @Override
-        public boolean test(RegistryOps.RegistryInfoLookup registryInfoLookup) {
+        public boolean test(@Nullable HolderLookup.Provider registryLookup) {
             if (!LibParts.isRegistered(this.part)) {
                 throw new IllegalArgumentException("Can't check part that doesn't exist!");
             }
@@ -162,7 +163,7 @@ public class FabricConditionHelper implements IConditionHelper {
     private record LibConditionWrapper(ResourceCondition condition) implements LibConditionProvider {
 
         @Override
-        public Identifier getName() {
+        public ResourceLocation getName() {
             return this.condition.getType().id();
         }
     }

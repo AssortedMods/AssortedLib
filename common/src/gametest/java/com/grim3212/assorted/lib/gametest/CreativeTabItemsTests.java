@@ -5,7 +5,7 @@ import com.grim3212.assorted.lib.util.LibCommonTags;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 
@@ -23,8 +23,8 @@ final class CreativeTabItemsTests {
     }
 
     private static void emptyMaterialTags(GameTestHelper helper) {
-        TagKey<Item> undefined = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("assortedlib", "test/never_defined"));
-        helper.assertTrue(BuiltInRegistries.ITEM.get(undefined).isEmpty(), "the undefined test tag is defined");
+        TagKey<Item> undefined = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("assortedlib", "test/never_defined"));
+        helper.assertTrue(BuiltInRegistries.ITEM.getTag(undefined).isEmpty(), "the undefined test tag is defined");
         helper.assertTrue(ItemUtil.isTagEmpty(undefined), "a tag no pack defines counts as having a material");
         helper.assertFalse(ItemUtil.isTagEmpty(LibCommonTags.Items.INGOTS_IRON), "iron ingots count as missing");
         helper.succeed();

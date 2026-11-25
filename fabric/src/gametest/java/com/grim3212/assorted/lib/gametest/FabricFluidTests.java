@@ -32,13 +32,13 @@ final class FabricFluidTests {
         FluidInformation marked = new FluidInformation(Fluids.WATER, FluidConstants.BUCKET, data);
 
         FluidVariant variant = FabricFluidManager.makeVariant(marked);
-        helper.assertValueEqual(variant.getComponentsPatch(), data, "the component patch on the fluid variant");
+        helper.assertValueEqual(variant.getComponents(), data, "the component patch on the fluid variant");
         helper.assertValueEqual(FabricFluidManager.makeInformation(variant, FluidConstants.BUCKET), marked, "the fluid information read back from the variant");
 
         FluidInformation flowing = new FluidInformation(Fluids.FLOWING_WATER, FluidConstants.BUCKET, data);
         FluidVariant fromFlowing = FabricFluidManager.makeVariant(flowing);
         helper.assertTrue(fromFlowing.getFluid() == Fluids.WATER, "flowing water did not become its source, it is " + fromFlowing.getFluid());
-        helper.assertValueEqual(fromFlowing.getComponentsPatch(), data, "the component patch after flowing water became its source");
+        helper.assertValueEqual(fromFlowing.getComponents(), data, "the component patch after flowing water became its source");
 
         helper.succeed();
     }

@@ -22,12 +22,13 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -116,13 +117,13 @@ final class ManualTests {
     private static void linksResolveByKind(GameTestHelper helper) {
         ManualLinks.link(Blocks.ANVIL, ANVIL_PAGE);
         ManualLinks.link(Items.APPLE, APPLE_PAGE);
-        ManualLinks.link(EntityTypes.PIG, PIG_PAGE);
+        ManualLinks.link(EntityType.PIG, PIG_PAGE);
 
         BlockState anvil = Blocks.ANVIL.defaultBlockState();
         assertEquals(helper, ANVIL_PAGE, ManualLinks.pageFor(helper.getLevel(), helper.absolutePos(BlockPos.ZERO), anvil), "block link");
         assertEquals(helper, APPLE_PAGE, ManualLinks.pageFor(new ItemStack(Items.APPLE)), "item link");
 
-        var pig = helper.spawn(EntityTypes.PIG, BlockPos.ZERO);
+        var pig = helper.spawn(EntityType.PIG, BlockPos.ZERO);
         assertEquals(helper, PIG_PAGE, ManualLinks.pageFor(pig), "entity link");
 
         if (ManualLinks.pageFor(new ItemStack(Items.STONE)) != null) {
@@ -159,13 +160,13 @@ final class ManualTests {
         ItemFrame frame = frameHolding(helper, new ItemStack(Items.APPLE));
         ServerPlayer player = survivalPlayer(helper, new ItemStack(LibItems.INSTRUCTION_MANUAL.get()));
 
-        InteractionResult result = player.interactOn(frame, InteractionHand.MAIN_HAND, Vec3.ZERO);
+        InteractionResult result = player.interactOn(frame, InteractionHand.MAIN_HAND);
         helper.assertTrue(result.consumesAction(), "the manual did not take the interaction, got " + result);
         helper.assertValueEqual(frame.getRotation(), 0, "frame rotation after the manual was used on it");
 
         // A frame with nothing to read is left to vanilla, which is what lets the book be framed.
         ItemFrame empty = frameHolding(helper, ItemStack.EMPTY);
-        player.interactOn(empty, InteractionHand.MAIN_HAND, Vec3.ZERO);
+        player.interactOn(empty, InteractionHand.MAIN_HAND);
         helper.assertTrue(empty.getItem().is(LibItems.INSTRUCTION_MANUAL.get()),
                 "an empty frame should still take the book, it holds " + empty.getItem());
 
@@ -255,10 +256,10 @@ final class ManualTests {
         // A mod that is loaded, and one that is not, without naming a part at all.
         assertEquals(helper, true, new DisplayConditions.ModLoaded("assortedlib").test(), "a loaded mod");
         assertEquals(helper, false, new DisplayConditions.ModLoaded("not_a_real_mod").test(), "an absent mod");
-        assertEquals(helper, true, new DisplayConditions.ItemExists(Identifier.withDefaultNamespace("apple")).test(),
+        assertEquals(helper, true, new DisplayConditions.ItemExists(ResourceLocation.withDefaultNamespace("apple")).test(),
                 "an item that exists");
         assertEquals(helper, false,
-                new DisplayConditions.ItemExists(Identifier.withDefaultNamespace("not_a_real_item")).test(),
+                new DisplayConditions.ItemExists(ResourceLocation.withDefaultNamespace("not_a_real_item")).test(),
                 "an item that does not");
 
         // Nesting survives being written out and read back, which is what a resource pack does.
@@ -401,11 +402,11 @@ final class ManualTests {
     private static String resource(GameTestHelper helper, String path) {
         try (InputStream in = ManualTests.class.getResourceAsStream(path)) {
             if (in == null) {
-                throw helper.assertionException(path + " is not on the classpath");
+                throw new GameTestAssertException(path + " is not on the classpath");
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw helper.assertionException("could not read " + path + ": " + e);
+            throw new GameTestAssertException("could not read " + path + ": " + e);
         }
     }
 

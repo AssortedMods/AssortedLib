@@ -1,7 +1,7 @@
 package com.grim3212.assorted.lib.client.model.data;
 
-import net.neoforged.neoforge.model.data.ModelData;
-import net.neoforged.neoforge.model.data.ModelProperty;
+import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
 
 public class ForgeBlockModelDataPlatformDelegate implements IBlockModelData {

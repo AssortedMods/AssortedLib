@@ -85,7 +85,7 @@ final class InventoryTests {
      */
     private static void blockEntityHandlerFromLevel(GameTestHelper helper) {
         helper.setBlock(WORK, Blocks.CHEST);
-        ChestBlockEntity chest = helper.getBlockEntity(WORK, ChestBlockEntity.class);
+        ChestBlockEntity chest = helper.getBlockEntity(WORK);
 
         Optional<IItemStorageHandler> found = Services.INVENTORY.getItemStorageHandler(chest, Direction.UP);
         helper.assertTrue(found.isPresent(), "no item storage handler for a vanilla chest through the level");

@@ -66,12 +66,15 @@ public class LockedChestBlock extends BaseStorageBlock implements IStorageMateri
         return isInvalidBlock(world, pos.above());
     }
 
+    // NeoForge deprecates this in favour of its IBlockExtension overload, which defaults to
+    // calling it, so overriding this one is what answers pick block on both loaders.
+    @SuppressWarnings("deprecation")
     @Override
-    protected ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state, boolean includeData) {
+    public ItemStack getCloneItemStack(LevelReader worldIn, BlockPos pos, BlockState state) {
         if (this.getStorageMaterial() == null) {
             return StorageUtil.setCodeOnStack(StorageUtil.getCode(worldIn.getBlockEntity(pos)), new ItemStack(this));
         }
-        return super.getCloneItemStack(worldIn, pos, state, includeData);
+        return super.getCloneItemStack(worldIn, pos, state);
     }
 
     @Override

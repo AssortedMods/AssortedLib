@@ -6,7 +6,8 @@
   "mixins": [
   ],
   "client": [
-    "client.model.ModelDataManagerMixin"
+    "client.model.ModelDataManagerMixin",
+    "client.multiplayer.MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

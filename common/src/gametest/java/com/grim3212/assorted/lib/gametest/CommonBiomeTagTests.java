@@ -65,7 +65,7 @@ final class CommonBiomeTagTests {
             }
 
             Set<String> have = new TreeSet<>();
-            biomes.get(tag).ifPresent(set -> set.forEach(holder -> holder.unwrapKey().map(ResourceKey::identifier).ifPresent(id -> have.add(id.toString()))));
+            biomes.get(tag).ifPresent(set -> set.forEach(holder -> holder.unwrapKey().map(ResourceKey::location).ifPresent(id -> have.add(id.toString()))));
 
             Set<String> extra = new TreeSet<>(have);
             extra.removeAll(want);

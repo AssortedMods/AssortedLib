@@ -1,7 +1,7 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:always"
+      "type": "neoforge:true"
     }
   ],
   "fabric:load_conditions": [
@@ -12,81 +12,171 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "D": {
-      "neoforge:ingredient_type": "neoforge:difference",
+      "type": "neoforge:difference",
       "fabric:type": "fabric:difference",
       "base": [
-        "minecraft:stick",
-        "minecraft:stone",
-        "minecraft:dirt"
+        {
+          "item": "minecraft:stick"
+        },
+        {
+          "item": "minecraft:stone"
+        },
+        {
+          "item": "minecraft:dirt"
+        }
       ],
-      "subtracted": "minecraft:stone"
+      "subtracted": {
+        "item": "minecraft:stone"
+      }
     },
     "A": {
-      "neoforge:ingredient_type": "neoforge:compound",
+      "type": "neoforge:compound",
       "fabric:type": "fabric:any",
       "children": [
-        "minecraft:stick",
-        "minecraft:stone"
+        {
+          "item": "minecraft:stick"
+        },
+        {
+          "item": "minecraft:stone"
+        }
       ],
       "ingredients": [
-        "minecraft:stick",
-        "minecraft:stone"
+        {
+          "item": "minecraft:stick"
+        },
+        {
+          "item": "minecraft:stone"
+        }
       ]
     },
     "I": {
-      "neoforge:ingredient_type": "neoforge:intersection",
+      "type": "neoforge:intersection",
       "fabric:type": "fabric:all",
       "children": [
-        [
-          "minecraft:stick",
-          "minecraft:stone"
-        ],
-        [
-          "minecraft:stone",
-          "minecraft:dirt"
-        ]
+        {
+          "type": "neoforge:compound",
+          "fabric:type": "fabric:any",
+          "children": [
+            {
+              "item": "minecraft:stick"
+            },
+            {
+              "item": "minecraft:stone"
+            }
+          ],
+          "ingredients": [
+            {
+              "item": "minecraft:stick"
+            },
+            {
+              "item": "minecraft:stone"
+            }
+          ]
+        },
+        {
+          "type": "neoforge:compound",
+          "fabric:type": "fabric:any",
+          "children": [
+            {
+              "item": "minecraft:stone"
+            },
+            {
+              "item": "minecraft:dirt"
+            }
+          ],
+          "ingredients": [
+            {
+              "item": "minecraft:stone"
+            },
+            {
+              "item": "minecraft:dirt"
+            }
+          ]
+        }
       ],
       "ingredients": [
-        [
-          "minecraft:stick",
-          "minecraft:stone"
-        ],
-        [
-          "minecraft:stone",
-          "minecraft:dirt"
-        ]
+        {
+          "type": "neoforge:compound",
+          "fabric:type": "fabric:any",
+          "children": [
+            {
+              "item": "minecraft:stick"
+            },
+            {
+              "item": "minecraft:stone"
+            }
+          ],
+          "ingredients": [
+            {
+              "item": "minecraft:stick"
+            },
+            {
+              "item": "minecraft:stone"
+            }
+          ]
+        },
+        {
+          "type": "neoforge:compound",
+          "fabric:type": "fabric:any",
+          "children": [
+            {
+              "item": "minecraft:stone"
+            },
+            {
+              "item": "minecraft:dirt"
+            }
+          ],
+          "ingredients": [
+            {
+              "item": "minecraft:stone"
+            },
+            {
+              "item": "minecraft:dirt"
+            }
+          ]
+        }
       ]
     },
     "N": {
-      "neoforge:ingredient_type": "neoforge:difference",
+      "type": "neoforge:difference",
       "fabric:type": "fabric:difference",
       "base": {
-        "neoforge:ingredient_type": "neoforge:compound",
+        "type": "neoforge:compound",
         "fabric:type": "fabric:any",
         "children": [
-          "minecraft:stick",
-          "minecraft:stone"
+          {
+            "item": "minecraft:stick"
+          },
+          {
+            "item": "minecraft:stone"
+          }
         ],
         "ingredients": [
-          "minecraft:stick",
-          "minecraft:stone"
+          {
+            "item": "minecraft:stick"
+          },
+          {
+            "item": "minecraft:stone"
+          }
         ]
       },
-      "subtracted": "minecraft:stone"
+      "subtracted": {
+        "item": "minecraft:stone"
+      }
     },
     "W": {
-      "neoforge:ingredient_type": "assortedlib:stored_fluid_ingredient",
+      "type": "assortedlib:stored_fluid_ingredient",
       "fabric:type": "assortedlib:stored_fluid_ingredient",
       "fluid": "minecraft:water"
     },
     "H": {
-      "neoforge:ingredient_type": "assortedlib:stored_fluid_ingredient",
+      "type": "assortedlib:stored_fluid_ingredient",
       "fabric:type": "assortedlib:stored_fluid_ingredient",
       "fluid": "minecraft:water",
       "amount": 500
     },
     "T": {
-      "neoforge:ingredient_type": "assortedlib:stored_fluid_ingredient",
+      "type": "assortedlib:stored_fluid_ingredient",
       "fabric:type": "assortedlib:stored_fluid_ingredient",
       "fluid": "minecraft:water",
       "amount": 2000

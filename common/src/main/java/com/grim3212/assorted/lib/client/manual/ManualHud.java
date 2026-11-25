@@ -4,10 +4,9 @@ import com.grim3212.assorted.lib.LibConstants;
 import com.grim3212.assorted.lib.manual.InstructionManualItem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 
 /**
@@ -16,7 +15,7 @@ import net.minecraft.world.InteractionHand;
  */
 public final class ManualHud {
 
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "manual_page_available");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "manual_page_available");
 
     /** Clear of the 15 wide crosshair, on the side the book's own icon sits on. */
     private static final int OFFSET_X = 10;
@@ -25,10 +24,10 @@ public final class ManualHud {
     private ManualHud() {
     }
 
-    static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    static void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
-        if (player == null || minecraft.level == null || minecraft.gui.screen() != null) {
+        if (player == null || minecraft.level == null || minecraft.screen != null) {
             return;
         }
         if (!minecraft.options.getCameraType().isFirstPerson() || !ManualClient.showPageIndicator()) {
@@ -42,8 +41,7 @@ public final class ManualHud {
             return;
         }
 
-        graphics.nextStratum();
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ManualBook.Sprites.PAGE_AVAILABLE,
+        graphics.blitSprite(ManualBook.Sprites.PAGE_AVAILABLE,
                 graphics.guiWidth() / 2 + OFFSET_X, (graphics.guiHeight() - SIZE) / 2, SIZE, SIZE);
     }
 

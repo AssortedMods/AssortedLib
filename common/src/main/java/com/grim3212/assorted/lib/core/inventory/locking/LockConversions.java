@@ -4,7 +4,7 @@ import com.grim3212.assorted.lib.core.storage.BaseStorageBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -23,10 +23,10 @@ import java.util.function.Supplier;
  */
 public class LockConversions {
 
-    private static final Map<Identifier, LockConversion> CONVERSIONS = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, LockConversion> CONVERSIONS = new ConcurrentHashMap<>();
 
     /** Registers by id, so a block from a mod that may not be installed can still be named. */
-    public static void register(Identifier block, LockConversion conversion) {
+    public static void register(ResourceLocation block, LockConversion conversion) {
         CONVERSIONS.put(block, conversion);
     }
 

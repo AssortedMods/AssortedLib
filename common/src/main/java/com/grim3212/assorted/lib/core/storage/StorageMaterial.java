@@ -1,7 +1,7 @@
 package com.grim3212.assorted.lib.core.storage;
 
 import com.grim3212.assorted.lib.util.LibCommonTags;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Item;
@@ -80,8 +80,8 @@ public enum StorageMaterial implements StringRepresentable {
      * The particle texture. The added metals and gems have no vanilla block to borrow one from, so
      * theirs lives in {@code namespace}, the mod that ships it.
      */
-    public Identifier getParticle(String namespace) {
-        return this.particle.contains(":") ? Identifier.parse(this.particle) : Identifier.fromNamespaceAndPath(namespace, this.particle);
+    public ResourceLocation getParticle(String namespace) {
+        return this.particle.contains(":") ? ResourceLocation.parse(this.particle) : ResourceLocation.fromNamespaceAndPath(namespace, this.particle);
     }
 
     public int getStorageLevel() {

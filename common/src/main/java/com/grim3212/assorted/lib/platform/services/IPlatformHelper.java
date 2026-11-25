@@ -1,17 +1,17 @@
 package com.grim3212.assorted.lib.platform.services;
 
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jetbrains.annotations.Nullable;
-import net.minecraft.world.item.component.TooltipProvider;
+import com.grim3212.assorted.lib.core.item.IStackTooltipProvider;
 import net.minecraft.core.component.DataComponentType;
 import com.grim3212.assorted.lib.dist.Dist;
 import com.grim3212.assorted.lib.mixin.world.level.MonsterRoomFeatureAccessor;
 import com.grim3212.assorted.lib.registry.ILoaderRegistry;
-import net.minecraft.util.Util;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponentMap;
@@ -19,8 +19,7 @@ import com.grim3212.assorted.lib.core.inventory.IMenuDataProvider;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.util.RandomSource;
@@ -29,8 +28,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.SpawnPlacementType;
-import net.minecraft.world.entity.SlotAccess;
-import net.minecraft.world.entity.SlotProvider;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.player.Inventory;
@@ -41,7 +38,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.component.CookingFuel;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.component.Tool;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Blocks;
@@ -50,15 +47,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt;
+import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -108,26 +99,26 @@ public interface IPlatformHelper {
     void modifyCreativeTab(final ResourceKey<CreativeModeTab> key, Supplier<List<ItemStack>> displayStacks);
 
     /** Registers a tab under an id no one mod owns, which is what a family's shared tab is; see {@code SharedCreativeTabs}. */
-    void registerCreativeTab(Identifier id, Supplier<CreativeModeTab> tab);
+    void registerCreativeTab(ResourceLocation id, Supplier<CreativeModeTab> tab);
 
     /** Registers a data component type under an id no one mod owns; see {@code SharedDataComponents}. */
-    void registerDataComponentType(Identifier id, Supplier<? extends DataComponentType<?>> type);
+    void registerDataComponentType(ResourceLocation id, Supplier<? extends DataComponentType<?>> type);
 
     /**
-     * Shows a data component's {@link TooltipProvider} lines on every stack carrying it, ahead of
+     * Shows a data component's {@link IStackTooltipProvider} lines on every stack carrying it, ahead of
      * vanilla's own component lines; otherwise vanilla only asks the components on its fixed list.
      * Call once from common init, after the type is registered. Fabric adds these lines on the
      * client only, NeoForge on both sides.
      */
-    <T extends TooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type);
+    <T extends IStackTooltipProvider> void showComponentTooltip(Supplier<DataComponentType<T>> type);
 
     /**
-     * Sets components on an item made elsewhere, as 26.3 has compost chances and the like as components. Call from
-     * mod construction, before the items are built; the item is only asked for once they are.
+     * Sets components on an item made elsewhere. Call from mod construction, before the items are built; the item
+     * is only asked for once they are.
      */
     void modifyDefaultComponents(Supplier<? extends ItemLike> item, Consumer<DataComponentMap.Builder> components);
 
-    void addReloadListener(Identifier identifier, PreparableReloadListener reloadListener);
+    void addReloadListener(ResourceLocation identifier, PreparableReloadListener reloadListener);
 
     default EntityType<?> getRandomDungeonEntity(RandomSource random) {
         return Util.getRandom(MonsterRoomFeatureAccessor.getMOBS(), random);
@@ -152,9 +143,21 @@ public interface IPlatformHelper {
      */
     void registerFlammable(Supplier<? extends Block> block, int igniteOdds, int burnOdds);
 
+    /**
+     * Makes an item burn in a furnace for {@code burnTime} ticks; see {@code BurnTimes}. Call from mod construction;
+     * on NeoForge burn times are data, the {@code neoforge:furnace_fuels} map written by {@code ForgeRegistryEntries}.
+     */
+    void registerFuel(Supplier<? extends ItemLike> item, int burnTime);
+
+    /**
+     * Makes an item compostable with the given chance of adding a layer; see {@code CompostChances}. Call from mod
+     * construction; on NeoForge the chance is data, the {@code neoforge:compostables} map written by {@code ForgeRegistryEntries}.
+     */
+    void registerCompostable(Supplier<? extends ItemLike> item, float chance);
+
     /** Mob#finalizeSpawn, which NeoForge deprecates in favour of its FinalizeSpawnEvent hook; Fabric has only the method. */
     @Nullable
-    SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData);
+    SpawnGroupData finalizeSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData groupData);
 
     <T extends BlockEntity> BlockEntityType<T> createBlockEntityType(BiFunction<BlockPos, BlockState, T> builder, Block... blocks);
 
@@ -183,32 +186,15 @@ public interface IPlatformHelper {
 
     /** Whether a furnace would take this as fuel. Only reads the stack, so it is safe on the client. */
     default boolean isFuel(ItemStack stack) {
-        return stack.has(DataComponents.COOKING_FUEL);
+        return AbstractFurnaceBlockEntity.isFuel(stack);
     }
 
     /**
-     * Burn times live on the {@code cooking_fuel} component and can depend on where they burn, so they
-     * resolve against a container's loot context. 0 for anything that is not fuel.
+     * How long this burns in a furnace, 0 for anything that is not fuel: NeoForge's {@code IItemStackExtension#getBurnTime},
+     * Fabric's {@code FuelRegistry}. Pass the recipe type a machine cooks, or null for a plain furnace's time; Fabric has
+     * one time per item.
      */
-    default int getFuelTime(ItemStack stack, LootContext context) {
-        return ResolvableInt.getFromItem(stack, DataComponents.COOKING_FUEL, CookingFuel::burnTime, context, 0);
-    }
-
-    /** The burn time away from any block, for a machine that is not a block entity, such as an entity. */
-    default int getFuelTime(ItemStack stack, ServerLevel level) {
-        return this.getFuelTime(stack, new LootContext.Builder(new LootParams.Builder(level).create(LootContextParamSets.EMPTY)).create(Optional.empty()));
-    }
-
-    /** The context a furnace resolves fuel with, for a block entity whose items are not a vanilla Container. */
-    default LootContext containerProcessContext(ServerLevel level, BlockEntity blockEntity, List<ItemStack> items) {
-        SlotProvider slots = slot -> slot >= 0 && slot < items.size() ? SlotAccess.forListElement(items, slot) : null;
-        return new LootContext.Builder(new LootParams.Builder(level)
-                .withParameter(LootContextParams.BLOCK_STATE, blockEntity.getBlockState())
-                .withParameter(LootContextParams.BLOCK_ENTITY, blockEntity)
-                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockEntity.getBlockPos()))
-                .withParameter(LootContextParams.CONTAINER, slots)
-                .create(LootContextParamSets.CONTAINER_PROCESS)).create(Optional.empty());
-    }
+    int getFuelTime(ItemStack stack, @Nullable RecipeType<?> recipeType);
 
     enum ToolType {
         PICKAXE(ItemTags.PICKAXES),
@@ -235,9 +221,6 @@ public interface IPlatformHelper {
         WOOD(0),
         GOLD(0),
         STONE(1),
-        // Copper sits between stone and iron, but vanilla ships no NEEDS_COPPER_TOOL tag, so it is
-        // only distinguishable down to the stone level.
-        COPPER(1),
         IRON(2),
         // Netherite shares diamond's harvest level in vanilla; it differs in durability, not tier.
         DIAMOND(3),

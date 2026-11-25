@@ -2,7 +2,7 @@ package com.grim3212.assorted.lib.spawn;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.CustomSpawner;
@@ -16,19 +16,19 @@ import java.util.Map;
  */
 public final class CreatureSpawner implements CustomSpawner {
 
-    private final Object2IntMap<Identifier> countdown = new Object2IntOpenHashMap<>();
+    private final Object2IntMap<ResourceLocation> countdown = new Object2IntOpenHashMap<>();
 
     public CreatureSpawner(ServerLevel level) {
     }
 
     @Override
-    public void tick(ServerLevel level, boolean spawnEnemies) {
-        Map<Identifier, SpawnHabit> habits = SpawnHabits.all();
+    public int tick(ServerLevel level, boolean spawnEnemies, boolean spawnFriendlies) {
+        Map<ResourceLocation, SpawnHabit> habits = SpawnHabits.all();
         if (habits.isEmpty()) {
-            return;
+            return 0;
         }
         RandomSource random = level.getRandom();
-        for (Map.Entry<Identifier, SpawnHabit> entry : habits.entrySet()) {
+        for (Map.Entry<ResourceLocation, SpawnHabit> entry : habits.entrySet()) {
             SpawnHabit habit = entry.getValue();
             // A new habit starts somewhere in its first interval, so a world does not open on every habit firing at once.
             int left = this.countdown.getOrDefault(entry.getKey(), 0);
@@ -40,12 +40,14 @@ public final class CreatureSpawner implements CustomSpawner {
                 continue;
             }
             this.countdown.put(entry.getKey(), habit.interval());
-            if (habit.isEnabled() && (spawnEnemies || habit.isFriendly())) {
+            if (habit.isEnabled() && (habit.isFriendly() ? spawnFriendlies : spawnEnemies)) {
                 habit.spawnNearPlayers(level);
             }
         }
         if (this.countdown.size() > habits.size()) {
             this.countdown.keySet().removeIf(id -> !habits.containsKey(id));
         }
+        // What was set down is not counted back; vanilla's own spawners report it only for profiling.
+        return 0;
     }
 }

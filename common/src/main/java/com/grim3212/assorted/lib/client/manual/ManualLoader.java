@@ -7,7 +7,7 @@ import com.grim3212.assorted.lib.manual.ManualLinks;
 import com.grim3212.assorted.lib.manual.ManualSection;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
@@ -15,6 +15,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
 
 import java.io.BufferedReader;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * Reads the whole manual out of the loaded resource packs, so a pack can change any of it.
@@ -29,10 +30,10 @@ import java.util.Map;
  */
 public class ManualLoader extends SimplePreparableReloadListener<ManualContent> {
 
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "manual");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "manual");
 
     /** One file, not one per namespace: there is only one book. */
-    private static final Identifier BOOK = Identifier.fromNamespaceAndPath(LibConstants.MOD_ID, "manual/book.json");
+    private static final ResourceLocation BOOK = ResourceLocation.fromNamespaceAndPath(LibConstants.MOD_ID, "manual/book.json");
 
     private static final String SECTION = "manual/section.json";
     private static final String LINKS = "manual/links.json";
@@ -48,12 +49,12 @@ public class ManualLoader extends SimplePreparableReloadListener<ManualContent> 
                 read(BOOK, resource, ManualBookStyle.CODEC).ifPresent(style -> builder.style = style));
 
         for (String namespace : manager.getNamespaces()) {
-            Identifier section = Identifier.fromNamespaceAndPath(namespace, SECTION);
+            ResourceLocation section = ResourceLocation.fromNamespaceAndPath(namespace, SECTION);
             manager.getResource(section).ifPresent(resource ->
                     read(section, resource, ManualSection.Definition.CODEC)
                             .ifPresent(definition -> builder.sections.put(namespace, definition.bind(namespace))));
 
-            Identifier links = Identifier.fromNamespaceAndPath(namespace, LINKS);
+            ResourceLocation links = ResourceLocation.fromNamespaceAndPath(namespace, LINKS);
             manager.getResource(links).ifPresent(resource ->
                     read(links, resource, ManualLinks.Group.FILE_CODEC).ifPresent(builder.links::addAll));
         }
@@ -64,7 +65,7 @@ public class ManualLoader extends SimplePreparableReloadListener<ManualContent> 
 
         forEach(manager, RECIPE_LAYOUTS, (path, id, resource) ->
                 read(path, resource, ManualRecipeLayout.CODEC)
-                        .ifPresent(layout -> builder.layouts.put(Identifier.fromNamespaceAndPath(path.getNamespace(), id), layout)));
+                        .ifPresent(layout -> builder.layouts.put(ResourceLocation.fromNamespaceAndPath(path.getNamespace(), id), layout)));
 
         return builder.build();
     }
@@ -78,17 +79,17 @@ public class ManualLoader extends SimplePreparableReloadListener<ManualContent> 
 
     /** Ids are the path below {@code directory} less the extension, slashes and all. */
     private static void forEach(ResourceManager manager, String directory, Entry out) {
-        ResourceManager.Selector isJson = path -> path.getPath().endsWith(EXTENSION);
+        Predicate<ResourceLocation> isJson = path -> path.getPath().endsWith(EXTENSION);
 
-        for (Map.Entry<Identifier, Resource> entry : manager.listResources(directory, isJson).entrySet()) {
-            Identifier path = entry.getKey();
+        for (Map.Entry<ResourceLocation, Resource> entry : manager.listResources(directory, isJson).entrySet()) {
+            ResourceLocation path = entry.getKey();
             String id = path.getPath().substring(directory.length() + 1, path.getPath().length() - EXTENSION.length());
             out.accept(path, id, entry.getValue());
         }
     }
 
     /** One bad file costs that file, not the whole book. */
-    private static <T> java.util.Optional<T> read(Identifier path, Resource resource, Codec<T> codec) {
+    private static <T> java.util.Optional<T> read(ResourceLocation path, Resource resource, Codec<T> codec) {
         try (BufferedReader reader = resource.openAsReader()) {
             JsonElement json = JsonParser.parseReader(reader);
             return java.util.Optional.of(codec.parse(JsonOps.INSTANCE, json).getOrThrow(IllegalStateException::new));
@@ -100,6 +101,6 @@ public class ManualLoader extends SimplePreparableReloadListener<ManualContent> 
 
     @FunctionalInterface
     private interface Entry {
-        void accept(Identifier path, String id, Resource resource);
+        void accept(ResourceLocation path, String id, Resource resource);
     }
 }

@@ -7,14 +7,13 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.tags.TagAppender;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BiomeTags;
-import net.minecraft.tags.BlockItemTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
@@ -63,11 +62,11 @@ public class LibCommonTagProvider {
             // #minecraft:fence_gates is exactly the wooden fence gates - there is no other kind -
             // so this follows vanilla rather than listing them, which had already fallen three
             // woods behind (cherry, pale oak, bamboo).
-            tagger.apply(LibCommonTags.Blocks.FENCE_GATES_WOODEN).addOptionalTag(BlockTags.FENCE_GATES);
+            tagger.apply(LibCommonTags.Blocks.FENCE_GATES_WOODEN).addOptionalTag(BlockTags.FENCE_GATES.location());
             tagger.apply(LibCommonTags.Blocks.FENCES).addTag(LibCommonTags.Blocks.FENCES_WOODEN);
             tagger.apply(LibCommonTags.Blocks.FENCES).addTag(LibCommonTags.Blocks.FENCES_NETHER_BRICK);
             tagger.apply(LibCommonTags.Blocks.FENCES_NETHER_BRICK).add(key(Blocks.NETHER_BRICK_FENCE));
-            tagger.apply(LibCommonTags.Blocks.FENCES_WOODEN).addOptionalTag(BlockTags.WOODEN_FENCES);
+            tagger.apply(LibCommonTags.Blocks.FENCES_WOODEN).addOptionalTag(BlockTags.WOODEN_FENCES.location());
             tagger.apply(LibCommonTags.Blocks.GRAVEL).add(key(Blocks.GRAVEL));
             tagger.apply(LibCommonTags.Blocks.NETHERRACK).add(key(Blocks.NETHERRACK));
             tagger.apply(LibCommonTags.Blocks.OBSIDIAN).add(key(Blocks.OBSIDIAN));
@@ -76,15 +75,15 @@ public class LibCommonTagProvider {
             for (TagKey<Block> oreTag : oreTags)
                 tagger.apply(LibCommonTags.Blocks.ORES).addTag(oreTag);
 
-            tagger.apply(LibCommonTags.Blocks.ORES_COAL).addOptionalTag(BlockItemTags.COAL_ORES.block());
-            tagger.apply(LibCommonTags.Blocks.ORES_COPPER).addOptionalTag(BlockTags.COPPER_ORES);
-            tagger.apply(LibCommonTags.Blocks.ORES_DIAMOND).addOptionalTag(BlockItemTags.DIAMOND_ORES.block());
-            tagger.apply(LibCommonTags.Blocks.ORES_EMERALD).addOptionalTag(BlockItemTags.EMERALD_ORES.block());
-            tagger.apply(LibCommonTags.Blocks.ORES_GOLD).addOptionalTag(BlockTags.GOLD_ORES);
-            tagger.apply(LibCommonTags.Blocks.ORES_IRON).addOptionalTag(BlockTags.IRON_ORES);
-            tagger.apply(LibCommonTags.Blocks.ORES_LAPIS).addOptionalTag(BlockItemTags.LAPIS_ORES.block());
+            tagger.apply(LibCommonTags.Blocks.ORES_COAL).addOptionalTag(BlockTags.COAL_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_COPPER).addOptionalTag(BlockTags.COPPER_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_DIAMOND).addOptionalTag(BlockTags.DIAMOND_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_EMERALD).addOptionalTag(BlockTags.EMERALD_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_GOLD).addOptionalTag(BlockTags.GOLD_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_IRON).addOptionalTag(BlockTags.IRON_ORES.location());
+            tagger.apply(LibCommonTags.Blocks.ORES_LAPIS).addOptionalTag(BlockTags.LAPIS_ORES.location());
             tagger.apply(LibCommonTags.Blocks.ORES_QUARTZ).add(key(Blocks.NETHER_QUARTZ_ORE));
-            tagger.apply(LibCommonTags.Blocks.ORES_REDSTONE).addOptionalTag(BlockItemTags.REDSTONE_ORES.block());
+            tagger.apply(LibCommonTags.Blocks.ORES_REDSTONE).addOptionalTag(BlockTags.REDSTONE_ORES.location());
             tagger.apply(LibCommonTags.Blocks.ORES_NETHERITE_SCRAP).add(key(Blocks.ANCIENT_DEBRIS));
             tagger.apply(LibCommonTags.Blocks.STONE).add(key(Blocks.ANDESITE), key(Blocks.DIORITE), key(Blocks.GRANITE), key(Blocks.INFESTED_STONE), key(Blocks.STONE), key(Blocks.POLISHED_ANDESITE), key(Blocks.POLISHED_DIORITE), key(Blocks.POLISHED_GRANITE), key(Blocks.DEEPSLATE), key(Blocks.POLISHED_DEEPSLATE), key(Blocks.INFESTED_DEEPSLATE), key(Blocks.TUFF));
 
@@ -94,7 +93,7 @@ public class LibCommonTagProvider {
 
             tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_AMETHYST).add(key(Blocks.AMETHYST_BLOCK));
             tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_COAL).add(key(Blocks.COAL_BLOCK));
-            tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_COPPER).add(key(Blocks.COPPER_BLOCK.weathering().unaffected()));
+            tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_COPPER).add(key(Blocks.COPPER_BLOCK));
             tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_DIAMOND).add(key(Blocks.DIAMOND_BLOCK));
             tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_EMERALD).add(key(Blocks.EMERALD_BLOCK));
             tagger.apply(LibCommonTags.Blocks.STORAGE_BLOCKS_GOLD).add(key(Blocks.GOLD_BLOCK));
@@ -110,10 +109,10 @@ public class LibCommonTagProvider {
             addColored(tagger.apply(LibCommonTags.Blocks.STAINED_GLASS)::add, "GLASS", "{color}_stained_glass", tagger);
             addColored(tagger.apply(LibCommonTags.Blocks.STAINED_GLASS_PANES)::add, "GLASS_PANES", "{color}_stained_glass_pane", tagger);
 
-            tagger.apply(LibCommonTags.Blocks.GLASS).addTag(LibCommonTags.Blocks.GLASS_COLORLESS).addOptionalTag(LibCommonTags.Blocks.STAINED_GLASS).addTag(LibCommonTags.Blocks.GLASS_TINTED);
+            tagger.apply(LibCommonTags.Blocks.GLASS).addTag(LibCommonTags.Blocks.GLASS_COLORLESS).addOptionalTag(LibCommonTags.Blocks.STAINED_GLASS.location()).addTag(LibCommonTags.Blocks.GLASS_TINTED);
             tagger.apply(LibCommonTags.Blocks.GLASS_COLORLESS).add(key(Blocks.GLASS));
             tagger.apply(LibCommonTags.Blocks.GLASS_TINTED).add(key(Blocks.TINTED_GLASS));
-            tagger.apply(LibCommonTags.Blocks.GLASS_PANES).addTag(LibCommonTags.Blocks.GLASS_PANES_COLORLESS).addOptionalTag(LibCommonTags.Blocks.STAINED_GLASS_PANES);
+            tagger.apply(LibCommonTags.Blocks.GLASS_PANES).addTag(LibCommonTags.Blocks.GLASS_PANES_COLORLESS).addOptionalTag(LibCommonTags.Blocks.STAINED_GLASS_PANES.location());
             tagger.apply(LibCommonTags.Blocks.GLASS_PANES_COLORLESS).add(key(Blocks.GLASS_PANE));
 
             DyeHelper.CONCRETE_BY_DYE.entrySet().stream().forEach((x) -> tagger.apply(LibCommonTags.Blocks.CONCRETE).add(key(x.getValue())));
@@ -128,7 +127,7 @@ public class LibCommonTagProvider {
         private void addColored(Consumer<ResourceKey<Block>> consumer, String constantPrefix, String pattern, Function<TagKey<Block>, TagAppender<Block>> tagger) {
             String prefix = constantPrefix + '_';
             for (DyeColor color : DyeColor.values()) {
-                Identifier key = Identifier.fromNamespaceAndPath("minecraft", pattern.replace("{color}", color.getName()));
+                ResourceLocation key = ResourceLocation.fromNamespaceAndPath("minecraft", pattern.replace("{color}", color.getName()));
                 TagKey<Block> tag = getCommonTag(prefix + color.getName());
                 Block block = Services.PLATFORM.getRegistry(Registries.BLOCK).getValue(key).get();
                 if (block == null || block == Blocks.AIR)
@@ -161,7 +160,7 @@ public class LibCommonTagProvider {
             for (DyeColor color : DyeColor.values()) {
                 TagKey<Item> dyeTag = DyeHelper.getDyeTag(color);
                 tagger.apply(LibCommonTags.Items.DYES).addTag(dyeTag);
-                tagger.apply(dyeTag).add(key(Items.DYE.pick(color)));
+                tagger.apply(dyeTag).add(key(DyeItem.byColor(color)));
             }
 
             copier.accept(LibCommonTags.Blocks.BARRELS, LibCommonTags.Items.BARRELS);
@@ -330,7 +329,6 @@ public class LibCommonTagProvider {
          * {@code common_biome_tags_match_on_every_loader} gametest holds each loader to one list.
          */
         public void addCommonTags(Function<TagKey<Biome>, TagAppender<Biome>> tagger) {
-            tagAll(tagger, Biomes.PALE_GARDEN, LibCommonTags.Biomes.IS_DENSE_OVERWORLD);
         }
     }
 }

@@ -5,7 +5,9 @@ import com.grim3212.assorted.lib.core.storage.StorageMaterial;
 import com.grim3212.assorted.lib.core.storage.LockedMaterialContainer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -19,8 +21,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity.AnimationStatus;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.PushReaction;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -56,8 +56,8 @@ public class LockedShulkerBoxBlockEntity extends BaseStorageBlockEntity implemen
         return this.color == null ? -1 : this.color.getId();
     }
 
-    public DyeColor colorFromInput(ValueInput input) {
-        int color = input.getIntOr("Color", -1);
+    public DyeColor colorFromTag(CompoundTag tag) {
+        int color = tag.contains("Color", Tag.TAG_ANY_NUMERIC) ? tag.getInt("Color") : -1;
         return color == -1 ? null : DyeColor.byId(color);
     }
 
@@ -112,12 +112,12 @@ public class LockedShulkerBoxBlockEntity extends BaseStorageBlockEntity implemen
     private void moveCollidedEntities(Level level, BlockPos pos, BlockState state) {
         if (state.getBlock() instanceof LockedShulkerBoxBlock) {
             Direction direction = state.getValue(LockedShulkerBoxBlock.FACING);
-            AABB aabb = Shulker.getProgressDeltaAabb(1.0F, direction, this.progressOld, this.progress, Vec3.atBottomCenterOf(pos));
+            AABB aabb = Shulker.getProgressDeltaAabb(1.0F, direction, this.progressOld, this.progress).move(pos);
             List<Entity> list = level.getEntities((Entity) null, aabb);
             if (!list.isEmpty()) {
                 for (int i = 0; i < list.size(); ++i) {
                     Entity entity = list.get(i);
-                    if (entity.getPistonPushReaction() != PushReaction.IGNORE_ENTITY) {
+                    if (entity.getPistonPushReaction() != PushReaction.IGNORE) {
                         entity.move(MoverType.SHULKER_BOX, new Vec3((aabb.getXsize() + 0.01D) * (double) direction.getStepX(), (aabb.getYsize() + 0.01D) * (double) direction.getStepY(), (aabb.getZsize() + 0.01D) * (double) direction.getStepZ()));
                     }
                 }
@@ -156,19 +156,19 @@ public class LockedShulkerBoxBlockEntity extends BaseStorageBlockEntity implemen
     }
 
     public AABB getBoundingBox(BlockState state) {
-        return Shulker.getProgressAabb(1.0F, state.getValue(LockedShulkerBoxBlock.FACING), 0.5F * this.getProgress(1.0F), new Vec3(0.5D, 0.0D, 0.5D));
+        return Shulker.getProgressAabb(1.0F, state.getValue(LockedShulkerBoxBlock.FACING), 0.5F * this.getProgress(1.0F));
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        this.color = colorFromInput(input);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        this.color = colorFromTag(tag);
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
-        output.putInt("Color", this.colorToSave());
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        tag.putInt("Color", this.colorToSave());
     }
 
     public float getProgress(float p_59658_) {
@@ -203,8 +203,7 @@ public class LockedShulkerBoxBlockEntity extends BaseStorageBlockEntity implemen
     @Override
     protected void readCustomData(CompoundTag tag) {
         super.readCustomData(tag);
-        int savedColor = tag.getIntOr("Color", -1);
-        this.color = savedColor == -1 ? null : DyeColor.byId(savedColor);
+        this.color = colorFromTag(tag);
     }
 
     /**

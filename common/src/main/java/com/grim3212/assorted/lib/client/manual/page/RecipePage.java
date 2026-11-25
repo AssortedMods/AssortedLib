@@ -17,12 +17,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -68,11 +66,12 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
             this.text.ifPresent(body -> view.text(body, 0));
             // Type never opted into SyncedRecipes#require, or a pack naming a recipe that is absent.
             view.centeredText(Component.translatable("gui.assortedlib.manual.recipe_missing"), view.height() / 2, view.style().errorTextColor());
-            view.centeredText(Component.literal(key.identifier().toString()), view.height() / 2 + 12, view.style().mutedTextColor());
+            view.centeredText(Component.literal(key.location().toString()), view.height() / 2 + 12, view.style().mutedTextColor());
             return;
         }
 
-        ManualRecipeView recipe = ManualRecipeView.of(holder).orElse(null);
+        Minecraft minecraft = Minecraft.getInstance();
+        ManualRecipeView recipe = minecraft.level == null ? null : ManualRecipeView.of(holder, minecraft.level.registryAccess()).orElse(null);
         ManualRecipeLayout layout = ManualContent.get().layoutFor(holder.value());
         if (recipe == null || recipe.isEmpty() || layout == null) {
             this.text.ifPresent(body -> view.text(body, 0));
@@ -84,7 +83,6 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
     }
 
     private void draw(ManualPageView view, ManualRecipeView recipe, ManualRecipeLayout layout, int animationTick) {
-        ContextMap context = contextMap();
         int left = (view.width() - layout.width()) / 2;
 
         // Bottom aligned: a taller station takes its room from the text, not off the page.
@@ -104,14 +102,14 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
             for (int column = 0; column < recipe.width(); column++) {
                 ManualRecipeLayout.Position position = layout.input(column, row);
                 if (position != null) {
-                    this.drawSlot(view, recipe.slot(column, row), context, left + position.x(), top + position.y(), animationTick);
+                    this.drawSlot(view, recipe.slot(column, row), left + position.x(), top + position.y(), animationTick);
                 }
             }
         }
 
         // The station's own slots: no part of the recipe, but part of running it.
         for (ManualRecipeLayout.Extra extra : layout.extras()) {
-            this.drawSlot(view, extra.slot(), context, left + extra.position().x(), top + extra.position().y(), animationTick, extra.tooltip());
+            this.drawSlot(view, extra.slot(), left + extra.position().x(), top + extra.position().y(), animationTick, extra.tooltip());
         }
 
         if (recipe.shapeless()) {
@@ -123,7 +121,7 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
                     Component.translatable("gui.assortedlib.manual.shapeless"));
         }
 
-        ItemStack result = pick(recipe.result().stacks(context), animationTick, this.interval);
+        ItemStack result = pick(recipe.result().stacks(), animationTick, this.interval);
         view.item(result, left + layout.result().x(), top + layout.result().y());
 
         if (!result.isEmpty()) {
@@ -131,18 +129,18 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
         }
     }
 
-    private void drawSlot(ManualPageView view, ManualSlot slot, ContextMap context, int x, int y, int animationTick) {
-        this.drawSlot(view, slot, context, x, y, animationTick, Optional.empty());
+    private void drawSlot(ManualPageView view, ManualSlot slot, int x, int y, int animationTick) {
+        this.drawSlot(view, slot, x, y, animationTick, Optional.empty());
     }
 
-    private void drawSlot(ManualPageView view, ManualSlot slot, ContextMap context, int x, int y, int animationTick, Optional<String> tooltip) {
-        List<ItemStack> stacks = slot.stacks(context);
+    private void drawSlot(ManualPageView view, ManualSlot slot, int x, int y, int animationTick, Optional<String> tooltip) {
+        List<ItemStack> stacks = slot.stacks();
         if (stacks.isEmpty()) {
             return;
         }
 
         // Gold marks a choice; the cycling alone does not say the choice is the reader's.
-        if (slot.isChoice(context)) {
+        if (slot.isChoice()) {
             view.sprite(ManualBook.Sprites.TAG_SLOT, x - 1, y - 1, ManualRecipeLayout.SLOT, ManualRecipeLayout.SLOT);
         }
 
@@ -165,7 +163,7 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
                     Component.literal(tag.location().toString()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY)).toList();
         }
 
-        if (slot.display() instanceof net.minecraft.world.item.crafting.display.SlotDisplay.AnyFuel) {
+        if (slot.isAnyFuel()) {
             return List.of(Component.translatable("gui.assortedlib.manual.accepts_fuel").withStyle(ChatFormatting.GRAY));
         }
 
@@ -178,11 +176,5 @@ public record RecipePage(Optional<Component> title, List<ResourceKey<Recipe<?>>>
 
     private int cycle(int animationTick, int size) {
         return (animationTick / Math.max(1, this.interval)) % size;
-    }
-
-    /** {@code AnyFuel} needs the level's fuel values; out of world there is nothing to draw anyway. */
-    private static ContextMap contextMap() {
-        Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.level != null ? SlotDisplayContext.fromLevel(minecraft.level) : ContextMap.builder().buildAndValidate(SlotDisplayContext.CONTEXT);
     }
 }

@@ -22,27 +22,24 @@ public interface ILevelPropertyAccessor {
 
     int getLightEmission(BlockGetter getter, BlockPos blockPos);
 
-    // Vanilla made both of these properties of the block state alone in 26.x, baked into the state
-    // at state-bake time. A block that stands in for another one - a colorizer - still has to answer
-    // for where it is, which is what IBlockLightDampening is for and what the light engines are
-    // taught to ask; the dampening answers from the same place, so the library never contradicts
-    // the light.
+    // A block that stands in for another one - a colorizer - answers for where it is through
+    // IBlockLightDampening; everything else answers through vanilla's own position-aware queries.
     default int getLightBlock(BlockGetter blockGetter, BlockPos blockPos) {
         final BlockState blockState = blockGetter.getBlockState(blockPos);
         if (blockState.getBlock() instanceof IBlockLightDampening dampening) {
             return dampening.getLightDampening(blockState, blockGetter, blockPos);
         }
 
-        return blockState.getLightDampening();
+        return blockState.getLightBlock(blockGetter, blockPos);
     }
 
     default boolean propagatesSkylightDown(BlockGetter blockGetter, BlockPos blockPos) {
         final BlockState blockState = blockGetter.getBlockState(blockPos);
         if (blockState.getBlock() instanceof IBlockLightDampening dampening) {
-            return dampening.propagatesSkylightDown(blockState, blockGetter, blockPos);
+            return dampening.skylightPassesDown(blockState, blockGetter, blockPos);
         }
 
-        return blockState.propagatesSkylightDown();
+        return blockState.propagatesSkylightDown(blockGetter, blockPos);
     }
 
     boolean canHarvestBlock(BlockGetter blockGetter, BlockPos pos, Player player);

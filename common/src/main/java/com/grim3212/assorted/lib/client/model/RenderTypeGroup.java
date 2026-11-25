@@ -1,6 +1,6 @@
 package com.grim3212.assorted.lib.client.model;
 
-import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.RenderType;
 
 /**
  * Equivalent render types: one on {@link com.mojang.blaze3d.vertex.DefaultVertexFormat#BLOCK}, two
@@ -8,7 +8,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
  * {@code entity}.
  */
 public record RenderTypeGroup(RenderType block, RenderType entity, RenderType entityFabulous) {
-    public static RenderTypeGroup EMPTY = new RenderTypeGroup(null, null, null);
+    public static final RenderTypeGroup EMPTY = new RenderTypeGroup(null, null, null);
 
     public RenderTypeGroup {
         if ((block == null) != (entity == null) || (block == null) != (entityFabulous == null))

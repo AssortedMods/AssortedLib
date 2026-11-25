@@ -2,11 +2,18 @@
   "type": "minecraft:crafting_shapeless",
   "category": "equipment",
   "ingredients": [
-    "minecraft:book",
-    "minecraft:leather",
-    "#minecraft:dyes"
+    {
+      "item": "minecraft:book"
+    },
+    {
+      "item": "minecraft:leather"
+    },
+    {
+      "tag": "c:dyes"
+    }
   ],
   "result": {
+    "count": 1,
     "id": "assortedlib:instruction_manual"
   }
 }

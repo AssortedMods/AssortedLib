@@ -1,18 +1,18 @@
 package com.grim3212.assorted.lib.events;
 
 import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 
 public class LootTableModifyEvent extends GenericEvent {
     private final LootTable lootTable;
-    private final Identifier id;
+    private final ResourceLocation id;
     private final LootTableModificationContext context;
     private final boolean builtin;
 
-    public LootTableModifyEvent(LootTable lootTable, Identifier id, LootTableModificationContext context, boolean builtin) {
+    public LootTableModifyEvent(LootTable lootTable, ResourceLocation id, LootTableModificationContext context, boolean builtin) {
         this.lootTable = lootTable;
         this.id = id;
         this.context = context;
@@ -23,7 +23,7 @@ public class LootTableModifyEvent extends GenericEvent {
         return lootTable;
     }
 
-    public Identifier getId() {
+    public ResourceLocation getId() {
         return id;
     }
 

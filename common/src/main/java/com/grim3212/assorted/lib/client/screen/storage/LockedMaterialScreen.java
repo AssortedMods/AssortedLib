@@ -2,11 +2,10 @@ package com.grim3212.assorted.lib.client.screen.storage;
 
 import com.grim3212.assorted.lib.core.storage.StorageMaterial;
 import com.grim3212.assorted.lib.core.storage.LockedMaterialContainer;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 /** The screen of a {@link LockedMaterialContainer}, nine to fourteen columns wide. */
@@ -18,15 +17,18 @@ public class LockedMaterialScreen extends AbstractContainerScreen<LockedMaterial
     private final int xRows;
     private final int textureXSize;
     private final int textureYSize;
-    private final Identifier inventoryTexture;
+    private final ResourceLocation inventoryTexture;
 
     public LockedMaterialScreen(LockedMaterialContainer container, Inventory playerInventory, Component title) {
-        super(container, playerInventory, title, imageWidth(container.getStorageMaterial()), imageHeight(container.getStorageMaterial()));
+        super(container, playerInventory, title);
 
         StorageMaterial storageMaterial = container.getStorageMaterial();
         this.xRows = storageMaterial == null ? 3 : storageMaterial.getXRows();
 
         int yCols = storageMaterial == null ? 9 : storageMaterial.getYCols();
+        this.imageWidth = 14 + yCols * 18;
+        this.imageHeight = 114 + this.xRows * 18;
+        this.inventoryLabelY = this.imageHeight - 94;
         switch (yCols) {
             case (10):
                 this.textureXSize = 256;
@@ -61,23 +63,18 @@ public class LockedMaterialScreen extends AbstractContainerScreen<LockedMaterial
         }
     }
 
-    // imageWidth and imageHeight are final, so the sizes are worked out before the super call
-    private static int imageWidth(StorageMaterial storageMaterial) {
-        return 14 + (storageMaterial == null ? 9 : storageMaterial.getYCols()) * 18;
-    }
-
-    private static int imageHeight(StorageMaterial storageMaterial) {
-        return 114 + (storageMaterial == null ? 3 : storageMaterial.getXRows()) * 18;
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        super.render(graphics, mouseX, mouseY, partialTicks);
+        this.renderTooltip(graphics, mouseX, mouseY);
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        super.extractBackground(graphics, mouseX, mouseY, partialTicks);
-
+    protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         int i = this.leftPos;
         int j = this.topPos;
 
-        graphics.blit(RenderPipelines.GUI_TEXTURED, this.inventoryTexture, i, j, 0.0F, 0.0F, this.imageWidth, this.xRows * 18 + 17, this.textureXSize, this.textureYSize);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, this.inventoryTexture, i, j + this.xRows * 18 + 17, 0.0F, START_OF_PLAYER_INVENTORY_Y, this.imageWidth, HEIGHT_OF_PLAYER_INVENTORY, this.textureXSize, this.textureYSize);
+        graphics.blit(this.inventoryTexture, i, j, 0.0F, 0.0F, this.imageWidth, this.xRows * 18 + 17, this.textureXSize, this.textureYSize);
+        graphics.blit(this.inventoryTexture, i, j + this.xRows * 18 + 17, 0.0F, START_OF_PLAYER_INVENTORY_Y, this.imageWidth, HEIGHT_OF_PLAYER_INVENTORY, this.textureXSize, this.textureYSize);
     }
 }

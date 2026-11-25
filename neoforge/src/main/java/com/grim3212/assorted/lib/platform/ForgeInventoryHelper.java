@@ -13,9 +13,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.access.ItemAccess;
-import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,8 +23,7 @@ import java.util.function.Function;
 public class ForgeInventoryHelper implements IInventoryHelper {
     @Override
     public boolean canItemStacksStack(@NotNull ItemStack a, @NotNull ItemStack b) {
-        // ItemHandlerHelper's stack helpers are gone; both of these are plain vanilla now that item
-        // data lives in components instead of an opaque tag.
+        // Plain vanilla now that item data lives in components instead of an opaque tag.
         return !a.isEmpty() && ItemStack.isSameItemSameComponents(a, b);
     }
 
@@ -49,10 +46,8 @@ public class ForgeInventoryHelper implements IInventoryHelper {
             }
         }
 
-        // Anything else is a foreign inventory, reachable only through the capability. ForgeCapabilities
-        // and LazyOptional are gone: the lookup is a plain nullable value resolved against an ItemAccess
-        // describing which stack is being operated on, and oneByOne() scopes it to a single item.
-        ResourceHandler<ItemResource> capability = ItemAccess.forStack(stack).oneByOne().getCapability(Capabilities.Item.ITEM);
+        // Anything else is a foreign inventory, reachable only through the capability.
+        IItemHandler capability = stack.getCapability(Capabilities.ItemHandler.ITEM);
         if (capability != null) {
             return Optional.of(new ForgeWrappedItemHandler(null, capability));
         }
@@ -74,7 +69,7 @@ public class ForgeInventoryHelper implements IInventoryHelper {
         // Block capabilities are resolved through the level rather than off the block entity itself.
         Level level = blockEntity.getLevel();
         if (level != null) {
-            ResourceHandler<ItemResource> capability = level.getCapability(Capabilities.Item.BLOCK, blockEntity.getBlockPos(), blockEntity.getBlockState(), blockEntity, direction);
+            IItemHandler capability = level.getCapability(Capabilities.ItemHandler.BLOCK, blockEntity.getBlockPos(), blockEntity.getBlockState(), blockEntity, direction);
             if (capability != null) {
                 return Optional.of(new ForgeWrappedItemHandler(blockEntity, capability));
             }

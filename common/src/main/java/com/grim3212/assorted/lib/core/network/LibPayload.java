@@ -4,7 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -18,7 +18,7 @@ import java.util.function.Function;
  */
 public record LibPayload<MSG>(CustomPacketPayload.Type<LibPayload<MSG>> type, MSG message) implements CustomPacketPayload {
 
-    public static <MSG> CustomPacketPayload.Type<LibPayload<MSG>> type(Identifier id) {
+    public static <MSG> CustomPacketPayload.Type<LibPayload<MSG>> type(ResourceLocation id) {
         return new CustomPacketPayload.Type<>(id);
     }
 

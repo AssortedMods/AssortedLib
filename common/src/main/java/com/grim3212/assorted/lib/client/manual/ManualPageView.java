@@ -2,12 +2,11 @@ package com.grim3212.assorted.lib.client.manual;
 
 import com.grim3212.assorted.lib.client.screen.LibGuiItemRenderer;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,7 +23,7 @@ public final class ManualPageView {
 
     public static final int LINE_HEIGHT = 9;
 
-    private final GuiGraphicsExtractor graphics;
+    private final GuiGraphics graphics;
     private final Font font;
     private final ManualBookStyle style;
     private final int left;
@@ -44,7 +43,7 @@ public final class ManualPageView {
     private final List<Component> hoveredLines = new ArrayList<>();
     private boolean animationFrozen;
 
-    public ManualPageView(GuiGraphicsExtractor graphics, Font font, ManualBookStyle style,
+    public ManualPageView(GuiGraphics graphics, Font font, ManualBookStyle style,
                           int left, int top, int width, int height, int mouseX, int mouseY, int scrollLines) {
         this.graphics = graphics;
         this.font = font;
@@ -58,7 +57,7 @@ public final class ManualPageView {
         this.scrollLines = scrollLines;
     }
 
-    public GuiGraphicsExtractor graphics() {
+    public GuiGraphics graphics() {
         return this.graphics;
     }
 
@@ -112,7 +111,7 @@ public final class ManualPageView {
         int shown = Math.min(capacity, lines.size() - first);
 
         for (int i = 0; i < shown; i++) {
-            this.graphics.text(this.font, lines.get(first + i), this.absoluteX(localX),
+            this.graphics.drawString(this.font, lines.get(first + i), this.absoluteX(localX),
                     this.absoluteY(localY + i * LINE_HEIGHT), color, false);
         }
 
@@ -130,24 +129,24 @@ public final class ManualPageView {
 
     public void centeredText(Component text, int localY, int color) {
         int x = this.absoluteX((this.width - this.font.width(text)) / 2);
-        this.graphics.text(this.font, text, x, this.absoluteY(localY), color, false);
+        this.graphics.drawString(this.font, text, x, this.absoluteY(localY), color, false);
     }
 
-    public void sprite(Identifier sprite, int localX, int localY, int spriteWidth, int spriteHeight) {
-        this.graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.absoluteX(localX), this.absoluteY(localY), spriteWidth, spriteHeight);
+    public void sprite(ResourceLocation sprite, int localX, int localY, int spriteWidth, int spriteHeight) {
+        this.graphics.blitSprite(sprite, this.absoluteX(localX), this.absoluteY(localY), spriteWidth, spriteHeight);
     }
 
     /** A texture region drawn at its own size. */
-    public void texture(Identifier texture, int localX, int localY, int u, int v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
-        this.graphics.blit(RenderPipelines.GUI_TEXTURED, texture, this.absoluteX(localX), this.absoluteY(localY),
-                u, v, regionWidth, regionHeight, textureWidth, textureHeight);
+    public void texture(ResourceLocation texture, int localX, int localY, int u, int v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
+        this.graphics.blit(texture, this.absoluteX(localX), this.absoluteY(localY),
+                (float) u, (float) v, regionWidth, regionHeight, textureWidth, textureHeight);
     }
 
     /**
      * The same with rounded corners. A blit is always a rectangle, so the outermost rows go down
      * narrower, inset by what a circle of that radius would cut away.
      */
-    public void roundedTexture(Identifier texture, int localX, int localY, int u, int v, int regionWidth, int regionHeight,
+    public void roundedTexture(ResourceLocation texture, int localX, int localY, int u, int v, int regionWidth, int regionHeight,
                                int textureWidth, int textureHeight, int radius) {
         int corner = Math.max(0, Math.min(radius, Math.min(regionWidth, regionHeight) / 2));
         if (corner == 0) {
@@ -201,12 +200,12 @@ public final class ManualPageView {
 
         int x = this.absoluteX(localX);
         int y = this.absoluteY(localY);
-        this.graphics.item(stack, x, y);
-        this.graphics.itemDecorations(this.font, stack, x, y);
+        this.graphics.renderItem(stack, x, y);
+        this.graphics.renderItemDecorations(this.font, stack, x, y);
         this.trackHover(stack, notes, x, y, 16, 16);
     }
 
-    /** {@code GuiGraphicsExtractor#item} is fixed at 16x16, so the pose is scaled around the corner. */
+    /** {@code GuiGraphics#renderItem} is fixed at 16x16, so the pose is scaled around the corner. */
     public void largeItem(ItemStack stack, int localX, int localY, float scale) {
         if (stack.isEmpty()) {
             return;
@@ -215,11 +214,11 @@ public final class ManualPageView {
         int x = this.absoluteX(localX);
         int y = this.absoluteY(localY);
 
-        this.graphics.pose().pushMatrix();
-        this.graphics.pose().translate(x, y);
-        this.graphics.pose().scale(scale, scale);
+        this.graphics.pose().pushPose();
+        this.graphics.pose().translate((float) x, (float) y, 0.0F);
+        this.graphics.pose().scale(scale, scale, 1.0F);
         LibGuiItemRenderer.item(this.graphics, stack, ItemDisplayContext.GUI, null, 0, 0);
-        this.graphics.pose().popMatrix();
+        this.graphics.pose().popPose();
 
         this.trackHover(stack, List.of(), x, y, Math.round(16 * scale), Math.round(16 * scale));
     }
@@ -245,19 +244,19 @@ public final class ManualPageView {
     public void drawHoveredTooltip() {
         if (this.hoveredStack.isEmpty()) {
             if (!this.hoveredLines.isEmpty()) {
-                this.graphics.setComponentTooltipForNextFrame(this.font, this.hoveredLines, this.mouseX, this.mouseY);
+                this.graphics.renderComponentTooltip(this.font, this.hoveredLines, this.mouseX, this.mouseY);
             }
             return;
         }
 
         if (this.hoveredLines.isEmpty()) {
-            this.graphics.setTooltipForNextFrame(this.font, this.hoveredStack, this.mouseX, this.mouseY);
+            this.graphics.renderTooltip(this.font, this.hoveredStack, this.mouseX, this.mouseY);
             return;
         }
 
         List<Component> lines = new ArrayList<>();
         lines.add(this.hoveredStack.getHoverName());
         lines.addAll(this.hoveredLines);
-        this.graphics.setComponentTooltipForNextFrame(this.font, lines, this.mouseX, this.mouseY);
+        this.graphics.renderComponentTooltip(this.font, lines, this.mouseX, this.mouseY);
     }
 }
